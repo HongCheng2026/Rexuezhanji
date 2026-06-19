@@ -1,0 +1,60 @@
+<view class="battle-page">
+  <canvas
+    id="battleCanvas"
+    canvas-id="battleCanvas"
+    type="2d"
+    class="battle-canvas"
+    disable-scroll
+    bindtouchstart="onTouchStart"
+    bindtouchmove="onTouchMove"
+    bindtouchend="onTouchEnd"
+    bindtouchcancel="onTouchEnd"
+  ></canvas>
+
+  <view class="hud">
+    <view><text>关卡</text><text class="value">{{hud.level}}</text></view>
+    <view><text>时间</text><text class="value">{{hud.time}}</text></view>
+    <view><text>生命</text><text class="value">{{hud.lives}}</text></view>
+    <view><text>金币</text><text class="value">{{hud.gold}}</text></view>
+  </view>
+
+  <button class="back-home" bindtap="goBack">‹ 大厅</button>
+
+  <view wx:if="{{mode === 'select'}}" class="overlay">
+    <view class="panel">
+      <text class="panel-kicker">START BATTLE</text>
+      <text class="panel-title">选择关卡</text>
+      <text class="panel-body">关卡选择已放在开始战斗里。选择已解锁关卡后进入微信 Canvas 战斗。</text>
+      <view class="level-grid">
+        <block wx:for="{{levels}}" wx:key="id">
+          <button class="level-card {{item.active ? 'active' : ''}} {{item.locked ? 'locked' : ''}}" disabled="{{item.locked}}" bindtap="selectLevel" data-id="{{item.id}}">
+            <text class="level-code">{{item.code}} {{item.name}}</text>
+            <text class="level-desc">{{item.desc}}</text>
+            <text class="level-state">{{item.state}}</text>
+          </button>
+        </block>
+      </view>
+      <button class="primary" bindtap="startSelectedLevel">开始 {{selectedLevelCode}}</button>
+    </view>
+  </view>
+
+  <view wx:if="{{mode === 'result'}}" class="overlay">
+    <view class="panel">
+      <text class="panel-kicker">{{result.kicker}}</text>
+      <text class="panel-title">{{result.title}}</text>
+      <text class="panel-body">{{result.body}}</text>
+      <button class="primary" bindtap="restartLevel">再次挑战</button>
+      <button class="secondary" bindtap="backToSelect">返回关卡</button>
+    </view>
+  </view>
+
+  <view wx:if="{{mode === 'revive'}}" class="overlay">
+    <view class="panel revive-panel">
+      <text class="panel-kicker">REVIVE CHANCE</text>
+      <text class="panel-title">复活反击</text>
+      <text class="panel-body">战机严重受损。你还有一次复活机会，复活后攻击力提升 10 倍，并获得 20 秒无敌时间。</text>
+      <button class="primary" bindtap="revivePlayer">立即复活</button>
+      <button class="secondary" bindtap="giveUpFight">放弃，返回主UI</button>
+    </view>
+  </view>
+</view>

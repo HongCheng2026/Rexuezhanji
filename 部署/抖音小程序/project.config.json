@@ -1,0 +1,12 @@
+{
+  "appid": "touristappid",
+  "projectname": "rexuezhanji-douyin",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "postcss": true,
+    "minified": true
+  },
+  "condition": {}
+}
+

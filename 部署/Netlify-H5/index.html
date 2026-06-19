@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>星空打飞机：第一章</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-root">
+      <section id="lobbyScreen" class="lobby-screen" aria-label="游戏主界面">
+        <div class="lobby-stage" aria-hidden="true">
+          <div class="lobby-default-bg"></div>
+          <img id="lobbyBackgroundLayer" class="lobby-background-layer" alt="" />
+          <img id="lobbyPilotLayer" class="lobby-pilot-layer" alt="" />
+          <img id="lobbyShipLayer" class="lobby-ship-layer" alt="" />
+          <div class="lobby-jet-glow"></div>
+          <div id="lobbyGreeting" class="lobby-greeting hidden">指挥官，欢迎回来。</div>
+        </div>
+        <div class="lobby-backdrop" aria-hidden="true"></div>
+        <header class="lobby-topbar">
+          <button class="pilot-card lobby-action" type="button" data-panel="profile" aria-label="打开飞行员资料">
+            <img id="pilotAvatar" class="pilot-avatar" alt="" />
+            <span class="pilot-info">
+              <strong id="pilotName">王牌飞行员</strong>
+              <span class="pilot-meta">
+                <span id="pilotLevel">Lv.1</span>
+                <span id="pilotExpText">0/100</span>
+              </span>
+              <span class="exp-track" aria-hidden="true"><span id="pilotExpBar"></span></span>
+            </span>
+            <span id="pilotBadge" class="pilot-badge">I</span>
+          </button>
+
+          <section class="resource-strip" aria-label="玩家资源">
+            <button class="resource-pill lobby-action" type="button" data-panel="energy">
+              <span class="resource-icon">T</span>
+              <strong id="energyValue">0</strong>
+              <span class="plus-mark">+</span>
+            </button>
+            <button class="resource-pill lobby-action" type="button" data-panel="gold">
+              <span class="resource-icon">G</span>
+              <strong id="goldValue">0</strong>
+              <span class="plus-mark">+</span>
+            </button>
+            <button class="resource-pill lobby-action" type="button" data-panel="diamond">
+              <span class="resource-icon">D</span>
+              <strong id="diamondValue">0</strong>
+              <span class="plus-mark">+</span>
+            </button>
+          </section>
+
+          <nav class="quick-nav" aria-label="快捷入口">
+            <button class="quick-icon lobby-action" type="button" data-panel="mail" aria-label="邮件">✉</button>
+            <button class="quick-icon lobby-action" type="button" data-panel="signin" aria-label="签到">✓</button>
+            <button class="quick-icon lobby-action" type="button" data-panel="friend" aria-label="好友">人</button>
+            <button class="quick-icon lobby-action" type="button" data-panel="setting" aria-label="设置">⚙</button>
+          </nav>
+        </header>
+
+        <section class="lobby-main">
+          <nav class="left-entry-list" aria-label="主玩法入口">
+            <button class="feature-tile wide lobby-action" type="button" data-panel="chapter">
+              <strong>作战任务</strong>
+              <span>CHAPTER MAP</span>
+            </button>
+            <button class="feature-tile wide hangar lobby-action" type="button" data-panel="hangar">
+              <strong>战机仓库</strong>
+              <span>HANGAR</span>
+            </button>
+            <button class="feature-tile wide upgrade lobby-action" type="button" data-panel="upgrade">
+              <strong>升级</strong>
+              <span>UPGRADE</span>
+            </button>
+          </nav>
+
+          <section class="hero-dock" aria-hidden="true">
+          </section>
+
+          <nav class="right-entry-grid" aria-label="系统入口">
+            <button class="menu-tile lobby-action" type="button" data-panel="task"><span>▣</span><strong>任务</strong><em>TASK</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="event"><span>✦</span><strong>活动</strong><em>EVENT</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="achievement"><span>◎</span><strong>成就</strong><em>ACHIEVEMENT</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="ranking"><span>♛</span><strong>排行榜</strong><em>RANKING</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="mail"><span>✉</span><strong>邮件</strong><em>MAIL</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="signin"><span>✓</span><strong>签到</strong><em>SIGN IN</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="shop"><span>▤</span><strong>商店</strong><em>SHOP</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="friend"><span>人</span><strong>好友</strong><em>FRIEND</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="setting"><span>⚙</span><strong>设置</strong><em>SETTING</em></button>
+          </nav>
+        </section>
+
+        <footer class="lobby-footer">
+          <button class="promo-card lobby-action" type="button" data-panel="promo">
+            <strong>星穹之翼</strong>
+            <span>限时概率提升</span>
+          </button>
+          <button class="gift-card lobby-action" type="button" data-panel="firstTopup">
+            <strong>首充礼包</strong>
+            <span>FIRST TOP-UP</span>
+          </button>
+          <button id="battleEntryButton" class="battle-entry" type="button">
+            <span>‹</span>
+            <strong>开始战斗</strong>
+            <span>›</span>
+            <em>START BATTLE</em>
+          </button>
+          <button class="world-chat lobby-action" type="button" data-panel="chat">[世界] 王牌飞行员：欢迎加入飞行战队！</button>
+        </footer>
+
+        <section id="featurePanel" class="feature-panel hidden" aria-label="功能界面">
+          <div class="feature-panel-box">
+            <button id="closeFeaturePanel" class="panel-close" type="button" aria-label="关闭">×</button>
+            <span id="featurePanelKicker">SYSTEM</span>
+            <h2 id="featurePanelTitle">功能界面</h2>
+            <p id="featurePanelBody">内容待填充。</p>
+            <div id="featurePanelSlots" class="feature-slots"></div>
+          </div>
+        </section>
+        <input id="avatarUpload" type="file" accept="image/*" hidden />
+      </section>
+
+      <section id="battleScreen" class="game-shell battle-screen hidden" aria-label="战斗界面">
+        <section class="hud" aria-label="游戏状态">
+          <div>
+            <span class="label">关卡</span>
+            <strong id="levelLabel">1-1</strong>
+          </div>
+          <div>
+            <span class="label">时间</span>
+            <strong id="timeLabel">90</strong>
+          </div>
+          <div>
+            <span class="label">生命</span>
+            <strong id="lives">3</strong>
+          </div>
+          <div>
+            <span class="label">战力</span>
+            <strong id="weapon">普通</strong>
+          </div>
+          <div>
+            <span class="label">金币</span>
+            <strong id="coins">0</strong>
+          </div>
+        </section>
+
+      <section class="stage-wrap" aria-label="游戏区域">
+        <canvas id="game" width="960" height="540"></canvas>
+
+        <div id="overlay" class="overlay">
+          <h1>第一章：星港突围</h1>
+          <p id="message">横版 90 秒关卡模式，撑到 BOSS 出现并击破即可过关。</p>
+          <div id="chapterSelect" class="chapter-select" aria-label="第一章关卡"></div>
+          <button id="startButton" type="button">开始 1-1</button>
+        </div>
+
+        <div id="shopScreen" class="shop-screen hidden" aria-label="购买与升级">
+          <section class="shop-guide">
+            <div class="guide-portrait" aria-hidden="true">
+              <div class="guide-hair"></div>
+              <div class="guide-face"></div>
+              <div class="guide-body"></div>
+            </div>
+            <div>
+              <h2>星港导购</h2>
+              <p id="shopMessage">欢迎回来，飞行员。把战斗金币换成实打实的性能吧。</p>
+              <strong id="shopCoins">0 金币</strong>
+            </div>
+          </section>
+          <section id="upgradeList" class="upgrade-list"></section>
+          <section class="shop-actions">
+            <button id="nextLevelButton" type="button">进入下一关</button>
+            <button id="replayButton" type="button">再次挑战</button>
+            <button id="backToChapterButton" type="button">返回关卡</button>
+          </section>
+        </div>
+      </section>
+
+      <section class="controls" aria-label="游戏操作">
+        <button id="homeButton" type="button">大厅</button>
+        <button id="pauseButton" type="button">暂停</button>
+        <button id="restartButton" type="button">重开</button>
+        <button id="shopButton" type="button">升级</button>
+        <span>方向键 / WASD 移动，空格射击；击落敌机获得金币，通关后购买升级。</span>
+      </section>
+      </section>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>

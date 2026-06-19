@@ -1,0 +1,18 @@
+﻿<view class="feature-page">
+  <view class="panel">
+    <button class="back" bindtap="goBack">‹ 返回</button>
+    <text class="kicker">{{panel.kicker}}</text>
+    <text class="title">{{panel.title}}</text>
+    <text class="body">{{panel.body}}</text>
+    <view class="slots">
+      <block tt:for="{{panel.slots}}" tt:key="*this">
+        <view class="slot">
+          <text>{{item}}</text>
+          <text class="slot-note">待填充</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+

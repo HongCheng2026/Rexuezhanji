@@ -1,0 +1,15 @@
+﻿{
+  "pages": [
+    "pages/lobby/lobby",
+    "pages/battle/battle",
+    "pages/feature/feature"
+  ],
+  "window": {
+    "navigationStyle": "custom",
+    "backgroundColor": "#050b13",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
+

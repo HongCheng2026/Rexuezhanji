@@ -1,0 +1,80 @@
+﻿.feature-page {
+  align-items: center;
+  background:
+    radial-gradient(circle at 80% 12%, rgba(242, 169, 31, 0.18), transparent 28%),
+    linear-gradient(145deg, #050b13, #0a1d31);
+  display: flex;
+  min-height: 100vh;
+  padding: calc(env(safe-area-inset-top) + 28rpx) 28rpx calc(env(safe-area-inset-bottom) + 28rpx);
+}
+
+.panel {
+  background: linear-gradient(145deg, rgba(8, 31, 54, 0.96), rgba(4, 12, 22, 0.98));
+  border: 2rpx solid rgba(73, 198, 255, 0.68);
+  box-shadow: 0 28rpx 90rpx rgba(0, 0, 0, 0.55), inset 0 0 32rpx rgba(73, 198, 255, 0.12);
+  min-height: 620rpx;
+  padding: 30rpx;
+  width: 100%;
+}
+
+.back {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid rgba(160, 226, 255, 0.45);
+  color: #d9f5ff;
+  display: inline-flex;
+  font-size: 24rpx;
+  min-height: 54rpx;
+  padding: 0 22rpx;
+}
+
+.kicker {
+  color: #ffd86b;
+  display: block;
+  font-size: 22rpx;
+  font-weight: 900;
+  margin-top: 38rpx;
+}
+
+.title {
+  display: block;
+  font-size: 54rpx;
+  font-weight: 900;
+  line-height: 1.1;
+  margin-top: 12rpx;
+}
+
+.body {
+  color: #cfe5f5;
+  display: block;
+  font-size: 28rpx;
+  line-height: 1.7;
+  margin-top: 22rpx;
+}
+
+.slots {
+  display: grid;
+  gap: 16rpx;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 34rpx;
+}
+
+.slot {
+  border: 1rpx solid rgba(73, 198, 255, 0.38);
+  color: #d7f2ff;
+  display: grid;
+  min-height: 130rpx;
+  padding: 18rpx;
+}
+
+.slot-note {
+  align-self: end;
+  color: #83cfff;
+  font-size: 22rpx;
+}
+
+@media (max-width: 700px) {
+  .slots {
+    grid-template-columns: 1fr;
+  }
+}
+

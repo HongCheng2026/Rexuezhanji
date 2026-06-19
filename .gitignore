@@ -1,0 +1,17 @@
+# 聊天备份和安装包
+1聊天备份/
+downloads/
+*.exe
+
+# 部署/打包产物
+netlify-drop/
+netlify-drop.zip
+*.zip
+
+# 微信开发者工具本地配置
+wechat-miniprogram/project.private.config.json
+
+# 常见系统/编辑器文件
+.DS_Store
+Thumbs.db
+.vscode/
