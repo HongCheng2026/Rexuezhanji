@@ -39,114 +39,57 @@ const pilotBadge = document.querySelector("#pilotBadge");
 const energyValue = document.querySelector("#energyValue");
 const goldValue = document.querySelector("#goldValue");
 const diamondValue = document.querySelector("#diamondValue");
+const avatarUpload = document.querySelector("#avatarUpload");
+const lobbyBackgroundLayer = document.querySelector("#lobbyBackgroundLayer");
+const lobbyPilotLayer = document.querySelector("#lobbyPilotLayer");
+const lobbyShipLayer = document.querySelector("#lobbyShipLayer");
+const lobbyGreeting = document.querySelector("#lobbyGreeting");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const LEVEL_DURATION = 90;
-const MAX_WEAPON_LEVEL = 10;
 const keys = new Set();
 const pointer = { active: false, x: 90, y: HEIGHT / 2 };
 
-const levels = [
-  {
-    id: 1,
-    code: "1-1",
-    name: "星港外围",
-    desc: "敌机数量较少，适合熟悉横版节奏。",
-    spawn: 1.05,
-    eliteRate: 0.12,
-    bossHp: 520,
-    reward: 260
-  },
-  {
-    id: 2,
-    code: "1-2",
-    name: "碎星航道",
-    desc: "精英敌机增多，敌方弹幕更密。",
-    spawn: 0.82,
-    eliteRate: 0.22,
-    bossHp: 760,
-    reward: 390
-  },
-  {
-    id: 3,
-    code: "1-3",
-    name: "核心闸门",
-    desc: "第一章最终小关，Boss 护甲更厚。",
-    spawn: 0.64,
-    eliteRate: 0.32,
-    bossHp: 1040,
-    reward: 560
-  }
-];
-
-const upgrades = {
-  fire: {
-    name: "火力核心",
-    desc: "提升所有子弹伤害，并让基础弹幕更密。",
-    max: 10,
-    baseCost: 90
-  },
-  armor: {
-    name: "装甲舱",
-    desc: "每级增加 1 点初始生命。",
-    max: 6,
-    baseCost: 130
-  },
-  engine: {
-    name: "推进器",
-    desc: "提升战机移动速度。",
-    max: 6,
-    baseCost: 110
-  },
-  bounty: {
-    name: "代币回收器",
-    desc: "击落敌机时获得更多代币。",
-    max: 8,
-    baseCost: 100
-  }
-};
-
-const POWERUPS = {
-  spread: { name: "散射", color: "#ffd166", mark: "S" },
-  laser: { name: "激光", color: "#5ee7ff", mark: "L" },
-  missile: { name: "导弹", color: "#ff9f43", mark: "M" },
-  shield: { name: "护盾", color: "#9bffcb", mark: "D" },
-  life: { name: "生命", color: "#7bed9f", mark: "+" }
-};
-
-const LOBBY_DEFAULTS = {
-  player: {
-    name: "王牌飞行员",
-    avatar: "角色资产/导购.png",
-    level: 56,
-    exp: 12080,
-    expMax: 23600,
-    badge: "V"
-  },
-  resources: {
-    energy: 0,
-    diamonds: 0
-  }
-};
+const shared = window.RXGame;
+const {
+  LEVEL_DURATION,
+  BOSS_SPAWN_TIME,
+  ENERGY_MAX,
+  ENERGY_COST,
+  levels,
+  upgrades,
+  POWERUPS
+} = shared.levels;
+const {
+  DEFAULT_AVATAR,
+  DEFAULT_PILOT_ID,
+  DEFAULT_SHIP_ID,
+  PILOT_ASSETS,
+  SHIP_ASSETS,
+  BACKGROUND_ASSETS,
+  ASSET_PATHS
+} = shared.assets;
+const { MAX_WEAPON_LEVEL } = shared.balance;
+const getEnemyScaling = shared.balance.getEnemyScalingForLevel;
+const getEnemyHp = shared.balance.getEnemyHp;
 
 const featurePanels = {
   profile: {
     kicker: "PILOT",
     title: "飞行员资料",
-    body: "头像、名字、等级、经验和徽章都已经做成变量，后续可以替换成真实角色数据。",
-    slots: ["头像资产", "称号徽章", "经验等级"]
+    body: "头像、等级、经验、体力、金币和钻石都会写入本地存档。头像可以换成自己的图片。",
+    slots: ["更换头像", "保存存档", "读取存档"]
   },
   energy: {
     kicker: "RESOURCE",
     title: "体力",
-    body: "体力当前从 0 开始，后续可以接入自然恢复、道具领取和充值补充。",
-    slots: ["恢复规则", "购买体力", "体力道具"]
+    body: `体力上限为 ${ENERGY_MAX}/${ENERGY_MAX}，每次进入战斗消耗 ${ENERGY_COST} 点。`,
+    slots: ["战斗消耗", "恢复规则", "体力道具"]
   },
   gold: {
     kicker: "RESOURCE",
     title: "金币",
-    body: "金币当前从 0 开始，战斗奖励会累计到这里，也可以继续接充值支付入口。",
+    body: "战斗获得的金币会累计到这里，升级战机时会从金币里扣除。",
     slots: ["战斗产出", "商城消费", "充值累积"]
   },
   diamond: {
@@ -157,7 +100,7 @@ const featurePanels = {
   },
   chapter: {
     kicker: "MAP",
-    title: "关卡地图",
+    title: "作战任务",
     body: "关卡选择已经放入开始战斗流程。这里保留为章节总览入口。",
     slots: ["章节进度", "星级奖励", "地图素材"]
   },
@@ -247,20 +190,14 @@ const featurePanels = {
   }
 };
 
-const ASSET_PATHS = {
-  player: "角色资产/透明/主角.png",
-  boss: "角色资产/透明/BOSS.png",
-  smallEnemies: ["角色资产/透明/小兵01.png", "角色资产/透明/小兵02.png", "角色资产/透明/小兵03.png"],
-  eliteEnemies: ["角色资产/透明/精英01.png", "角色资产/透明/精英02.png"]
-};
-
 const assets = loadAssets(ASSET_PATHS);
 let profile = loadProfile();
-let selectedLevel = clamp(profile.unlockedLevel, 1, 3);
+let selectedLevel = clamp(profile.unlockedLevel, 1, levels.length);
 let state = createMenuState();
 let lastTime = 0;
 let animationId = 0;
 
+saveProfile();
 renderChapterSelect();
 renderShop();
 renderLobby();
@@ -283,34 +220,78 @@ function loadAssets(paths) {
 }
 
 function loadProfile() {
-  const fallback = {
-    coins: 0,
-    unlockedLevel: 1,
-    completed: [],
-    upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
-    player: { ...LOBBY_DEFAULTS.player },
-    resources: { ...LOBBY_DEFAULTS.resources }
-  };
-
   try {
-    return normalizeProfile({ ...fallback, ...JSON.parse(localStorage.getItem("sideShooterProfile") || "{}") });
+    return shared.profile.createProfile(JSON.parse(localStorage.getItem("sideShooterProfile") || "{}"));
   } catch {
-    return fallback;
+    return shared.profile.createProfile();
   }
 }
 
 function normalizeProfile(nextProfile) {
-  return {
-    ...nextProfile,
-    completed: Array.isArray(nextProfile.completed) ? nextProfile.completed : [],
-    upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0, ...(nextProfile.upgrades || {}) },
-    player: { ...LOBBY_DEFAULTS.player, ...(nextProfile.player || {}) },
-    resources: { ...LOBBY_DEFAULTS.resources, ...(nextProfile.resources || {}) }
-  };
+  return shared.profile.normalizeProfile(nextProfile);
 }
 
 function saveProfile() {
+  recoverEnergy(profile);
+  profile = normalizeProfile(profile);
   localStorage.setItem("sideShooterProfile", JSON.stringify(profile));
+  saveCloudState();
+}
+
+function saveCloudState() {
+  const cloudState = {
+    resources: profile.resources,
+    unownedPilots: PILOT_ASSETS.filter((asset) => !profile.owned.pilots.includes(asset.id)).map((asset) => asset.id),
+    unownedShips: SHIP_ASSETS.filter((asset) => !profile.owned.ships.includes(asset.id)).map((asset) => asset.id),
+    unownedBackgrounds: BACKGROUND_ASSETS.filter((asset) => !profile.owned.backgrounds.includes(asset.id)).map((asset) => asset.id),
+    savedAt: Date.now()
+  };
+  localStorage.setItem("sideShooterCloudState", JSON.stringify(cloudState));
+}
+
+function recoverEnergy(targetProfile = profile) {
+  return shared.profile.recoverEnergy(targetProfile);
+}
+
+function reloadProfileFromSave() {
+  profile = loadProfile();
+  selectedLevel = clamp(profile.unlockedLevel, 1, levels.length);
+  state = createMenuState();
+  renderChapterSelect();
+  renderShop("存档已读取。");
+  renderLobby();
+  updateHud();
+  drawScene();
+}
+
+function getGold() {
+  return shared.profile.getGold(profile);
+}
+
+function setGold(value) {
+  shared.profile.setGold(profile, value);
+}
+
+function spendEnergy(amount) {
+  if (!shared.profile.spendEnergy(profile, amount)) return false;
+  saveProfile();
+  renderLobby();
+  return true;
+}
+
+function gainExperience(amount) {
+  const result = shared.battleRules.applyExperience(profile.player, amount);
+  saveProfile();
+  renderLobby();
+  return result;
+}
+
+function battleExperience(baseReward = 0) {
+  return shared.battleRules.getBattleExperience({
+    levelId: state.level.id,
+    levelCoins: state.levelCoins,
+    baseReward
+  });
 }
 
 function createMenuState() {
@@ -334,7 +315,10 @@ function createMenuState() {
     powerups: [],
     particles: [],
     shockwaves: [],
-    notices: []
+    notices: [],
+    damageTaken: 0,
+    powerupsSpawned: 0,
+    powerupsCollected: 0
   };
 }
 
@@ -365,7 +349,13 @@ function createStars() {
 }
 
 function startLevel(levelId = selectedLevel) {
-  selectedLevel = clamp(levelId, 1, 3);
+  selectedLevel = clamp(levelId, 1, levels.length);
+  if (!spendEnergy(ENERGY_COST)) {
+    showBattleScreen();
+    showOverlay("体力不足", `当前体力 ${profile.resources.energy}/${profile.resources.maxEnergy}，每次战斗需要 ${ENERGY_COST} 点体力。`, "返回关卡");
+    updateHud();
+    return;
+  }
   state = createMenuState();
   state.mode = "fight";
   showBattleScreen();
@@ -445,7 +435,7 @@ function updatePlayer(dt) {
     state.player.y += (dy / length) * speed * dt;
   }
 
-  state.player.x = clamp(state.player.x, 38, WIDTH * 0.48);
+  state.player.x = clamp(state.player.x, 38, WIDTH - 38);
   state.player.y = clamp(state.player.y, 42, HEIGHT - 42);
 }
 
@@ -463,7 +453,7 @@ function shoot() {
   if (!activeWeapons.length) {
     const lanes = fireBonus >= 4 ? [-8, 8] : [0];
     for (const lane of lanes) {
-      state.bullets.push(createBullet(x + 34, y + lane, 0, "normal", 1 + Math.floor(fireBonus / 2), 650, 4, "#d7fff5"));
+      state.bullets.push(createBullet(x + 34, y + lane, 0, "normal", getPlayerDamage("normal", 1), 650, 4, "#d7fff5"));
     }
     return;
   }
@@ -482,7 +472,7 @@ function fireWeapon(weapon, level, x, y) {
     const step = count > 1 ? 0.1 : 0;
     const start = -step * (count - 1) / 2;
     for (let i = 0; i < count; i += 1) {
-      state.bullets.push(createBullet(x + 32, y, start + step * i, "spread", 1 + Math.floor(level / 4) + damageBonus, 610, 4, "#ffd166"));
+      state.bullets.push(createBullet(x + 32, y, start + step * i, "spread", getPlayerDamage("spread", level), 610, 4, "#ffd166"));
     }
     return;
   }
@@ -490,7 +480,7 @@ function fireWeapon(weapon, level, x, y) {
   if (weapon === "laser") {
     const offsets = level >= 8 ? [-22, -11, 0, 11, 22] : level >= 5 ? [-16, -5, 5, 16] : level >= 2 ? [-10, 10] : [0];
     for (const offset of offsets) {
-      state.bullets.push(createBullet(x + 34, y + offset, 0, "laser", 2 + Math.ceil(level * 0.75) + damageBonus, 820, 5, "#5ee7ff", true));
+      state.bullets.push(createBullet(x + 34, y + offset, 0, "laser", getPlayerDamage("laser", level), 820, 5, "#5ee7ff", true));
     }
     return;
   }
@@ -500,20 +490,30 @@ function fireWeapon(weapon, level, x, y) {
     const offsets = count === 1 ? [0] : count === 2 ? [-12, 12] : count === 3 ? [-18, 0, 18] : count === 4 ? [-24, -8, 8, 24] : [-30, -15, 0, 15, 30];
     for (let i = 0; i < offsets.length; i += 1) {
       const angle = offsets.length === 1 ? 0 : (i - (offsets.length - 1) / 2) * 0.05;
-      state.bullets.push(createBullet(x + 28, y + offsets[i], angle, "missile", 3 + Math.ceil(level * 0.75) + damageBonus, 460 + level * 14, 7, "#ff9f43"));
+      state.bullets.push(createBullet(x + 28, y + offsets[i], angle, "missile", getPlayerDamage("missile", level), 460 + level * 14, 7, "#ff9f43"));
     }
   }
 }
 
 function fireFusionWeapons(x, y) {
   const { spread, laser, missile } = state.player.weapons;
-  if (spread >= 3 && laser >= 3) state.bullets.push(createBullet(x + 42, y, 0, "prism", 6, 880, 6, "#8fffea", true));
+  if (spread >= 3 && laser >= 3) state.bullets.push(createBullet(x + 42, y, 0, "prism", getPlayerDamage("laser", Math.max(spread, laser)) * 1.25, 880, 6, "#8fffea", true));
   if (spread >= 3 && missile >= 3) {
-    state.bullets.push(createBullet(x + 34, y - 18, -0.08, "cluster", 6, 520, 7, "#ffc857"));
-    state.bullets.push(createBullet(x + 34, y + 18, 0.08, "cluster", 6, 520, 7, "#ffc857"));
+    state.bullets.push(createBullet(x + 34, y - 18, -0.08, "cluster", getPlayerDamage("missile", Math.max(spread, missile)), 520, 7, "#ffc857"));
+    state.bullets.push(createBullet(x + 34, y + 18, 0.08, "cluster", getPlayerDamage("missile", Math.max(spread, missile)), 520, 7, "#ffc857"));
   }
-  if (laser >= 3 && missile >= 3) state.bullets.push(createBullet(x + 46, y, 0, "rail", 10, 930, 7, "#b89cff", true));
-  if (spread >= 6 && laser >= 6 && missile >= 6) state.bullets.push(createBullet(x + 50, y, 0, "nova", 22, 690, 12, "#ffffff", true));
+  if (laser >= 3 && missile >= 3) state.bullets.push(createBullet(x + 46, y, 0, "rail", getPlayerDamage("laser", Math.max(laser, missile)) * 1.45, 930, 7, "#b89cff", true));
+  if (spread >= 6 && laser >= 6 && missile >= 6) state.bullets.push(createBullet(x + 50, y, 0, "nova", getPlayerDamage("missile", 10) * 2, 690, 12, "#ffffff", true));
+}
+
+function getPlayerDamage(type, weaponLevel = 1) {
+  return shared.balance.getPlayerWeaponDamage({
+    pilotDamage: getPilotAsset().damage,
+    fighterDamage: getShipAsset().damage,
+    fighterUpgradeMultiplier: Math.min(2, 1 + profile.upgrades.fire * 0.1),
+    weaponType: type,
+    weaponLevel
+  });
 }
 
 function createBullet(x, y, angle, type, damage, speed, radius, color, piercing = false) {
@@ -527,13 +527,16 @@ function spawnEnemies() {
   const level = state.level;
   const heavy = Math.random() < level.eliteRate && state.elapsed > 12;
   const assetList = heavy ? assets.eliteEnemies : assets.smallEnemies;
+  const hp = getEnemyHp(heavy ? "elite" : "small", level);
+  const scaling = getEnemyScaling(level);
   const enemy = {
     id: crypto.randomUUID ? crypto.randomUUID() : `${state.elapsed}-${Math.random()}`,
     x: WIDTH + 44,
     y: 48 + Math.random() * (HEIGHT - 96),
     radius: heavy ? 30 : 22,
-    hp: heavy ? 5 + level.id * 2 : 2 + level.id,
-    maxHp: heavy ? 5 + level.id * 2 : 2 + level.id,
+    hp,
+    maxHp: hp,
+    damageTakenMultiplier: scaling.damageTakenMultiplier,
     speed: heavy ? 85 + level.id * 9 : 125 + level.id * 14,
     wobble: Math.random() * Math.PI * 2,
     shootTimer: heavy ? 1 + Math.random() * 0.6 : 1.8 + Math.random(),
@@ -548,7 +551,7 @@ function spawnEnemies() {
 }
 
 function spawnBossIfNeeded() {
-  if (state.bossSpawned || state.elapsed < LEVEL_DURATION) return;
+  if (state.bossSpawned || state.elapsed < BOSS_SPAWN_TIME) return;
   state.bossSpawned = true;
   state.bossWarning = 3;
   state.enemies = [];
@@ -559,8 +562,10 @@ function spawnBossIfNeeded() {
     y: HEIGHT / 2,
     targetX: WIDTH - 126,
     radius: 78,
-    hp: state.level.bossHp,
-    maxHp: state.level.bossHp,
+    hp: getEnemyHp("boss", state.level),
+    maxHp: getEnemyHp("boss", state.level),
+    damageTakenMultiplier: getEnemyScaling(state.level).damageTakenMultiplier,
+    spawnedAt: state.elapsed,
     fireTimer: 0.7,
     waveTimer: 0.2,
     direction: 1
@@ -573,6 +578,7 @@ function spawnPowerups() {
   const types = ["spread", "laser", "missile", "shield", "life"];
   const type = types[Math.floor(Math.random() * types.length)];
   state.powerups.push({ x: WIDTH + 26, y: 60 + Math.random() * (HEIGHT - 120), radius: 15, speed: 120, wobble: Math.random() * Math.PI * 2, type });
+  state.powerupsSpawned += 1;
   state.powerTimer = 16 + Math.random() * 8;
 }
 
@@ -619,6 +625,7 @@ function updateEnemies(dt) {
   const escaped = state.enemies.filter((enemy) => enemy.x + enemy.radius < 0);
   if (escaped.length) {
     state.player.lives = Math.max(0, state.player.lives - escaped.length);
+    state.damageTaken += escaped.length;
     burst(state.player.x, state.player.y, "#ff5555", 18);
   }
   state.enemies = state.enemies.filter((enemy) => enemy.x + enemy.radius >= 0);
@@ -749,6 +756,7 @@ function checkCollisions() {
   for (const powerup of state.powerups) {
     if (powerup.dead || distance(powerup, state.player) >= powerup.radius + state.player.radius) continue;
     powerup.dead = true;
+    state.powerupsCollected += 1;
     applyPowerup(powerup.type);
     burst(powerup.x, powerup.y, POWERUPS[powerup.type].color, 18);
   }
@@ -766,7 +774,7 @@ function hitTargetWithBullets(target) {
     if (distance(target, bullet) >= target.radius + bullet.radius) continue;
 
     bullet.hitIds.add(target.id);
-    target.hp -= bullet.damage;
+    target.hp -= bullet.damage * (target.damageTakenMultiplier || 1);
     const explosive = bullet.type === "missile" || bullet.type === "cluster" || bullet.type === "nova";
     burst(bullet.x, bullet.y, bullet.color, explosive ? 16 : 6);
     if (explosive) {
@@ -789,7 +797,7 @@ function hitTargetWithBullets(target) {
 function splashDamage(source, radius, damage) {
   for (const enemy of state.enemies) {
     if (enemy.dead || distance(source, enemy) > radius + enemy.radius) continue;
-    enemy.hp -= damage;
+    enemy.hp -= damage * (enemy.damageTakenMultiplier || 1);
     if (enemy.hp <= 0) {
       enemy.dead = true;
       dropCoins(enemy.x, enemy.y, enemy.value);
@@ -798,7 +806,7 @@ function splashDamage(source, radius, damage) {
       shockwave(enemy.x, enemy.y, "#ff9f43", 0.28, 145);
     }
   }
-  if (state.boss && distance(source, state.boss) < radius + state.boss.radius) state.boss.hp -= damage;
+  if (state.boss && distance(source, state.boss) < radius + state.boss.radius) state.boss.hp -= damage * (state.boss.damageTakenMultiplier || 1);
 }
 
 function damagePlayer() {
@@ -809,6 +817,7 @@ function damagePlayer() {
     return;
   }
   state.player.lives -= 1;
+  state.damageTaken += 1;
   state.player.invincible = 1.25;
   if (state.player.lives <= 0) failLevel();
 }
@@ -833,6 +842,7 @@ function maybeDropPowerup(enemy) {
   const types = ["spread", "laser", "missile", "shield", "life"];
   const type = types[Math.floor(Math.random() * types.length)];
   state.powerups.push({ x: enemy.x, y: enemy.y, radius: 15, speed: 110, wobble: Math.random() * Math.PI * 2, type });
+  state.powerupsSpawned += 1;
 }
 
 function dropCoins(x, y, value) {
@@ -844,7 +854,8 @@ function dropCoins(x, y, value) {
 }
 
 function gainCoins(amount) {
-  profile.coins += amount;
+  profile.localEarned.gold = Math.max(0, Math.floor(Number(profile.localEarned.gold) || 0) + amount);
+  setGold(getGold() + amount);
   state.levelCoins += amount;
   saveProfile();
   renderLobby();
@@ -853,26 +864,39 @@ function gainCoins(amount) {
 function completeLevel() {
   if (state.mode !== "fight") return;
   const reward = state.level.reward;
+  const bossClearTime = state.boss ? Math.max(0, state.elapsed - state.boss.spawnedAt) : 999;
   gainCoins(reward);
-  profile.completed = Array.from(new Set([...profile.completed, state.level.id]));
-  profile.unlockedLevel = Math.max(profile.unlockedLevel, Math.min(3, state.level.id + 1));
+  const expResult = gainExperience(battleExperience(reward));
+  const rating = calculateRating(bossClearTime);
+  shared.battleRules.completeLevel(profile, state.level, rating);
   saveProfile();
-  state.mode = "shop";
+  state.mode = "settlement";
   cancelAnimationFrame(animationId);
   burst(state.boss.x, state.boss.y, "#ffcf5a", 90);
   shockwave(state.boss.x, state.boss.y, "#ffcf5a", 0.9, 250);
   state.boss = null;
   renderChapterSelect();
-  renderShop(`过关奖励 +${reward} 代币。第一章 ${state.level.code} 已完成。`);
+  renderShop(`过关奖励 +${reward} 金币，经验 +${expResult.gained}${expResult.leveled ? `，等级提升 ${expResult.leveled} 级` : ""}。第一章 ${state.level.code} 已完成。`);
   renderLobby();
-  showShop();
+  showOverlay("关卡结算", `${rating.label} ${rating.icons}｜金币 +${reward}｜经验 +${expResult.gained}｜点击“再次挑战”重打一局，或点下方“大厅”返回。`, "再次挑战");
 }
 
 function failLevel() {
   if (state.mode !== "fight") return;
   state.mode = "gameover";
+  const expResult = gainExperience(battleExperience(0));
+  saveProfile();
   cancelAnimationFrame(animationId);
-  showOverlay("任务失败", `本关获得 ${state.levelCoins} 代币。升级后可以再次挑战。`, "再次挑战");
+  showOverlay("任务失败", `本关获得 ${state.levelCoins} 金币，经验 +${expResult.gained}。已自动保存。`, "再次挑战");
+}
+
+function calculateRating(bossClearTime) {
+  return shared.battleRules.calculateRating({
+    damageTaken: state.damageTaken,
+    powerupsSpawned: state.powerupsSpawned,
+    powerupsCollected: state.powerupsCollected,
+    bossClearTime
+  });
 }
 
 function nearestTarget(bullet) {
@@ -1159,7 +1183,7 @@ function drawShockwaves() {
 
 function drawProgress() {
   if (state.mode !== "fight") return;
-  const progress = clamp(state.elapsed / LEVEL_DURATION, 0, 1);
+  const progress = clamp(state.elapsed / BOSS_SPAWN_TIME, 0, 1);
   ctx.fillStyle = "rgba(0, 0, 0, 0.38)";
   ctx.fillRect(34, 16, WIDTH * 0.38, 8);
   ctx.fillStyle = "#42d6b5";
@@ -1207,27 +1231,82 @@ function renderChapterSelect() {
     });
     chapterSelect.appendChild(button);
   }
+  const sweepButton = document.createElement("button");
+  const sweepLevel = levels[selectedLevel - 1];
+  sweepButton.className = "level-card";
+  sweepButton.type = "button";
+  sweepButton.disabled = !profile.completed.includes(sweepLevel.id);
+  sweepButton.innerHTML = `<strong>扫荡 ${sweepLevel.code}</strong><span>已通关关卡可直接获得奖励，消耗 ${ENERGY_COST} 体力。</span>`;
+  sweepButton.addEventListener("click", () => sweepSelectedLevel());
+  chapterSelect.appendChild(sweepButton);
   startButton.textContent = `开始 ${levels[selectedLevel - 1].code}`;
 }
 
+function sweepSelectedLevel() {
+  const level = levels[selectedLevel - 1];
+  if (!profile.completed.includes(level.id)) return;
+  if (!spendEnergy(ENERGY_COST)) {
+    showOverlay("体力不足", `当前体力 ${profile.resources.energy}/${profile.resources.maxEnergy}，扫荡需要 ${ENERGY_COST} 点体力。`, "返回关卡");
+    return;
+  }
+  const reward = shared.battleRules.getSweepReward(level);
+  gainCoins(reward);
+  const expResult = gainExperience(shared.battleRules.getSweepExperience(reward, level.id));
+  saveProfile();
+  renderChapterSelect();
+  renderLobby();
+  showOverlay("扫荡完成", `${level.code} 获得金币 +${reward}，经验 +${expResult.gained}。`, "再次扫荡");
+}
+
 function renderLobby() {
+  recoverEnergy(profile);
   const player = profile.player;
   const expMax = Math.max(1, Number(player.expMax) || 1);
   const exp = clamp(Number(player.exp) || 0, 0, expMax);
-  pilotAvatar.src = encodeURI(player.avatar);
+  const avatar = player.avatar || DEFAULT_AVATAR;
+  const pilotAsset = getPilotAsset();
+  const shipAsset = getShipAsset();
+  const backgroundAsset = getBackgroundAsset();
+  setImageSource(pilotAvatar, avatar);
+  setImageSource(lobbyPilotLayer, pilotAsset.src);
+  setImageSource(lobbyShipLayer, shipAsset.src);
+  if (backgroundAsset?.src) {
+    setImageSource(lobbyBackgroundLayer, backgroundAsset.src);
+    lobbyBackgroundLayer.classList.add("has-image");
+  } else {
+    lobbyBackgroundLayer.removeAttribute("src");
+    lobbyBackgroundLayer.classList.remove("has-image");
+  }
   pilotName.textContent = player.name;
   pilotLevel.textContent = `Lv.${player.level}`;
   pilotExpText.textContent = `${exp}/${expMax}`;
   pilotExpBar.style.width = `${Math.round((exp / expMax) * 100)}%`;
   pilotBadge.textContent = player.badge;
-  energyValue.textContent = formatResource(profile.resources.energy);
-  goldValue.textContent = formatResource(profile.coins);
+  energyValue.textContent = `${formatResource(profile.resources.energy)}/${formatResource(profile.resources.maxEnergy)}`;
+  goldValue.textContent = formatResource(getGold());
   diamondValue.textContent = formatResource(profile.resources.diamonds);
 }
 
-function renderShop(message = "欢迎回来，飞行员。把战斗代币换成实打实的性能吧。") {
+function getPilotAsset(id = profile.scene.pilotId) {
+  return PILOT_ASSETS.find((asset) => asset.id === id) || PILOT_ASSETS.find((asset) => asset.id === DEFAULT_PILOT_ID);
+}
+
+function getShipAsset(id = profile.scene.shipId) {
+  return SHIP_ASSETS.find((asset) => asset.id === id) || SHIP_ASSETS.find((asset) => asset.id === DEFAULT_SHIP_ID);
+}
+
+function getBackgroundAsset(id = profile.scene.backgroundId) {
+  return BACKGROUND_ASSETS.find((asset) => asset.id === id) || BACKGROUND_ASSETS[0];
+}
+
+function setImageSource(image, source) {
+  if (!image) return;
+  image.src = source.startsWith("data:") ? source : encodeURI(source);
+}
+
+function renderShop(message = "欢迎回来，飞行员。把战斗金币换成实打实的性能吧。") {
   shopMessageEl.textContent = message;
-  shopCoinsEl.textContent = `${profile.coins} 代币`;
+  shopCoinsEl.textContent = `${getGold()} 金币`;
   upgradeList.innerHTML = "";
   for (const [key, upgrade] of Object.entries(upgrades)) {
     const level = profile.upgrades[key];
@@ -1237,20 +1316,20 @@ function renderShop(message = "欢迎回来，飞行员。把战斗代币换成�
     card.innerHTML = `<h3>${upgrade.name} Lv.${level}/${upgrade.max}</h3><p>${upgrade.desc}</p>`;
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = level >= upgrade.max ? "已满级" : `升级 ${cost} 代币`;
-    button.disabled = level >= upgrade.max || profile.coins < cost;
+    button.textContent = level >= upgrade.max ? "已满级" : `升级 ${cost} 金币`;
+    button.disabled = level >= upgrade.max || getGold() < cost;
     button.addEventListener("click", () => buyUpgrade(key));
     card.appendChild(button);
     upgradeList.appendChild(card);
   }
-  nextLevelButton.disabled = selectedLevel >= 3 && profile.completed.includes(3);
-  nextLevelButton.textContent = selectedLevel >= 3 ? "第一章已完成" : `进入 ${levels[Math.min(selectedLevel, 2)].code}`;
+  nextLevelButton.disabled = selectedLevel >= levels.length && profile.completed.includes(levels[levels.length - 1].id);
+  nextLevelButton.textContent = selectedLevel >= levels.length ? "第一章已完成" : `进入 ${levels[Math.min(selectedLevel, levels.length - 1)].code}`;
 }
 
 function buyUpgrade(key) {
   const cost = upgradeCost(key);
-  if (profile.upgrades[key] >= upgrades[key].max || profile.coins < cost) return;
-  profile.coins -= cost;
+  if (profile.upgrades[key] >= upgrades[key].max || getGold() < cost) return;
+  setGold(getGold() - cost);
   profile.upgrades[key] += 1;
   saveProfile();
   renderShop(`${upgrades[key].name} 已升级。`);
@@ -1260,7 +1339,7 @@ function buyUpgrade(key) {
 
 function upgradeCost(key) {
   const level = profile.upgrades[key];
-  return upgrades[key].baseCost * (level + 1);
+  return shared.battleRules.getUpgradeCost(upgrades[key], level);
 }
 
 function showShop() {
@@ -1284,10 +1363,10 @@ function showOverlay(title, message, buttonText) {
 function updateHud() {
   const level = levels[selectedLevel - 1];
   levelLabelEl.textContent = level.code;
-  const remaining = state.mode === "fight" && !state.bossSpawned ? Math.max(0, Math.ceil(LEVEL_DURATION - state.elapsed)) : state.boss ? "BOSS" : LEVEL_DURATION;
+  const remaining = state.mode === "fight" && !state.bossSpawned ? Math.max(0, Math.ceil(BOSS_SPAWN_TIME - state.elapsed)) : state.boss ? "BOSS" : LEVEL_DURATION;
   timeLabelEl.textContent = remaining;
   livesEl.textContent = state.player?.lives ?? 3 + profile.upgrades.armor;
-  coinsEl.textContent = profile.coins;
+  coinsEl.textContent = getGold();
   const activeWeapons = getActiveWeapons();
   const fusionCount = getFusionLabels().length;
   weaponEl.textContent = activeWeapons.length
@@ -1377,13 +1456,181 @@ function openFeaturePanel(key) {
   featurePanelTitle.textContent = panel.title;
   featurePanelBody.textContent = panel.body;
   featurePanelSlots.innerHTML = "";
+  featurePanelSlots.classList.remove("profile-slots");
   for (const slot of panel.slots) {
     const item = document.createElement("div");
     item.className = "feature-slot";
     item.textContent = slot;
     featurePanelSlots.appendChild(item);
   }
+  if (key === "profile") renderProfileActions();
   featurePanel.classList.remove("hidden");
+}
+
+function renderProfileActions() {
+  const actions = [
+    {
+      title: "头像",
+      note: "替换左上角玩家头像。",
+      label: "上传头像",
+      onClick: () => avatarUpload?.click()
+    },
+    {
+      title: "飞行员",
+      note: "从已获得飞行员中选择。",
+      label: "更换飞行员",
+      onClick: () => renderAssetSelector("pilot")
+    },
+    {
+      title: "战机",
+      note: "从已获得战机中选择。",
+      label: "更换战机",
+      onClick: () => renderAssetSelector("ship")
+    },
+    {
+      title: "背景",
+      note: "选择大厅背景。",
+      label: "更换背景",
+      onClick: () => renderAssetSelector("background")
+    },
+    {
+      title: "保存存档",
+      note: "保存等级、经验、头像、体力、金币和钻石。",
+      label: "立即保存",
+      onClick: () => {
+        saveProfile();
+        openFeaturePanel("profile");
+        featurePanelBody.textContent = "存档已保存到当前浏览器。";
+      }
+    },
+    {
+      title: "读取存档",
+      note: "从当前浏览器恢复最近一次存档。",
+      label: "立即读取",
+      onClick: () => {
+        reloadProfileFromSave();
+        openFeaturePanel("profile");
+        featurePanelBody.textContent = "存档已读取。";
+      }
+    }
+  ];
+  featurePanelSlots.innerHTML = "";
+  featurePanelSlots.classList.add("profile-slots");
+  for (const action of actions) {
+    const item = document.createElement("div");
+    item.className = "feature-slot action";
+    item.innerHTML = `<strong>${action.title}</strong><small>${action.note}</small>`;
+    const button = document.createElement("button");
+    button.className = "feature-button";
+    button.type = "button";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick);
+    item.appendChild(button);
+    featurePanelSlots.appendChild(item);
+  }
+}
+
+function renderAssetSelector(kind) {
+  const configs = {
+    pilot: { title: "选择飞行员", list: PILOT_ASSETS, owned: profile.owned.pilots, selected: profile.scene.pilotId, field: "pilotId", label: "攻击" },
+    ship: { title: "选择战机", list: SHIP_ASSETS, owned: profile.owned.ships, selected: profile.scene.shipId, field: "shipId", label: "攻击" },
+    background: { title: "选择背景", list: BACKGROUND_ASSETS, owned: profile.owned.backgrounds, selected: profile.scene.backgroundId, field: "backgroundId", label: "背景" }
+  };
+  const config = configs[kind];
+  featurePanelKicker.textContent = "ASSET";
+  featurePanelTitle.textContent = config.title;
+  featurePanelBody.textContent = "只有已获得的资产可以替换使用。";
+  featurePanelSlots.classList.remove("profile-slots");
+  featurePanelSlots.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "asset-select-grid";
+  for (const asset of config.list) {
+    const owned = config.owned.includes(asset.id);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `asset-card${owned ? "" : " locked"}`;
+    card.disabled = !owned;
+    card.innerHTML = `<img src="${encodeURI(asset.src)}" alt=""><strong>${asset.rank} ${asset.name}</strong><small>${asset.damage ? `${config.label} ${asset.damage}` : config.label}${config.selected === asset.id ? " · 当前" : owned ? " · 已获得" : " · 未获得"}</small>`;
+    card.addEventListener("click", () => {
+      profile.scene[config.field] = asset.id;
+      saveProfile();
+      renderLobby();
+      renderAssetSelector(kind);
+    });
+    grid.appendChild(card);
+  }
+  const back = document.createElement("button");
+  back.className = "feature-button";
+  back.type = "button";
+  back.textContent = "返回资料";
+  back.addEventListener("click", () => openFeaturePanel("profile"));
+  featurePanelSlots.appendChild(grid);
+  featurePanelSlots.appendChild(back);
+}
+
+function handleAvatarUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    featurePanelBody.textContent = "请选择图片文件作为头像。";
+    event.target.value = "";
+    return;
+  }
+  resizeImageFile(file, { maxWidth: 256, maxHeight: 256, mimeType: "image/png" }).then((dataUrl) => {
+    profile.player.avatar = dataUrl || DEFAULT_AVATAR;
+    saveProfile();
+    renderLobby();
+    openFeaturePanel("profile");
+    featurePanelBody.textContent = "头像已更新并保存。";
+    event.target.value = "";
+  }).catch(() => {
+    featurePanelBody.textContent = "头像读取失败，请换一张图片。";
+    event.target.value = "";
+  });
+}
+
+function resizeImageFile(file, { maxWidth, maxHeight, mimeType, quality = 0.9 }) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("error", reject);
+    reader.addEventListener("load", () => {
+      const image = new Image();
+      image.addEventListener("error", reject);
+      image.addEventListener("load", () => {
+        const scale = Math.min(1, maxWidth / image.width, maxHeight / image.height);
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext("2d");
+        if (mimeType === "image/jpeg") {
+          tempCtx.fillStyle = "#08111c";
+          tempCtx.fillRect(0, 0, width, height);
+        }
+        tempCtx.drawImage(image, 0, 0, width, height);
+        resolve(tempCanvas.toDataURL(mimeType, quality));
+      });
+      image.src = String(reader.result);
+    });
+    reader.readAsDataURL(file);
+  });
+}
+
+function greetCommander() {
+  lobbyPilotLayer.classList.add("smile");
+  lobbyGreeting.textContent = `${getPilotAsset().name}：指挥官，欢迎回来。`;
+  lobbyGreeting.classList.remove("hidden");
+  window.setTimeout(() => {
+    lobbyPilotLayer.classList.remove("smile");
+    lobbyGreeting.classList.add("hidden");
+  }, 1800);
+}
+
+function flyLobbyShip() {
+  lobbyShipLayer.classList.remove("fly-loop");
+  void lobbyShipLayer.offsetWidth;
+  lobbyShipLayer.classList.add("fly-loop");
 }
 
 function formatResource(value) {
@@ -1414,6 +1661,10 @@ startButton.addEventListener("click", () => {
 battleEntryButton.addEventListener("click", openBattleSelect);
 homeButton.addEventListener("click", showLobby);
 closeFeaturePanel.addEventListener("click", () => featurePanel.classList.add("hidden"));
+avatarUpload?.addEventListener("change", handleAvatarUpload);
+lobbyPilotLayer?.addEventListener("click", greetCommander);
+lobbyShipLayer?.addEventListener("click", flyLobbyShip);
+lobbyBackgroundLayer?.addEventListener("click", () => renderAssetSelector("background"));
 featurePanel.addEventListener("click", (event) => {
   if (event.target === featurePanel) featurePanel.classList.add("hidden");
 });

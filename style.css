@@ -68,9 +68,7 @@ button:disabled {
 
 .lobby-screen {
   aspect-ratio: 16 / 9;
-  background:
-    linear-gradient(90deg, rgba(4, 12, 22, 0.9), rgba(8, 19, 33, 0.28) 45%, rgba(4, 12, 22, 0.88)),
-    url("角色资产/UI总览.png") center / cover no-repeat;
+  background: #06111c;
   border: 1px solid rgba(67, 200, 255, 0.36);
   box-shadow: 0 22px 80px rgba(0, 0, 0, 0.42);
   min-height: 560px;
@@ -78,20 +76,156 @@ button:disabled {
   position: relative;
 }
 
+.lobby-stage {
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+  z-index: 0;
+}
+
+.lobby-default-bg {
+  background:
+    radial-gradient(circle at 48% 20%, rgba(137, 220, 255, 0.16), transparent 24%),
+    linear-gradient(180deg, rgba(16, 40, 62, 0.75), rgba(3, 10, 19, 0.94)),
+    repeating-linear-gradient(90deg, rgba(67, 200, 255, 0.12) 0 1px, transparent 1px 112px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 86px);
+  inset: 0;
+  position: absolute;
+}
+
+.lobby-default-bg::before,
+.lobby-default-bg::after {
+  content: "";
+  position: absolute;
+}
+
+.lobby-default-bg::before {
+  background:
+    linear-gradient(90deg, transparent, rgba(137, 220, 255, 0.2), transparent),
+    linear-gradient(180deg, rgba(9, 26, 43, 0.08), rgba(9, 26, 43, 0.62));
+  bottom: 0;
+  height: 28%;
+  left: 0;
+  transform: perspective(420px) rotateX(56deg);
+  transform-origin: bottom;
+  width: 100%;
+}
+
+.lobby-default-bg::after {
+  background:
+    linear-gradient(120deg, transparent 0 35%, rgba(137, 220, 255, 0.2) 36% 39%, transparent 40%),
+    linear-gradient(60deg, transparent 0 56%, rgba(255, 209, 102, 0.13) 57% 59%, transparent 60%);
+  inset: 0;
+  opacity: 0.72;
+}
+
+.lobby-background-layer,
+.lobby-pilot-layer,
+.lobby-ship-layer {
+  cursor: pointer;
+  pointer-events: auto;
+  position: absolute;
+  user-select: none;
+}
+
+.lobby-background-layer {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  opacity: 0;
+  width: 100%;
+}
+
+.lobby-background-layer.has-image {
+  opacity: 1;
+}
+
+.lobby-pilot-layer {
+  bottom: -4%;
+  filter: drop-shadow(0 22px 38px rgba(0, 0, 0, 0.5));
+  height: min(74vw, 760px);
+  left: 42%;
+  max-height: 94%;
+  object-fit: contain;
+  object-position: bottom center;
+  opacity: 0.94;
+  transform: translateX(-50%);
+  width: min(38vw, 460px);
+}
+
+.lobby-pilot-layer.smile {
+  filter:
+    drop-shadow(0 22px 38px rgba(0, 0, 0, 0.5))
+    brightness(1.12)
+    saturate(1.12);
+  transform: translateX(-50%) scale(1.025);
+}
+
+.lobby-ship-layer {
+  bottom: 28%;
+  filter:
+    drop-shadow(0 20px 32px rgba(0, 0, 0, 0.48))
+    drop-shadow(0 0 18px rgba(67, 200, 255, 0.28));
+  height: min(26vw, 320px);
+  object-fit: contain;
+  right: 27%;
+  transform: rotate(-8deg);
+  width: min(36vw, 440px);
+}
+
+.lobby-ship-layer.fly-loop {
+  animation: shipFlyLoop 2.1s ease-in-out;
+}
+
+@keyframes shipFlyLoop {
+  0% { opacity: 1; transform: rotate(-8deg) translate(0, 0) scale(1); }
+  36% { opacity: 0; transform: rotate(-8deg) translate(520px, -170px) scale(0.7); }
+  37% { opacity: 0; transform: rotate(-8deg) translate(-180px, -96px) scale(0.22); }
+  100% { opacity: 1; transform: rotate(-8deg) translate(0, 0) scale(1); }
+}
+
+.lobby-greeting {
+  background: rgba(4, 18, 31, 0.88);
+  border: 1px solid rgba(137, 220, 255, 0.66);
+  color: #e8f8ff;
+  font-size: 20px;
+  font-weight: 800;
+  left: 38%;
+  padding: 12px 18px;
+  position: absolute;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.lobby-jet-glow {
+  background:
+    linear-gradient(90deg, transparent, rgba(137, 220, 255, 0.52), transparent),
+    radial-gradient(ellipse, rgba(67, 200, 255, 0.34), transparent 62%);
+  bottom: 37%;
+  height: 52px;
+  left: 34%;
+  opacity: 0.78;
+  position: absolute;
+  transform: rotate(-4deg);
+  width: min(28vw, 420px);
+}
+
 .lobby-backdrop {
   background:
-    linear-gradient(180deg, rgba(2, 7, 13, 0.45), rgba(2, 7, 13, 0.12) 45%, rgba(2, 7, 13, 0.54)),
-    repeating-linear-gradient(90deg, rgba(67, 200, 255, 0.05) 0 1px, transparent 1px 120px);
+    linear-gradient(90deg, rgba(4, 12, 22, 0.92), rgba(8, 19, 33, 0.18) 44%, rgba(4, 12, 22, 0.88)),
+    linear-gradient(180deg, rgba(2, 7, 13, 0.42), rgba(2, 7, 13, 0.06) 45%, rgba(2, 7, 13, 0.62));
   inset: 0;
   pointer-events: none;
   position: absolute;
+  z-index: 1;
 }
 
 .lobby-topbar,
 .lobby-main,
 .lobby-footer {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .lobby-topbar {
@@ -316,32 +450,6 @@ button:disabled {
   position: relative;
 }
 
-.hero-pilot {
-  bottom: -20px;
-  filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.42));
-  left: 50%;
-  max-height: 108%;
-  max-width: 86%;
-  object-fit: contain;
-  object-position: bottom center;
-  opacity: 0.96;
-  position: absolute;
-  transform: translateX(-50%);
-}
-
-.hero-ship {
-  background:
-    linear-gradient(14deg, rgba(255, 255, 255, 0.18), rgba(67, 200, 255, 0.34) 48%, rgba(255, 209, 102, 0.2)),
-    linear-gradient(90deg, transparent 0 18%, rgba(211, 235, 255, 0.75) 19% 62%, transparent 63%);
-  clip-path: polygon(0 48%, 54% 28%, 100% 44%, 60% 55%, 48% 72%);
-  height: 118px;
-  opacity: 0.68;
-  position: absolute;
-  right: 2%;
-  top: 28%;
-  width: min(46vw, 460px);
-}
-
 .right-entry-grid {
   align-self: center;
   display: grid;
@@ -368,22 +476,6 @@ button:disabled {
 .menu-tile strong {
   font-size: clamp(17px, 1.8vw, 25px);
   line-height: 1;
-}
-
-.notice-dot::after {
-  align-items: center;
-  background: var(--danger);
-  border-radius: 999px;
-  content: "!";
-  display: flex;
-  font-size: 16px;
-  font-weight: 900;
-  height: 26px;
-  justify-content: center;
-  position: absolute;
-  right: 10px;
-  top: 8px;
-  width: 26px;
 }
 
 .lobby-footer {
@@ -480,11 +572,11 @@ button:disabled {
     radial-gradient(circle at 80% 8%, rgba(242, 169, 31, 0.18), transparent 28%);
   border: 1px solid rgba(67, 200, 255, 0.68);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55), inset 0 0 32px rgba(67, 200, 255, 0.12);
-  max-width: 760px;
+  max-width: 900px;
   min-height: 360px;
   padding: 28px;
   position: relative;
-  width: min(100%, 760px);
+  width: min(100%, 900px);
 }
 
 .panel-close {
@@ -526,11 +618,75 @@ button:disabled {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.feature-slots.profile-slots {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-slots.profile-slots .feature-slot:nth-last-child(-n + 2) {
+  grid-column: span 1;
+}
+
 .feature-slot {
   border: 1px solid rgba(67, 200, 255, 0.34);
   color: #d7f2ff;
   min-height: 86px;
   padding: 14px;
+}
+
+.feature-button {
+  background: rgba(67, 200, 255, 0.16);
+  border: 1px solid rgba(137, 220, 255, 0.46);
+  color: #e8f8ff;
+  min-height: 48px;
+  width: 100%;
+}
+
+.feature-slot.action {
+  display: grid;
+  gap: 10px;
+  grid-template-rows: auto auto 1fr;
+}
+
+.feature-slot strong {
+  color: #fff;
+  display: block;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.feature-slot small {
+  color: #9dcce6;
+  display: block;
+  line-height: 1.45;
+}
+
+.asset-select-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.asset-card {
+  align-content: start;
+  background: rgba(8, 31, 54, 0.78);
+  border: 1px solid rgba(67, 200, 255, 0.34);
+  color: #d7f2ff;
+  display: grid;
+  gap: 8px;
+  min-height: 174px;
+  padding: 10px;
+}
+
+.asset-card img {
+  background: rgba(3, 12, 22, 0.75);
+  height: 96px;
+  object-fit: contain;
+  width: 100%;
+}
+
+.asset-card.locked {
+  filter: grayscale(1);
+  opacity: 0.56;
 }
 
 .game-shell {
@@ -819,6 +975,25 @@ canvas {
     min-width: min(100%, 168px);
   }
 
+  .lobby-pilot-layer {
+    height: 66vh;
+    left: 58%;
+    opacity: 0.34;
+    width: 58vw;
+  }
+
+  .lobby-ship-layer {
+    bottom: 46%;
+    height: 24vh;
+    opacity: 0.54;
+    right: 4%;
+    width: 44vw;
+  }
+
+  .lobby-jet-glow {
+    display: none;
+  }
+
   .lobby-main {
     gap: 12px;
     min-height: 0;
@@ -849,6 +1024,18 @@ canvas {
   }
 
   .feature-slots {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-slots.profile-slots {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-slots.profile-slots .feature-slot:nth-last-child(-n + 2) {
+    grid-column: auto;
+  }
+
+  .asset-select-grid {
     grid-template-columns: 1fr;
   }
 

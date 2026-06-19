@@ -9,19 +9,27 @@
   <body>
     <main class="app-root">
       <section id="lobbyScreen" class="lobby-screen" aria-label="游戏主界面">
+        <div class="lobby-stage" aria-hidden="true">
+          <div class="lobby-default-bg"></div>
+          <img id="lobbyBackgroundLayer" class="lobby-background-layer" alt="" />
+          <img id="lobbyPilotLayer" class="lobby-pilot-layer" alt="" />
+          <img id="lobbyShipLayer" class="lobby-ship-layer" alt="" />
+          <div class="lobby-jet-glow"></div>
+          <div id="lobbyGreeting" class="lobby-greeting hidden">指挥官，欢迎回来。</div>
+        </div>
         <div class="lobby-backdrop" aria-hidden="true"></div>
         <header class="lobby-topbar">
           <button class="pilot-card lobby-action" type="button" data-panel="profile" aria-label="打开飞行员资料">
-            <img id="pilotAvatar" class="pilot-avatar" src="角色资产/导购.png" alt="" />
+            <img id="pilotAvatar" class="pilot-avatar" alt="" />
             <span class="pilot-info">
               <strong id="pilotName">王牌飞行员</strong>
               <span class="pilot-meta">
-                <span id="pilotLevel">Lv.56</span>
-                <span id="pilotExpText">12080/23600</span>
+                <span id="pilotLevel">Lv.1</span>
+                <span id="pilotExpText">0/100</span>
               </span>
               <span class="exp-track" aria-hidden="true"><span id="pilotExpBar"></span></span>
             </span>
-            <span id="pilotBadge" class="pilot-badge">V</span>
+            <span id="pilotBadge" class="pilot-badge">I</span>
           </button>
 
           <section class="resource-strip" aria-label="玩家资源">
@@ -53,7 +61,7 @@
         <section class="lobby-main">
           <nav class="left-entry-list" aria-label="主玩法入口">
             <button class="feature-tile wide lobby-action" type="button" data-panel="chapter">
-              <strong>关卡地图</strong>
+              <strong>作战任务</strong>
               <span>CHAPTER MAP</span>
             </button>
             <button class="feature-tile wide hangar lobby-action" type="button" data-panel="hangar">
@@ -67,16 +75,14 @@
           </nav>
 
           <section class="hero-dock" aria-hidden="true">
-            <img class="hero-pilot" src="角色资产/导购.png" alt="" />
-            <div class="hero-ship"></div>
           </section>
 
           <nav class="right-entry-grid" aria-label="系统入口">
             <button class="menu-tile lobby-action" type="button" data-panel="task"><span>▣</span><strong>任务</strong><em>TASK</em></button>
-            <button class="menu-tile notice-dot lobby-action" type="button" data-panel="event"><span>✦</span><strong>活动</strong><em>EVENT</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="event"><span>✦</span><strong>活动</strong><em>EVENT</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="achievement"><span>◎</span><strong>成就</strong><em>ACHIEVEMENT</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="ranking"><span>♛</span><strong>排行榜</strong><em>RANKING</em></button>
-            <button class="menu-tile notice-dot lobby-action" type="button" data-panel="mail"><span>✉</span><strong>邮件</strong><em>MAIL</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="mail"><span>✉</span><strong>邮件</strong><em>MAIL</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="signin"><span>✓</span><strong>签到</strong><em>SIGN IN</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="shop"><span>▤</span><strong>商店</strong><em>SHOP</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="friend"><span>人</span><strong>好友</strong><em>FRIEND</em></button>
@@ -111,6 +117,7 @@
             <div id="featurePanelSlots" class="feature-slots"></div>
           </div>
         </section>
+        <input id="avatarUpload" type="file" accept="image/*" hidden />
       </section>
 
       <section id="battleScreen" class="game-shell battle-screen hidden" aria-label="战斗界面">
@@ -156,8 +163,8 @@
             </div>
             <div>
               <h2>星港导购</h2>
-              <p id="shopMessage">欢迎回来，飞行员。把战斗代币换成实打实的性能吧。</p>
-              <strong id="shopCoins">0 代币</strong>
+              <p id="shopMessage">欢迎回来，飞行员。把战斗金币换成实打实的性能吧。</p>
+              <strong id="shopCoins">0 金币</strong>
             </div>
           </section>
           <section id="upgradeList" class="upgrade-list"></section>
@@ -174,11 +181,12 @@
         <button id="pauseButton" type="button">暂停</button>
         <button id="restartButton" type="button">重开</button>
         <button id="shopButton" type="button">升级</button>
-        <span>方向键 / WASD 移动，空格射击；击落敌机获得代币，通关后购买升级。</span>
+        <span>方向键 / WASD 移动，空格射击；击落敌机获得金币，通关后购买升级。</span>
       </section>
       </section>
     </main>
 
+    <script src="shared-loader.js"></script>
     <script src="game.js"></script>
   </body>
 </html>

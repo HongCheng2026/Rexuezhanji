@@ -47,162 +47,31 @@ const lobbyGreeting = document.querySelector("#lobbyGreeting");
 
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const LEVEL_DURATION = 90;
-const BOSS_SPAWN_TIME = 60;
-const MAX_WEAPON_LEVEL = 10;
-const ENERGY_MAX = 120;
-const ENERGY_COST = 5;
-const ENERGY_RECOVER_MS = 5 * 60 * 1000;
-const SAVE_VERSION = 4;
-const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='18' x2='110' y1='14' y2='116' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%2343c8ff'/%3E%3Cstop offset='1' stop-color='%23ffd166'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='128' height='128' fill='%23071422'/%3E%3Ccircle cx='64' cy='64' r='48' fill='url(%23a)' opacity='.16'/%3E%3Cpath fill='%23d9f5ff' d='M17 67 57 47l54 17-41 10-12 24-8-21-33-10z'/%3E%3Cpath fill='%2343c8ff' d='M57 47 70 74l-12 24-8-21-33-10z' opacity='.72'/%3E%3Ccircle cx='72' cy='64' r='5' fill='%23ffd166'/%3E%3C/svg%3E";
-const DEFAULT_PILOT_ID = "pilot-s-lingyan";
-const DEFAULT_SHIP_ID = "ship-a-06";
-const DEFAULT_BACKGROUND_ID = "bg-hangar-01";
 const keys = new Set();
 const pointer = { active: false, x: 90, y: HEIGHT / 2 };
 
-const RANK_DAMAGE = {
-  pilot: { SS: 60, S: 55, A: 50, B: 45 },
-  ship: { SSS: 120, SS: 112, S: 106, A: 100, B: 90 }
-};
-
-const PILOT_ASSETS = [
-  { id: "pilot-a-luofeiyin", rank: "A", name: "洛绯音", src: "pilot-01.png" },
-  { id: "pilot-a-shenyao", rank: "A", name: "沈曜", src: "pilot-02.png" },
-  { id: "pilot-a-yelan", rank: "A", name: "夜岚", src: "pilot-03.png" },
-  { id: "pilot-b-bailing", rank: "B", name: "白凌", src: "pilot-04.png" },
-  { id: "pilot-b-linzhihan", rank: "B", name: "林知寒", src: "pilot-05.png" },
-  { id: "pilot-b-shenqingyao", rank: "B", name: "沈清曜", src: "pilot-06.png" },
-  { id: "pilot-b-sumianxing", rank: "B", name: "苏绵星", src: "pilot-07.png" },
-  { id: "pilot-b-xingtao", rank: "B", name: "星桃", src: "pilot-08.png" },
-  { id: DEFAULT_PILOT_ID, rank: "S", name: "凌焰", src: "pilot-09.png" },
-  { id: "pilot-s-luoqi", rank: "S", name: "洛绮", src: "pilot-10.png" }
-].map((item) => ({ ...item, damage: RANK_DAMAGE.pilot[item.rank] }));
-
-const SHIP_ASSETS = [
-  { id: DEFAULT_SHIP_ID, rank: "A", name: "06", src: "ship-01.png" },
-  { id: "ship-b-01", rank: "B", name: "01", src: "ship-02.png" },
-  { id: "ship-b-02", rank: "B", name: "02", src: "ship-03.png" },
-  { id: "ship-b-03", rank: "B", name: "03", src: "ship-04.png" },
-  { id: "ship-b-04", rank: "B", name: "04", src: "ship-05.png" },
-  { id: "ship-b-05", rank: "B", name: "05", src: "ship-06.png" }
-].map((item) => ({ ...item, damage: RANK_DAMAGE.ship[item.rank] }));
-
-const BACKGROUND_ASSETS = [
-  { id: DEFAULT_BACKGROUND_ID, rank: "BASE", name: "星港大厅", src: "lobby-bg-01.png" }
-];
-
-const levels = [
-  {
-    id: 1,
-    code: "1-1",
-    name: "星港外围",
-    desc: "敌机数量较少，适合熟悉横版节奏。",
-    spawn: 1.05,
-    eliteRate: 0.12,
-    bossHp: 520,
-    reward: 260
-  },
-  {
-    id: 2,
-    code: "1-2",
-    name: "碎星航道",
-    desc: "精英敌机增多，敌方弹幕更密。",
-    spawn: 0.82,
-    eliteRate: 0.22,
-    bossHp: 760,
-    reward: 390
-  },
-  {
-    id: 3,
-    code: "1-3",
-    name: "核心闸门",
-    desc: "第一章最终小关，Boss 护甲更厚。",
-    spawn: 0.64,
-    eliteRate: 0.32,
-    bossHp: 1040,
-    reward: 560
-  }
-];
-
-function getStageIndex(level) {
-  return level.id;
-}
-
-function getEnemyScaling(level) {
-  const chapterBonus = 0.1;
-  const stageBonus = [5, 10].includes(getStageIndex(level)) ? 0.1 : 0;
-  const total = chapterBonus + stageBonus;
-  return { hpMultiplier: 1 + total, damageTakenMultiplier: Math.max(0.05, 1 - total) };
-}
-
-function getEnemyHp(type, level) {
-  const base = type === "boss" ? 10000 : type === "elite" ? 1000 : 100;
-  return Math.ceil(base * getEnemyScaling(level).hpMultiplier);
-}
-
-const upgrades = {
-  fire: {
-    name: "火力核心",
-    desc: "提升所有子弹伤害，并让基础弹幕更密。",
-    max: 10,
-    baseCost: 90
-  },
-  armor: {
-    name: "装甲舱",
-    desc: "每级增加 1 点初始生命。",
-    max: 6,
-    baseCost: 130
-  },
-  engine: {
-    name: "推进器",
-    desc: "提升战机移动速度。",
-    max: 6,
-    baseCost: 110
-  },
-  bounty: {
-    name: "金币回收器",
-    desc: "击落敌机时获得更多金币。",
-    max: 8,
-    baseCost: 100
-  }
-};
-
-const POWERUPS = {
-  spread: { name: "散射", color: "#ffd166", mark: "S" },
-  laser: { name: "激光", color: "#5ee7ff", mark: "L" },
-  missile: { name: "导弹", color: "#ff9f43", mark: "M" },
-  shield: { name: "护盾", color: "#9bffcb", mark: "D" },
-  life: { name: "生命", color: "#7bed9f", mark: "+" }
-};
-
-const LOBBY_DEFAULTS = {
-  player: {
-    name: "王牌飞行员",
-    avatar: DEFAULT_AVATAR,
-    level: 1,
-    exp: 0,
-    expMax: 100,
-    badge: "I"
-  },
-  resources: {
-    energy: ENERGY_MAX,
-    maxEnergy: ENERGY_MAX,
-    gold: 0,
-    diamonds: 0,
-    lastEnergyAt: Date.now()
-  },
-  scene: {
-    pilotId: DEFAULT_PILOT_ID,
-    shipId: DEFAULT_SHIP_ID,
-    backgroundId: DEFAULT_BACKGROUND_ID
-  },
-  owned: {
-    pilots: [DEFAULT_PILOT_ID],
-    ships: [DEFAULT_SHIP_ID],
-    backgrounds: [DEFAULT_BACKGROUND_ID]
-  }
-};
+const shared = window.RXGame;
+const {
+  LEVEL_DURATION,
+  BOSS_SPAWN_TIME,
+  ENERGY_MAX,
+  ENERGY_COST,
+  levels,
+  upgrades,
+  POWERUPS
+} = shared.levels;
+const {
+  DEFAULT_AVATAR,
+  DEFAULT_PILOT_ID,
+  DEFAULT_SHIP_ID,
+  PILOT_ASSETS,
+  SHIP_ASSETS,
+  BACKGROUND_ASSETS,
+  ASSET_PATHS
+} = shared.assets;
+const { MAX_WEAPON_LEVEL } = shared.balance;
+const getEnemyScaling = shared.balance.getEnemyScalingForLevel;
+const getEnemyHp = shared.balance.getEnemyHp;
 
 const featurePanels = {
   profile: {
@@ -321,16 +190,9 @@ const featurePanels = {
   }
 };
 
-const ASSET_PATHS = {
-  player: "player.png",
-  boss: "boss.png",
-  smallEnemies: ["enemy-small-01.png", "enemy-small-02.png", "enemy-small-03.png"],
-  eliteEnemies: ["enemy-elite-01.png", "enemy-elite-02.png"]
-};
-
 const assets = loadAssets(ASSET_PATHS);
 let profile = loadProfile();
-let selectedLevel = clamp(profile.unlockedLevel, 1, 3);
+let selectedLevel = clamp(profile.unlockedLevel, 1, levels.length);
 let state = createMenuState();
 let lastTime = 0;
 let animationId = 0;
@@ -358,70 +220,15 @@ function loadAssets(paths) {
 }
 
 function loadProfile() {
-  const fallback = {
-    saveVersion: SAVE_VERSION,
-    coins: 0,
-    unlockedLevel: 1,
-    completed: [],
-    upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
-    player: { ...LOBBY_DEFAULTS.player },
-    resources: { ...LOBBY_DEFAULTS.resources },
-    scene: { ...LOBBY_DEFAULTS.scene },
-    owned: { ...LOBBY_DEFAULTS.owned }
-  };
-
   try {
-    return normalizeProfile({ ...fallback, ...JSON.parse(localStorage.getItem("sideShooterProfile") || "{}") });
+    return shared.profile.createProfile(JSON.parse(localStorage.getItem("sideShooterProfile") || "{}"));
   } catch {
-    return normalizeProfile(fallback);
+    return shared.profile.createProfile();
   }
 }
 
 function normalizeProfile(nextProfile) {
-  const incomingVersion = Number(nextProfile.saveVersion) || 0;
-  let player = { ...LOBBY_DEFAULTS.player, ...(nextProfile.player || {}) };
-  if (incomingVersion < SAVE_VERSION && (player.avatar === "guide.png" || (Number(player.level) === 56 && Number(player.exp) === 12080))) {
-    player = { ...LOBBY_DEFAULTS.player };
-  }
-  player.level = Math.max(1, Math.floor(Number(player.level) || LOBBY_DEFAULTS.player.level));
-  player.expMax = Math.max(1, Math.floor(Number(player.expMax) || LOBBY_DEFAULTS.player.expMax));
-  player.exp = clamp(Math.floor(Number(player.exp) || 0), 0, player.expMax);
-  player.avatar = player.avatar && player.avatar !== "guide.png" ? player.avatar : DEFAULT_AVATAR;
-  player.badge = player.badge || LOBBY_DEFAULTS.player.badge;
-
-  const resources = { ...LOBBY_DEFAULTS.resources, ...(nextProfile.resources || {}) };
-  resources.maxEnergy = Math.max(ENERGY_COST, Math.floor(Number(resources.maxEnergy) || ENERGY_MAX));
-  if (incomingVersion < SAVE_VERSION && !nextProfile.resources?.maxEnergy) resources.energy = resources.maxEnergy;
-  resources.energy = clamp(Math.floor(Number(resources.energy) || 0), 0, resources.maxEnergy);
-  resources.diamonds = Math.max(0, Math.floor(Number(resources.diamonds) || 0));
-  resources.gold = Math.max(0, Math.floor(Number(resources.gold ?? nextProfile.coins) || 0));
-  resources.lastEnergyAt = Math.floor(Number(resources.lastEnergyAt) || Date.now());
-
-  const owned = {
-    pilots: uniqueList([...(LOBBY_DEFAULTS.owned.pilots || []), ...((nextProfile.owned && nextProfile.owned.pilots) || [])]),
-    ships: uniqueList([...(LOBBY_DEFAULTS.owned.ships || []), ...((nextProfile.owned && nextProfile.owned.ships) || [])]),
-    backgrounds: uniqueList([...(LOBBY_DEFAULTS.owned.backgrounds || []), ...((nextProfile.owned && nextProfile.owned.backgrounds) || [])])
-  };
-  const scene = { ...LOBBY_DEFAULTS.scene, ...(nextProfile.scene || {}) };
-  scene.pilotId = owned.pilots.includes(scene.pilotId) ? scene.pilotId : DEFAULT_PILOT_ID;
-  scene.shipId = owned.ships.includes(scene.shipId) ? scene.shipId : DEFAULT_SHIP_ID;
-  scene.backgroundId = owned.backgrounds.includes(scene.backgroundId) ? scene.backgroundId : DEFAULT_BACKGROUND_ID;
-
-  const normalized = {
-    ...nextProfile,
-    saveVersion: SAVE_VERSION,
-    coins: resources.gold,
-    completed: Array.isArray(nextProfile.completed) ? nextProfile.completed : [],
-    upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0, ...(nextProfile.upgrades || {}) },
-    player,
-    resources,
-    scene,
-    owned,
-    ratings: nextProfile.ratings || {},
-    localEarned: nextProfile.localEarned || { gold: 0, diamonds: 0 }
-  };
-  recoverEnergy(normalized);
-  return normalized;
+  return shared.profile.normalizeProfile(nextProfile);
 }
 
 function saveProfile() {
@@ -442,31 +249,13 @@ function saveCloudState() {
   localStorage.setItem("sideShooterCloudState", JSON.stringify(cloudState));
 }
 
-function uniqueList(list) {
-  return Array.from(new Set(Array.isArray(list) ? list.filter(Boolean) : []));
-}
-
 function recoverEnergy(targetProfile = profile) {
-  const resources = targetProfile.resources;
-  const now = Date.now();
-  resources.maxEnergy = Math.max(ENERGY_COST, Math.floor(Number(resources.maxEnergy) || ENERGY_MAX));
-  resources.energy = clamp(Math.floor(Number(resources.energy) || 0), 0, resources.maxEnergy);
-  resources.lastEnergyAt = Math.floor(Number(resources.lastEnergyAt) || now);
-  if (resources.energy >= resources.maxEnergy) {
-    resources.lastEnergyAt = now;
-    return;
-  }
-  const recovered = Math.floor((now - resources.lastEnergyAt) / ENERGY_RECOVER_MS);
-  if (recovered > 0) {
-    resources.energy = clamp(resources.energy + recovered, 0, resources.maxEnergy);
-    resources.lastEnergyAt += recovered * ENERGY_RECOVER_MS;
-    if (resources.energy >= resources.maxEnergy) resources.lastEnergyAt = now;
-  }
+  return shared.profile.recoverEnergy(targetProfile);
 }
 
 function reloadProfileFromSave() {
   profile = loadProfile();
-  selectedLevel = clamp(profile.unlockedLevel, 1, 3);
+  selectedLevel = clamp(profile.unlockedLevel, 1, levels.length);
   state = createMenuState();
   renderChapterSelect();
   renderShop("存档已读取。");
@@ -476,47 +265,33 @@ function reloadProfileFromSave() {
 }
 
 function getGold() {
-  recoverEnergy(profile);
-  return Math.max(0, Math.floor(Number(profile.resources.gold ?? profile.coins) || 0));
+  return shared.profile.getGold(profile);
 }
 
 function setGold(value) {
-  profile.resources.gold = Math.max(0, Math.floor(Number(value) || 0));
-  profile.coins = profile.resources.gold;
+  shared.profile.setGold(profile, value);
 }
 
 function spendEnergy(amount) {
-  recoverEnergy(profile);
-  profile.resources.energy = Math.max(0, Math.floor(Number(profile.resources.energy) || 0));
-  if (profile.resources.energy < amount) return false;
-  profile.resources.energy -= amount;
+  if (!shared.profile.spendEnergy(profile, amount)) return false;
   saveProfile();
   renderLobby();
   return true;
 }
 
 function gainExperience(amount) {
-  const player = profile.player;
-  let gained = Math.max(0, Math.floor(Number(amount) || 0));
-  if (!gained) return { gained: 0, leveled: 0 };
-  let leveled = 0;
-  player.exp += gained;
-  while (player.exp >= player.expMax) {
-    player.exp -= player.expMax;
-    player.level += 1;
-    leveled += 1;
-    player.expMax = Math.floor(player.expMax * 1.22 + 40);
-    player.badge = player.level >= 30 ? "V" : player.level >= 20 ? "IV" : player.level >= 12 ? "III" : player.level >= 6 ? "II" : "I";
-  }
+  const result = shared.battleRules.applyExperience(profile.player, amount);
   saveProfile();
   renderLobby();
-  return { gained, leveled };
+  return result;
 }
 
 function battleExperience(baseReward = 0) {
-  const scorePart = Math.round(state.levelCoins * 0.28);
-  const clearPart = Math.round(baseReward * 0.18);
-  return Math.max(5, scorePart + clearPart + state.level.id * 12);
+  return shared.battleRules.getBattleExperience({
+    levelId: state.level.id,
+    levelCoins: state.levelCoins,
+    baseReward
+  });
 }
 
 function createMenuState() {
@@ -574,7 +349,7 @@ function createStars() {
 }
 
 function startLevel(levelId = selectedLevel) {
-  selectedLevel = clamp(levelId, 1, 3);
+  selectedLevel = clamp(levelId, 1, levels.length);
   if (!spendEnergy(ENERGY_COST)) {
     showBattleScreen();
     showOverlay("体力不足", `当前体力 ${profile.resources.energy}/${profile.resources.maxEnergy}，每次战斗需要 ${ENERGY_COST} 点体力。`, "返回关卡");
@@ -732,18 +507,13 @@ function fireFusionWeapons(x, y) {
 }
 
 function getPlayerDamage(type, weaponLevel = 1) {
-  const pilotDamage = getPilotAsset().damage;
-  const fighterDamage = getShipAsset().damage;
-  const fighterUpgradeMultiplier = Math.min(2, 1 + profile.upgrades.fire * 0.1);
-  const pickupWeaponDamageMultiplier = getPickupDamageMultiplier(type, weaponLevel);
-  return Math.round((pilotDamage + fighterDamage) * fighterUpgradeMultiplier * pickupWeaponDamageMultiplier);
-}
-
-function getPickupDamageMultiplier(type, level) {
-  const value = clamp(level, 1, 10);
-  if (type === "laser") return 1 + (value - 1) * (1 / 9);
-  if (type === "spread" || type === "missile") return 1 + (value - 1) * (0.5 / 9);
-  return 1;
+  return shared.balance.getPlayerWeaponDamage({
+    pilotDamage: getPilotAsset().damage,
+    fighterDamage: getShipAsset().damage,
+    fighterUpgradeMultiplier: Math.min(2, 1 + profile.upgrades.fire * 0.1),
+    weaponType: type,
+    weaponLevel
+  });
 }
 
 function createBullet(x, y, angle, type, damage, speed, radius, color, piercing = false) {
@@ -1098,9 +868,7 @@ function completeLevel() {
   gainCoins(reward);
   const expResult = gainExperience(battleExperience(reward));
   const rating = calculateRating(bossClearTime);
-  profile.completed = Array.from(new Set([...profile.completed, state.level.id]));
-  profile.unlockedLevel = Math.max(profile.unlockedLevel, Math.min(3, state.level.id + 1));
-  profile.ratings[state.level.id] = Math.max(profile.ratings[state.level.id] || 0, rating.stars);
+  shared.battleRules.completeLevel(profile, state.level, rating);
   saveProfile();
   state.mode = "settlement";
   cancelAnimationFrame(animationId);
@@ -1123,10 +891,12 @@ function failLevel() {
 }
 
 function calculateRating(bossClearTime) {
-  const stars = 1 + (state.damageTaken === 0 ? 1 : 0) + (state.powerupsSpawned === state.powerupsCollected ? 1 : 0);
-  const crown = bossClearTime <= 20 ? "👑" : "";
-  const palette = bossClearTime <= 10 ? "全彩" : bossClearTime <= 30 ? "金色" : "银色";
-  return { stars, icons: `${"★".repeat(stars)}${"☆".repeat(3 - stars)}${crown}`, label: `${palette}${stars}星` };
+  return shared.battleRules.calculateRating({
+    damageTaken: state.damageTaken,
+    powerupsSpawned: state.powerupsSpawned,
+    powerupsCollected: state.powerupsCollected,
+    bossClearTime
+  });
 }
 
 function nearestTarget(bullet) {
@@ -1479,9 +1249,9 @@ function sweepSelectedLevel() {
     showOverlay("体力不足", `当前体力 ${profile.resources.energy}/${profile.resources.maxEnergy}，扫荡需要 ${ENERGY_COST} 点体力。`, "返回关卡");
     return;
   }
-  const reward = Math.round(level.reward * 0.72);
+  const reward = shared.battleRules.getSweepReward(level);
   gainCoins(reward);
-  const expResult = gainExperience(Math.round(battleExperience(reward) * 0.55));
+  const expResult = gainExperience(shared.battleRules.getSweepExperience(reward, level.id));
   saveProfile();
   renderChapterSelect();
   renderLobby();
@@ -1552,8 +1322,8 @@ function renderShop(message = "欢迎回来，飞行员。把战斗金币换成�
     card.appendChild(button);
     upgradeList.appendChild(card);
   }
-  nextLevelButton.disabled = selectedLevel >= 3 && profile.completed.includes(3);
-  nextLevelButton.textContent = selectedLevel >= 3 ? "第一章已完成" : `进入 ${levels[Math.min(selectedLevel, 2)].code}`;
+  nextLevelButton.disabled = selectedLevel >= levels.length && profile.completed.includes(levels[levels.length - 1].id);
+  nextLevelButton.textContent = selectedLevel >= levels.length ? "第一章已完成" : `进入 ${levels[Math.min(selectedLevel, levels.length - 1)].code}`;
 }
 
 function buyUpgrade(key) {
@@ -1569,7 +1339,7 @@ function buyUpgrade(key) {
 
 function upgradeCost(key) {
   const level = profile.upgrades[key];
-  return upgrades[key].baseCost * (level + 1);
+  return shared.battleRules.getUpgradeCost(upgrades[key], level);
 }
 
 function showShop() {
