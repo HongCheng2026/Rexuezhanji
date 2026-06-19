@@ -1,145 +1,98 @@
-# H5 Game Toolchain Handoff
+# 热血战姬项目交接
 
-This machine is prepared for H5 game development. All required tools installed by Codex were moved to the D drive.
+更新时间：2026-06-19
 
-## Workspace
+## 当前状态
 
-- Project workspace: `C:\Users\Administrator\Documents\小游戏`
-
-## Installed Tools
-
-### Node.js
-
-- Version: `v24.17.0`
-- Install path: `D:\DevTools\nodejs`
-- Executables:
-  - `D:\DevTools\nodejs\node.exe`
-  - `D:\DevTools\nodejs\npm.cmd`
-  - `D:\DevTools\nodejs\npx.cmd`
-
-PowerShell note: use `npm.cmd` and `npx.cmd` instead of bare `npm` / `npx`, because PowerShell may try to run `npm.ps1` and block it due to execution policy.
-
-Examples:
-
-```powershell
-D:\DevTools\nodejs\node.exe -v
-D:\DevTools\nodejs\npm.cmd -v
-D:\DevTools\nodejs\npx.cmd -v
-```
-
-### Git
-
-- Version: `git version 2.54.0.windows.1`
-- Install path: `D:\DevTools\Git`
-- Main executable:
-  - `D:\DevTools\Git\cmd\git.exe`
-
-Example:
-
-```powershell
-D:\DevTools\Git\cmd\git.exe --version
-```
-
-### VS Code
-
-- Version: `1.125.0`
-- Install path: `D:\DevTools\VSCode`
-- Executables:
-  - `D:\DevTools\VSCode\Code.exe`
-  - `D:\DevTools\VSCode\bin\code.cmd`
-
-Example:
-
-```powershell
-D:\DevTools\VSCode\bin\code.cmd --version
-```
-
-### Cocos Creator
-
-- Version: `3.8.8`
-- Install path: `D:\Cocos\CocosCreator\3.8.8`
-- Main executable:
-  - `D:\Cocos\CocosCreator\3.8.8\CocosCreator.exe`
-
-Example:
-
-```powershell
-& "D:\Cocos\CocosCreator\3.8.8\CocosCreator.exe"
-```
-
-### Cocos Dashboard
-
-- Version: `2.2.1`
-- Install path: `D:\Cocos\CocosDashboard`
-- Main executable:
-  - `D:\Cocos\CocosDashboard\CocosDashboard.exe`
-
-Example:
-
-```powershell
-& "D:\Cocos\CocosDashboard\CocosDashboard.exe"
-```
-
-## Recommended Fast H5 Stack
-
-For fastest H5 prototyping, use:
+项目已完成第一阶段的可玩 H5 MVP 和跨平台共享核心的首次拆分，当前 Git 基线为：
 
 ```text
-Vite + TypeScript + Phaser
+7575f57 feat: extract shared game core and sync H5 release
 ```
 
-Use the full executable paths if PATH is not refreshed:
+工作区在本次交接时干净，当前分支为 `master`，尚未配置 Git 远端。
+
+H5 已具备大厅、关卡选择、战斗、BOSS、胜利或失败结算、扫荡、升级、体力消耗与自动恢复、资产选择、浏览器本地存档等闭环。当前存档仅使用浏览器 `localStorage`，云端存档和登录尚未实现。
+
+## 正式代码源头
+
+后续开发以 `部署/通用代码/` 为唯一正式源头。不要直接修改根目录预览文件或 `部署/Netlify-H5/`，它们都是同步产物。
+
+```text
+部署/
+  通用代码/
+    H5/                 H5 外壳：Canvas、DOM、输入、localStorage 适配
+    shared/             平台无关游戏核心
+  Netlify-H5/           Netlify 发布目录，由同步脚本生成
+  同步通用代码.ps1       同步入口
+```
+
+根目录的 `index.html`、`style.css`、`game.js`、`shared/` 和图片用于本地直接预览，也由同步脚本覆盖。根目录不再是旧版代码。
+
+## 共享核心
+
+`部署/通用代码/shared/` 中的文件均采用 UMD 风格，同时支持浏览器脚本加载和 Node 校验：
+
+- `balance.js`：玩家伤害、敌人血量、章节成长、拾取道具等级系数。
+- `levels.js`：关卡、BOSS 时机、体力参数、升级项、扫荡与道具展示配置。
+- `assets.js`：飞行员、战机、背景、敌人等资产配置。
+- `profile.js`：默认存档、存档规范化、体力恢复、金币和体力操作。
+- `battleRules.js`：升级价格、经验、评级、扫荡、通关奖励和解锁规则。
+
+共享核心只处理规则和数据，不依赖 `window`、DOM、Canvas、`localStorage`、`wx` 或 `tt`。平台差异应放在各平台的存储、登录、渲染、输入和 API 适配层。
+
+## 已完成验证
+
+- 已通过 `node --check` 校验 H5、共享核心、根目录预览与 Netlify 发布目录的 JavaScript 语法。
+- 已对关键数值进行 Node 校验：普通敌机 110、精英敌机 1100、BOSS 11000；激光 10 级系数 2；散射 10 级系数 1.5。
+- 已在浏览器验证 `部署/通用代码/H5/index.html`：可从大厅进入战斗，首关扣除 5 点体力，战斗 HUD 与倒计时正常，无控制台错误。
+- 已在浏览器验证 `部署/Netlify-H5/index.html`：共享脚本加载完整，行为与源目录一致，无控制台错误。
+- 已在 390 x 844 移动端视口验证大厅和战斗画面：无横向溢出，主按钮、HUD、Canvas 未重叠。
+
+## 日常开发与发布
+
+1. 修改 `部署/通用代码/shared/` 中的规则或配置，或修改 `部署/通用代码/H5/` 中的 H5 表现层。
+2. 运行同步脚本：
 
 ```powershell
-D:\DevTools\nodejs\npm.cmd create vite@latest
-D:\DevTools\nodejs\npm.cmd install phaser
-D:\DevTools\nodejs\npm.cmd run dev
-D:\DevTools\nodejs\npm.cmd run build
+& "E:\JT\20260618-热血战姬\部署\同步通用代码.ps1"
 ```
 
-## Cocos H5 Target
+3. 打开 `部署/通用代码/H5/index.html` 进行本地验证；需要 HTTP 环境时可在 `部署/通用代码` 启动静态服务器。
+4. 发布时上传 `部署/Netlify-H5/` 的全部内容到 Netlify。
+5. 每个可玩节点执行一次 Git 提交。配置远端后再 push。
 
-For Cocos projects, use Cocos Creator `3.8.8` and build for:
+## 云端存档：当前结论与下一步
+
+购买域名本身不能保存玩家信息；域名只提供访问地址。当前本地存档可在同一浏览器和设备上保留，但清理浏览器数据或换设备后不会自动恢复。
+
+云端存档第一版建议采用：
 
 ```text
-Web Mobile
+Netlify 静态 H5 + Supabase Auth + Supabase Postgres
 ```
 
-The editor executable is:
+实施时新增 H5 云存档适配层，保留 `shared/profile.js` 作为存档结构和规则的唯一来源。推荐流程：
 
-```text
-D:\Cocos\CocosCreator\3.8.8\CocosCreator.exe
-```
+1. 匿名登录或邮箱/微信登录，获得玩家唯一 ID。
+2. 使用玩家 ID 读写云端存档，并按 `profile.normalizeProfile` 做兼容处理。
+3. 保留 `localStorage` 作为离线缓存；联网后与云端同步。
+4. 对金币、广告奖励、支付、排行榜等高价值操作，改由服务端校验，不能只信任浏览器传入的数据。
+5. 数据库必须开启按用户隔离的访问策略，前端只使用可公开的匿名密钥；服务端密钥不得提交进仓库或放入网页。
 
-## PATH Status
+微信和抖音迁移时，继续复用 `shared/`；只新增各自的登录、存储、页面与平台 API 适配层。
 
-The system/user PATH was updated to include:
+## 后续优先级
 
-- `D:\DevTools\nodejs`
-- `D:\DevTools\Git\cmd`
-- `D:\DevTools\VSCode\bin`
-- `D:\Cocos\CocosCreator\3.8.8`
+1. 为 H5 增加可替换的本地/云端存档适配接口，并接入 Supabase。
+2. 增加存档迁移、离线缓存、登录后合并存档和异常恢复测试。
+3. 继续补齐关卡、敌人波次、资产解锁和玩法内容。
+4. 准备微信、抖音的外壳工程，复用 `shared/`，避免复制战斗数值和结算规则。
 
-If an already-open terminal cannot find these commands, open a new terminal or use the full paths above.
+## 重要资料
 
-## Verification Commands
-
-```powershell
-D:\DevTools\nodejs\node.exe -v
-D:\DevTools\nodejs\npm.cmd -v
-D:\DevTools\Git\cmd\git.exe --version
-D:\DevTools\VSCode\bin\code.cmd --version
-(Get-Item "D:\Cocos\CocosCreator\3.8.8\CocosCreator.exe").VersionInfo.ProductVersion
-(Get-Item "D:\Cocos\CocosDashboard\CocosDashboard.exe").VersionInfo.ProductVersion
-```
-
-Expected versions:
-
-```text
-Node.js: v24.17.0
-npm: 11.13.0
-Git: 2.54.0.windows.1
-VS Code: 1.125.0
-Cocos Creator: 3.8.8
-Cocos Dashboard: 2.2.1
-```
+- 数值总纲：`数值/0游戏数值总纲.md`
+- 拾取道具规范：`数值/游戏内拾取道具升级数值规范.md`
+- 部署说明：`部署/README.md`
+- 通用代码说明：`部署/通用代码/README.md`
+- 项目说明：`GPT网页版项目说明.md`
