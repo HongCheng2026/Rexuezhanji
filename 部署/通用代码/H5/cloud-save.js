@@ -107,6 +107,7 @@
     abandonBattle: (ticket) => api("abandon-battle", { ticket }),
     sweep: (levelId) => api("sweep", { levelId }),
     upgrade: (key) => api("upgrade", { key }),
+    redeem: (code) => api("redeem", { code }),
     saveCosmetics: (profile) => api("save-cosmetics", { profile }),
     sendEmailCode,
     verifyEmailCode,

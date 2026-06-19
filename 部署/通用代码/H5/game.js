@@ -71,7 +71,10 @@ const {
   ASSET_PATHS
 } = shared.assets;
 const { MAX_WEAPON_LEVEL } = shared.balance;
-const getEnemyScaling = shared.balance.getEnemyScalingForLevel;
+const getEnemyScaling = (level) => shared.balance.getEnemyScalingForLevel(level, {
+  pilotRarity: getPilotAsset().rank,
+  fighterRarity: getShipAsset().rank
+});
 const getEnemyHp = shared.balance.getEnemyHp;
 
 const featurePanels = {
@@ -354,6 +357,9 @@ function createMenuState() {
     damageTaken: 0,
     powerupsSpawned: 0,
     powerupsCollected: 0
+    ,storyRuntime: null
+    ,storyMessage: null
+    ,storyMessageUntil: 0
   };
 }
 
@@ -399,6 +405,13 @@ async function startLevel(levelId = selectedLevel) {
   }
   state = createMenuState();
   state.mode = "fight";
+  const pilot = getPilotAsset();
+  state.storyRuntime = shared.battleStorySystem?.createBattleStoryRuntime({
+    chapterIndex: selected.chapterIndex || 1,
+    stageInChapter: selected.stageInChapter || selected.id,
+    selectedPilot: { id: pilot.id, name: pilot.name, avatarId: pilot.src },
+    hasBoss: true
+  });
   showBattleScreen();
   hideShop();
   overlay.classList.add("hidden");
@@ -427,6 +440,7 @@ function update(dt) {
   state.player.cooldown -= dt;
   state.player.invincible = Math.max(0, state.player.invincible - dt);
   state.player.shield = Math.max(0, state.player.shield - dt);
+  updateBattleStory();
 
   updateStars(dt);
   updatePlayer(dt);
@@ -445,6 +459,17 @@ function update(dt) {
   updateNotices(dt);
   checkCollisions();
   updateHud();
+}
+
+function updateBattleStory() {
+  const runtime = state.storyRuntime;
+  if (!runtime) return;
+  for (const event of runtime.getEventsToShow(state.elapsed)) {
+    if (shared.battleStorySystem.shouldRenderBattleStoryMessage(event)) {
+      state.storyMessage = event;
+      state.storyMessageUntil = performance.now() + event.durationMs;
+    }
+  }
 }
 
 function updateStars(dt) {
@@ -1014,6 +1039,33 @@ function drawScene() {
   drawProgress();
   drawBossWarning();
   drawNotices();
+  drawBattleStory();
+}
+
+function drawBattleStory() {
+  const message = state.storyMessage;
+  if (!message || performance.now() > state.storyMessageUntil) return;
+  const remaining = state.storyMessageUntil - performance.now();
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, remaining / 160);
+  ctx.fillStyle = "rgba(6, 13, 25, 0.82)";
+  ctx.fillRect(24, HEIGHT - 105, Math.min(WIDTH - 48, 390), 78);
+  ctx.fillStyle = "#42d6b5";
+  ctx.beginPath();
+  ctx.arc(56, HEIGHT - 66, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#08111c";
+  ctx.font = "bold 19px Microsoft YaHei, Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(String(message.speakerName || "飞行员").slice(0, 1), 56, HEIGHT - 59);
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffd166";
+  ctx.font = "bold 14px Microsoft YaHei, Arial";
+  ctx.fillText(message.speakerName, 91, HEIGHT - 80);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "14px Microsoft YaHei, Arial";
+  ctx.fillText(message.text, 91, HEIGHT - 52);
+  ctx.restore();
 }
 
 function drawStars() {
@@ -1511,7 +1563,38 @@ function openFeaturePanel(key) {
     featurePanelSlots.appendChild(item);
   }
   if (key === "profile") renderProfileActions();
+  if (key === "setting") renderSettingActions();
   featurePanel.classList.remove("hidden");
+}
+
+function renderSettingActions() {
+  featurePanelSlots.innerHTML = "";
+  featurePanelSlots.classList.add("profile-slots");
+  const item = document.createElement("div");
+  item.className = "feature-slot action";
+  item.innerHTML = "<strong>兑换码</strong><small>奖励由云端校验；同一账号每个兑换码只能领取一次。</small>";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.maxLength = 24;
+  input.placeholder = "请输入兑换码";
+  const button = document.createElement("button");
+  button.className = "feature-button";
+  button.type = "button";
+  button.textContent = "兑换";
+  button.addEventListener("click", async () => {
+    try {
+      const result = await cloud.redeem(input.value);
+      profile = normalizeProfile(result.profile);
+      saveProfile();
+      renderLobby();
+      featurePanelBody.textContent = "兑换成功，奖励已写入云端存档。";
+      input.value = "";
+    } catch (error) {
+      featurePanelBody.textContent = error.message || "兑换失败，请稍后再试。";
+    }
+  });
+  item.append(input, button);
+  featurePanelSlots.appendChild(item);
 }
 
 function renderProfileActions() {

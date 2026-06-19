@@ -4,7 +4,11 @@ type Json = Record<string, unknown>;
 type Context = { userId: string; admin: ReturnType<typeof createClient> };
 
 const ENERGY_COST = 5;
-const ENERGY_MAX = 120;
+const COMMANDER_MAX_LEVEL = 60;
+const COMMANDER_EXP_TO_NEXT_LEVEL = [0, 130, 190, 224, 246, 266, 282, 298, 310, 322, 334, 344, 354, 362, 370, 378, 386, 394, 400, 410, 1000, 1100, 1200, 1300, 1400, 1000, 1100, 1200, 1300, 1400, 2736, 3548, 3938, 4214, 4432, 4614, 4772, 4910, 5034, 5148, 5252, 5348, 5438, 5524, 5602, 5678, 5750, 5818, 5882, 5944, 6004, 6062, 6118, 6172, 6222, 6272, 6322, 6370, 6416, 6460, 0];
+const COMMANDER_TOTAL_EXP_BY_LEVEL = [0, 0, 130, 320, 544, 790, 1056, 1338, 1636, 1946, 2268, 2602, 2946, 3300, 3662, 4032, 4410, 4796, 5190, 5590, 6000, 7000, 8100, 9300, 10600, 12000, 13000, 14100, 15300, 16600, 18000, 20736, 24284, 28222, 32436, 36868, 41482, 46254, 51164, 56198, 61346, 66598, 71946, 77384, 82908, 88510, 94188, 99938, 105756, 111638, 117582, 123586, 129648, 135766, 141938, 148160, 154432, 160754, 167124, 173540, 180000];
+const getMaxEnergyByLevel = (level: number) => 300 + Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(level || 1))) * 5;
+const ENERGY_MAX = getMaxEnergyByLevel(1);
 const ENERGY_RECOVER_MS = 5 * 60 * 1000;
 const levels = [
   { id: 1, code: "1-1", reward: 260 },
@@ -17,16 +21,24 @@ const upgrades: Record<string, { max: number; baseCost: number }> = {
   engine: { max: 6, baseCost: 110 },
   bounty: { max: 8, baseCost: 100 }
 };
+const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "gold" | "stamina" | "item"; amount: number; itemId?: string }> }> = {
+  RXZJ666: { minLevel: 1, rewards: [{ type: "gold", amount: 30000 }, { type: "stamina", amount: 50 }] },
+  SKY2026: { minLevel: 1, rewards: [{ type: "gold", amount: 50000 }] },
+  FIGHTER888: { minLevel: 5, rewards: [{ type: "gold", amount: 80000 }, { type: "item", itemId: "fighter_upgrade_ticket", amount: 1 }] },
+  PILOT888: { minLevel: 3, rewards: [{ type: "gold", amount: 60000 }, { type: "item", itemId: "pilot_training_chip", amount: 3 }] },
+  ACE2026: { minLevel: 10, rewards: [{ type: "gold", amount: 100000 }, { type: "stamina", amount: 100 }] }
+};
 
 function baseProfile() {
   const now = Date.now();
   return {
-    saveVersion: 4,
+    saveVersion: 5,
     coins: 0,
     unlockedLevel: 1,
     completed: [] as number[],
     upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
-    player: { name: "王牌飞行员", avatar: "", level: 1, exp: 0, expMax: 100, badge: "I" },
+    fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1 },
+    player: { name: "王牌飞行员", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
     resources: { energy: ENERGY_MAX, maxEnergy: ENERGY_MAX, gold: 0, diamonds: 0, lastEnergyAt: now },
     scene: { pilotId: "pilot-s-lingyan", shipId: "ship-a-06", backgroundId: "bg-hangar-01" },
     owned: { pilots: ["pilot-s-lingyan"], ships: ["ship-a-06"], backgrounds: ["bg-hangar-01"] },
@@ -45,33 +57,39 @@ function normalizeProfile(input: any = {}) {
     scene: { ...base.scene, ...(input.scene || {}) },
     owned: { ...base.owned, ...(input.owned || {}) },
     upgrades: { ...base.upgrades, ...(input.upgrades || {}) },
+    fighterUpgrades: { ...base.fighterUpgrades, ...(input.fighterUpgrades || {}) },
     ratings: input.ratings || {}
   };
-  profile.saveVersion = 4;
+  profile.saveVersion = 5;
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
   profile.completed = Array.from(new Set((Array.isArray(input.completed) ? input.completed : []).map(Number).filter((id) => levels.some((level) => level.id === id))));
-  profile.player.level = Math.max(1, Math.floor(Number(profile.player.level) || 1));
-  profile.player.expMax = Math.max(1, Math.floor(Number(profile.player.expMax) || 100));
-  profile.player.exp = Math.max(0, Math.min(profile.player.expMax, Math.floor(Number(profile.player.exp) || 0)));
-  profile.resources.maxEnergy = Math.max(ENERGY_COST, Math.floor(Number(profile.resources.maxEnergy) || ENERGY_MAX));
+  profile.player.level = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(profile.player.level) || 1)));
+  const legacyExp = Math.max(0, Math.floor(Number(profile.player.exp) || 0));
+  const suppliedTotalExp = Number(profile.player.totalExp);
+  profile.player.totalExp = Math.max(0, Math.floor(Number.isFinite(suppliedTotalExp) ? suppliedTotalExp : COMMANDER_TOTAL_EXP_BY_LEVEL[profile.player.level] + legacyExp));
+  while (profile.player.level < COMMANDER_MAX_LEVEL && profile.player.totalExp >= COMMANDER_TOTAL_EXP_BY_LEVEL[profile.player.level + 1]) profile.player.level += 1;
+  profile.player.expMax = COMMANDER_EXP_TO_NEXT_LEVEL[profile.player.level];
+  profile.player.exp = profile.player.level >= COMMANDER_MAX_LEVEL ? 0 : profile.player.totalExp - COMMANDER_TOTAL_EXP_BY_LEVEL[profile.player.level];
+  profile.resources.maxEnergy = getMaxEnergyByLevel(profile.player.level);
   profile.resources.energy = Math.max(0, Math.min(profile.resources.maxEnergy, Math.floor(Number(profile.resources.energy) || 0)));
   profile.resources.gold = Math.max(0, Math.floor(Number(profile.resources.gold ?? profile.coins) || 0));
   profile.resources.diamonds = Math.max(0, Math.floor(Number(profile.resources.diamonds) || 0));
   profile.resources.lastEnergyAt = Math.floor(Number(profile.resources.lastEnergyAt) || Date.now());
   profile.coins = profile.resources.gold;
   for (const [key, definition] of Object.entries(upgrades)) profile.upgrades[key] = Math.max(0, Math.min(definition.max, Math.floor(Number(profile.upgrades[key]) || 0)));
+  for (const key of ["attack", "armorPenetration", "hp"]) profile.fighterUpgrades[key] = Math.max(1, Math.min(profile.player.level, Math.floor(Number(profile.fighterUpgrades[key]) || 1)));
   return profile;
 }
 
 function applyExperience(player: any, amount: number) {
   const gained = Math.max(0, Math.floor(amount || 0));
-  player.exp += gained;
-  while (player.exp >= player.expMax) {
-    player.exp -= player.expMax;
-    player.level += 1;
-    player.expMax = Math.floor(player.expMax * 1.22 + 40);
-    player.badge = player.level >= 30 ? "V" : player.level >= 20 ? "IV" : player.level >= 12 ? "III" : player.level >= 6 ? "II" : "I";
-  }
+  const oldLevel = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(player.level) || 1)));
+  player.totalExp = Math.max(0, Math.floor(Number(player.totalExp) || COMMANDER_TOTAL_EXP_BY_LEVEL[oldLevel] + Number(player.exp || 0))) + gained;
+  player.level = oldLevel;
+  while (player.level < COMMANDER_MAX_LEVEL && player.totalExp >= COMMANDER_TOTAL_EXP_BY_LEVEL[player.level + 1]) player.level += 1;
+  player.expMax = COMMANDER_EXP_TO_NEXT_LEVEL[player.level];
+  player.exp = player.level >= COMMANDER_MAX_LEVEL ? 0 : player.totalExp - COMMANDER_TOTAL_EXP_BY_LEVEL[player.level];
+  player.badge = player.level >= 30 ? "V" : player.level >= 20 ? "IV" : player.level >= 12 ? "III" : player.level >= 6 ? "II" : "I";
 }
 
 const game = {
@@ -302,6 +320,27 @@ async function saveCosmetics(ctx: Context, body: Json) {
   return reply({ profile: publicProfile(saved) });
 }
 
+async function redeem(ctx: Context, body: Json) {
+  const code = String(body.code || "").replace(/\s+/g, "").toUpperCase().slice(0, 24);
+  if (!code) return error("请输入兑换码。", 400);
+  const definition = redeemCodes[code];
+  if (!definition) return error("兑换码不存在。", 404);
+  const { profile, revision } = await loadProfile(ctx);
+  profile.usedRedeemCodes = Array.from(new Set(Array.isArray(profile.usedRedeemCodes) ? profile.usedRedeemCodes.map(String) : []));
+  if (profile.usedRedeemCodes.includes(code)) return error("该兑换码已使用。", 409);
+  if (Number(profile.player?.level || 1) < definition.minLevel) return error(`指挥官等级达到 ${definition.minLevel} 级后可兑换。`, 403);
+  profile.resources.inventory = profile.resources.inventory || {};
+  for (const reward of definition.rewards) {
+    if (reward.type === "gold") game.profile.setGold(profile, game.profile.getGold(profile) + reward.amount);
+    if (reward.type === "stamina") profile.resources.energy = Math.min(profile.resources.maxEnergy, profile.resources.energy + reward.amount);
+    if (reward.type === "item" && reward.itemId) profile.resources.inventory[reward.itemId] = Math.max(0, Number(profile.resources.inventory[reward.itemId]) || 0) + reward.amount;
+  }
+  profile.usedRedeemCodes.push(code);
+  const saved = await saveProfile(ctx, profile, revision);
+  await ledger(ctx, "redeem", definition.rewards.filter((reward) => reward.type === "gold").reduce((sum, reward) => sum + reward.amount, 0), 0, { code, rewards: definition.rewards });
+  return reply({ profile: publicProfile(saved), code, rewards: definition.rewards });
+}
+
 async function migrateAnonymous(ctx: Context, request: Request) {
   const sourceToken = request.headers.get("x-rexuezhanji-source-token") || "";
   if (!sourceToken) return error("缺少游客账号凭据。", 401);
@@ -333,6 +372,7 @@ Deno.serve(async (request) => {
     if (action === "sweep") return await sweep(ctx, body);
     if (action === "upgrade") return await upgrade(ctx, body);
     if (action === "save-cosmetics") return await saveCosmetics(ctx, body);
+    if (action === "redeem") return await redeem(ctx, body);
     if (action === "migrate-anonymous") return await migrateAnonymous(ctx, request);
     return error("未知操作。", 404);
   } catch (caught) {
