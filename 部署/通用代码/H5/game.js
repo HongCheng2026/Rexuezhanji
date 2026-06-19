@@ -51,6 +51,7 @@ const keys = new Set();
 const pointer = { active: false, x: 90, y: HEIGHT / 2 };
 
 const shared = window.RXGame;
+const cloud = window.RXCloud;
 const {
   LEVEL_DURATION,
   BOSS_SPAWN_TIME,
@@ -196,6 +197,7 @@ let selectedLevel = clamp(profile.unlockedLevel, 1, levels.length);
 let state = createMenuState();
 let lastTime = 0;
 let animationId = 0;
+let activeBattleTicket = null;
 
 saveProfile();
 renderChapterSelect();
@@ -203,6 +205,7 @@ renderShop();
 renderLobby();
 updateHud();
 drawScene();
+initializeCloudProfile();
 
 function loadAssets(paths) {
   const loadImage = (src) => {
@@ -236,6 +239,38 @@ function saveProfile() {
   profile = normalizeProfile(profile);
   localStorage.setItem("sideShooterProfile", JSON.stringify(profile));
   saveCloudState();
+}
+
+async function initializeCloudProfile() {
+  if (!cloud?.configured?.()) return;
+  try {
+    const result = await cloud.bootstrap();
+    if (!result?.profile) return;
+    profile = normalizeProfile(result.profile);
+    localStorage.setItem("sideShooterProfile", JSON.stringify(profile));
+    selectedLevel = clamp(profile.unlockedLevel, 1, levels.length);
+    state = createMenuState();
+    renderChapterSelect();
+    renderLobby();
+    updateHud();
+    drawScene();
+  } catch (error) {
+    console.warn("云端存档暂不可用，继续使用本地缓存。", error);
+  }
+}
+
+async function syncCosmetics() {
+  if (!cloud?.configured?.()) return;
+  try {
+    const result = await cloud.saveCosmetics(profile);
+    if (result?.profile) {
+      profile = normalizeProfile(result.profile);
+      saveProfile();
+      renderLobby();
+    }
+  } catch (error) {
+    console.warn("外观存档同步失败。", error);
+  }
 }
 
 function saveCloudState() {
@@ -348,11 +383,17 @@ function createStars() {
   }));
 }
 
-function startLevel(levelId = selectedLevel) {
+async function startLevel(levelId = selectedLevel) {
   selectedLevel = clamp(levelId, 1, levels.length);
-  if (!spendEnergy(ENERGY_COST)) {
+  const selected = levels[selectedLevel - 1];
+  try {
+    const result = await cloud.startBattle(selected.id);
+    profile = normalizeProfile(result.profile);
+    activeBattleTicket = result.ticket;
+    saveProfile();
+  } catch (error) {
     showBattleScreen();
-    showOverlay("体力不足", `当前体力 ${profile.resources.energy}/${profile.resources.maxEnergy}，每次战斗需要 ${ENERGY_COST} 点体力。`, "返回关卡");
+    showOverlay("无法开始战斗", error.message || "云端战斗服务暂不可用，请稍后再试。", "返回关卡");
     updateHud();
     return;
   }
@@ -854,40 +895,45 @@ function dropCoins(x, y, value) {
 }
 
 function gainCoins(amount) {
-  profile.localEarned.gold = Math.max(0, Math.floor(Number(profile.localEarned.gold) || 0) + amount);
-  setGold(getGold() + amount);
   state.levelCoins += amount;
-  saveProfile();
-  renderLobby();
 }
 
-function completeLevel() {
+async function completeLevel() {
   if (state.mode !== "fight") return;
-  const reward = state.level.reward;
   const bossClearTime = state.boss ? Math.max(0, state.elapsed - state.boss.spawnedAt) : 999;
-  gainCoins(reward);
-  const expResult = gainExperience(battleExperience(reward));
   const rating = calculateRating(bossClearTime);
-  shared.battleRules.completeLevel(profile, state.level, rating);
-  saveProfile();
-  state.mode = "settlement";
+  state.mode = "settling";
   cancelAnimationFrame(animationId);
+  let settlement;
+  try {
+    const result = await cloud.finishBattle(activeBattleTicket, state.level.id, rating);
+    profile = normalizeProfile(result.profile);
+    settlement = result.settlement;
+    activeBattleTicket = null;
+    saveProfile();
+  } catch (error) {
+    state.mode = "gameover";
+    showOverlay("结算未完成", error.message || "云端结算失败，请稍后重试。", "返回关卡");
+    renderLobby();
+    return;
+  }
+  state.mode = "settlement";
   burst(state.boss.x, state.boss.y, "#ffcf5a", 90);
   shockwave(state.boss.x, state.boss.y, "#ffcf5a", 0.9, 250);
   state.boss = null;
   renderChapterSelect();
-  renderShop(`过关奖励 +${reward} 金币，经验 +${expResult.gained}${expResult.leveled ? `，等级提升 ${expResult.leveled} 级` : ""}。第一章 ${state.level.code} 已完成。`);
+  renderShop(`过关奖励 +${settlement.gold} 金币，经验 +${settlement.experience}。第一章 ${state.level.code} 已完成。`);
   renderLobby();
-  showOverlay("关卡结算", `${rating.label} ${rating.icons}｜金币 +${reward}｜经验 +${expResult.gained}｜点击“再次挑战”重打一局，或点下方“大厅”返回。`, "再次挑战");
+  showOverlay("关卡结算", `${settlement.rating.label} ${settlement.rating.icons}｜金币 +${settlement.gold}｜经验 +${settlement.experience}｜点击“再次挑战”重打一局，或点下方“大厅”返回。`, "再次挑战");
 }
 
-function failLevel() {
+async function failLevel() {
   if (state.mode !== "fight") return;
   state.mode = "gameover";
-  const expResult = gainExperience(battleExperience(0));
-  saveProfile();
   cancelAnimationFrame(animationId);
-  showOverlay("任务失败", `本关获得 ${state.levelCoins} 金币，经验 +${expResult.gained}。已自动保存。`, "再次挑战");
+  if (activeBattleTicket) cloud.abandonBattle(activeBattleTicket).catch(() => {});
+  activeBattleTicket = null;
+  showOverlay("任务失败", "本次战斗未完成，未发放奖励。", "再次挑战");
 }
 
 function calculateRating(bossClearTime) {
@@ -1242,20 +1288,19 @@ function renderChapterSelect() {
   startButton.textContent = `开始 ${levels[selectedLevel - 1].code}`;
 }
 
-function sweepSelectedLevel() {
+async function sweepSelectedLevel() {
   const level = levels[selectedLevel - 1];
   if (!profile.completed.includes(level.id)) return;
-  if (!spendEnergy(ENERGY_COST)) {
-    showOverlay("体力不足", `当前体力 ${profile.resources.energy}/${profile.resources.maxEnergy}，扫荡需要 ${ENERGY_COST} 点体力。`, "返回关卡");
-    return;
+  try {
+    const result = await cloud.sweep(level.id);
+    profile = normalizeProfile(result.profile);
+    saveProfile();
+    renderChapterSelect();
+    renderLobby();
+    showOverlay("扫荡完成", `${level.code} 获得金币 +${result.settlement.gold}，经验 +${result.settlement.experience}。`, "再次扫荡");
+  } catch (error) {
+    showOverlay("无法扫荡", error.message || "云端扫荡服务暂不可用。", "返回关卡");
   }
-  const reward = shared.battleRules.getSweepReward(level);
-  gainCoins(reward);
-  const expResult = gainExperience(shared.battleRules.getSweepExperience(reward, level.id));
-  saveProfile();
-  renderChapterSelect();
-  renderLobby();
-  showOverlay("扫荡完成", `${level.code} 获得金币 +${reward}，经验 +${expResult.gained}。`, "再次扫荡");
 }
 
 function renderLobby() {
@@ -1326,15 +1371,17 @@ function renderShop(message = "欢迎回来，飞行员。把战斗金币换成�
   nextLevelButton.textContent = selectedLevel >= levels.length ? "第一章已完成" : `进入 ${levels[Math.min(selectedLevel, levels.length - 1)].code}`;
 }
 
-function buyUpgrade(key) {
-  const cost = upgradeCost(key);
-  if (profile.upgrades[key] >= upgrades[key].max || getGold() < cost) return;
-  setGold(getGold() - cost);
-  profile.upgrades[key] += 1;
-  saveProfile();
-  renderShop(`${upgrades[key].name} 已升级。`);
-  renderLobby();
-  updateHud();
+async function buyUpgrade(key) {
+  try {
+    const result = await cloud.upgrade(key);
+    profile = normalizeProfile(result.profile);
+    saveProfile();
+    renderShop(`${upgrades[key].name} 已升级，消耗 ${result.cost} 金币。`);
+    renderLobby();
+    updateHud();
+  } catch (error) {
+    renderShop(error.message || "云端升级服务暂不可用。");
+  }
 }
 
 function upgradeCost(key) {
@@ -1494,6 +1541,22 @@ function renderProfileActions() {
       onClick: () => renderAssetSelector("background")
     },
     {
+      title: "账号",
+      note: `当前身份：${cloud?.accountLabel?.() || "本地游客"}。绑定邮箱后可跨设备恢复存档。`,
+      label: "绑定 / 登录邮箱",
+      onClick: renderEmailAuth
+    },
+    {
+      title: "云端存档",
+      note: "云端是金币、体力、关卡和升级的唯一权威来源。",
+      label: "立即同步",
+      onClick: async () => {
+        await initializeCloudProfile();
+        openFeaturePanel("profile");
+        featurePanelBody.textContent = "已请求同步云端存档。";
+      }
+    },
+    {
       title: "保存存档",
       note: "保存等级、经验、头像、体力、金币和钻石。",
       label: "立即保存",
@@ -1530,6 +1593,56 @@ function renderProfileActions() {
   }
 }
 
+function renderEmailAuth() {
+  featurePanelKicker.textContent = "ACCOUNT";
+  featurePanelTitle.textContent = "绑定 / 登录邮箱";
+  featurePanelBody.textContent = "输入邮箱获取六码验证码。验证成功后，游客存档会迁移到新账号；已有账号则以云端存档为准。";
+  featurePanelSlots.classList.remove("profile-slots");
+  featurePanelSlots.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "feature-slot action";
+  const email = document.createElement("input");
+  email.type = "email";
+  email.placeholder = "name@example.com";
+  email.autocomplete = "email";
+  const code = document.createElement("input");
+  code.type = "text";
+  code.inputMode = "numeric";
+  code.maxLength = 6;
+  code.placeholder = "六码验证码";
+  const send = document.createElement("button");
+  send.className = "feature-button";
+  send.type = "button";
+  send.textContent = "发送验证码";
+  const verify = document.createElement("button");
+  verify.className = "feature-button";
+  verify.type = "button";
+  verify.textContent = "验证并同步";
+  send.addEventListener("click", async () => {
+    try {
+      await cloud.sendEmailCode(email.value);
+      featurePanelBody.textContent = "验证码已发送，请在 10 分钟内填写。";
+    } catch (error) {
+      featurePanelBody.textContent = error.message || "验证码发送失败。";
+    }
+  });
+  verify.addEventListener("click", async () => {
+    try {
+      const result = await cloud.verifyEmailCode(email.value, code.value);
+      profile = normalizeProfile(result.profile);
+      saveProfile();
+      renderLobby();
+      openFeaturePanel("profile");
+      featurePanelBody.textContent = "邮箱账号已登录，云端存档已同步。";
+    } catch (error) {
+      featurePanelBody.textContent = error.message || "验证码验证失败。";
+    }
+  });
+  card.innerHTML = "<strong>邮箱验证码</strong><small>首次验证会把当前游客存档迁移到邮箱账号。</small>";
+  card.append(email, code, send, verify);
+  featurePanelSlots.appendChild(card);
+}
+
 function renderAssetSelector(kind) {
   const configs = {
     pilot: { title: "选择飞行员", list: PILOT_ASSETS, owned: profile.owned.pilots, selected: profile.scene.pilotId, field: "pilotId", label: "攻击" },
@@ -1554,6 +1667,7 @@ function renderAssetSelector(kind) {
     card.addEventListener("click", () => {
       profile.scene[config.field] = asset.id;
       saveProfile();
+      syncCosmetics();
       renderLobby();
       renderAssetSelector(kind);
     });
@@ -1579,6 +1693,7 @@ function handleAvatarUpload(event) {
   resizeImageFile(file, { maxWidth: 256, maxHeight: 256, mimeType: "image/png" }).then((dataUrl) => {
     profile.player.avatar = dataUrl || DEFAULT_AVATAR;
     saveProfile();
+    syncCosmetics();
     renderLobby();
     openFeaturePanel("profile");
     featurePanelBody.textContent = "头像已更新并保存。";

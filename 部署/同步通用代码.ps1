@@ -39,6 +39,8 @@ Copy-Item -LiteralPath (Join-Path $Common "H5\index.html") -Destination $Netlify
 Copy-Item -LiteralPath (Join-Path $Common "H5\style.css") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\game.js") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\shared-loader.js") -Destination $Netlify -Force
+Copy-Item -LiteralPath (Join-Path $Common "H5\supabase-config.js") -Destination $Netlify -Force
+Copy-Item -LiteralPath (Join-Path $Common "H5\cloud-save.js") -Destination $Netlify -Force
 Copy-Item -Path (Join-Path $Shared "*") -Destination (Join-Path $Netlify "shared") -Force
 Copy-Item -Path (Join-Path $Common "H5\*.png") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\guide.png") -Destination $Netlify -Force
@@ -56,6 +58,8 @@ Copy-Item -LiteralPath (Join-Path $Common "H5\index.html") -Destination $Project
 Copy-Item -LiteralPath (Join-Path $Common "H5\style.css") -Destination $ProjectRoot -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\game.js") -Destination $ProjectRoot -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\shared-loader.js") -Destination $ProjectRoot -Force
+Copy-Item -LiteralPath (Join-Path $Common "H5\supabase-config.js") -Destination $ProjectRoot -Force
+Copy-Item -LiteralPath (Join-Path $Common "H5\cloud-save.js") -Destination $ProjectRoot -Force
 Get-ChildItem -Path (Join-Path $Common "H5") -Filter "*.png" -File | ForEach-Object {
   Copy-IfChanged $_.FullName (Join-Path $ProjectRoot $_.Name)
 }
