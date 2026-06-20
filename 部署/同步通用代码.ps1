@@ -42,6 +42,8 @@ Copy-Item -LiteralPath (Join-Path $Common "H5\shared-loader.js") -Destination $N
 Copy-Item -LiteralPath (Join-Path $Common "H5\supabase-config.js") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\cloud-save.js") -Destination $Netlify -Force
 Copy-Item -Path (Join-Path $Shared "*") -Destination (Join-Path $Netlify "shared") -Force
+# Keep root mirrors for Netlify's drag-and-drop ZIP deployment path.
+Copy-Item -Path (Join-Path $Shared "*") -Destination $Netlify -Force
 Copy-Item -Path (Join-Path $Common "H5\*.png") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\guide.png") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\ui-overview.png") -Destination $Netlify -Force
