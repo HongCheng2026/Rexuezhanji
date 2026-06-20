@@ -1564,7 +1564,37 @@ function openFeaturePanel(key) {
   }
   if (key === "profile") renderProfileActions();
   if (key === "setting") renderSettingActions();
+  if (key === "shop") renderResourceShop();
   featurePanel.classList.remove("hidden");
+}
+
+function renderResourceShop() {
+  featurePanelSlots.innerHTML = "";
+  featurePanelSlots.classList.add("profile-slots");
+  for (const itemConfig of shared.shopConfig.SHOP_ITEMS) {
+    const item = document.createElement("div");
+    item.className = "feature-slot action";
+    item.innerHTML = `<strong>${itemConfig.name}</strong><small>售价 ${itemConfig.priceDiamond} 钻石</small>`;
+    const button = document.createElement("button");
+    button.className = "feature-button";
+    button.type = "button";
+    button.textContent = "购买";
+    button.disabled = profile.resources.diamonds < itemConfig.priceDiamond;
+    button.addEventListener("click", async () => {
+      try {
+        const result = await cloud.buyShopItem(itemConfig.id);
+        profile = normalizeProfile(result.profile);
+        saveProfile();
+        renderLobby();
+        renderResourceShop();
+        featurePanelBody.textContent = `购买成功：获得 ${result.gold} 金币。`;
+      } catch (error) {
+        featurePanelBody.textContent = error.message || "购买失败，请稍后再试。";
+      }
+    });
+    item.appendChild(button);
+    featurePanelSlots.appendChild(item);
+  }
 }
 
 function renderSettingActions() {

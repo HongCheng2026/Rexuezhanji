@@ -48,7 +48,7 @@
     return costs && safeLevel >= 1 && safeLevel <= FIGHTER_MAX_UPGRADE_LEVEL ? costs[safeLevel] : null;
   }
 
-  const levels = [
+  const legacyLevels = [
     {
       id: 1,
       chapterIndex: 1,
@@ -83,6 +83,21 @@
       reward: 560
     }
   ];
+
+  function createLevels() {
+    const result = [];
+    for (let stage = 1; stage <= 3; stage += 1) {
+      result.push({ id: result.length + 1, chapterIndex: 0, stageInChapter: stage, code: `序章-${stage}`, name: `序章 ${stage}`, desc: "基础战斗训练。每关均有 BOSS。", spawn: 1.06 - stage * 0.06, eliteRate: 0.04 * stage, reward: 180 + stage * 60, hasBoss: true, isDifficultyStage: false });
+    }
+    for (let chapter = 1; chapter <= 9; chapter += 1) {
+      for (let stage = 1; stage <= 10; stage += 1) {
+        const isDifficultyStage = stage === 10;
+        result.push({ id: result.length + 1, chapterIndex: chapter, stageInChapter: stage, code: `${chapter}-${stage}`, name: `第 ${chapter} 章 ${stage} 关`, desc: isDifficultyStage ? "章节难度关卡：每关 BOSS 中最强的一战。" : "常规作战关卡：每关均有 BOSS。", spawn: Math.max(.34, 1.08 - chapter * .06 - stage * .02), eliteRate: Math.min(.72, .08 + chapter * .045 + stage * .018), reward: Math.round(280 + chapter * 210 + stage * 55 + (isDifficultyStage ? 320 : 0)), hasBoss: true, isDifficultyStage });
+      }
+    }
+    return result;
+  }
+  const levels = createLevels();
 
   const upgrades = {
     fire: {
@@ -137,6 +152,7 @@
     FIGHTER_UPGRADE_COST_BY_TARGET_LEVEL,
     getFighterUpgradeCost,
     levels,
+    createLevels,
     upgrades,
     POWERUPS
   };

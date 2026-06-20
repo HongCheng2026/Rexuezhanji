@@ -108,6 +108,7 @@
     sweep: (levelId) => api("sweep", { levelId }),
     upgrade: (key) => api("upgrade", { key }),
     redeem: (code) => api("redeem", { code }),
+    buyShopItem: (itemId) => api("shop-buy", { itemId }),
     saveCosmetics: (profile) => api("save-cosmetics", { profile }),
     sendEmailCode,
     verifyEmailCode,

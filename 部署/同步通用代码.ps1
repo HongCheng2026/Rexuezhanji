@@ -52,6 +52,9 @@ Copy-Item -LiteralPath (Join-Path $Common "H5\enemy-small-02.png") -Destination 
 Copy-Item -LiteralPath (Join-Path $Common "H5\enemy-small-03.png") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\enemy-elite-01.png") -Destination $Netlify -Force
 Copy-Item -LiteralPath (Join-Path $Common "H5\enemy-elite-02.png") -Destination $Netlify -Force
+if (Test-Path (Join-Path $Common "H5\assets")) {
+  Copy-Item -Path (Join-Path $Common "H5\assets") -Destination $Netlify -Recurse -Force
+}
 
 New-Item -ItemType Directory -Path (Join-Path $ProjectRoot "shared") -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $Common "H5\index.html") -Destination $ProjectRoot -Force
@@ -64,6 +67,9 @@ Get-ChildItem -Path (Join-Path $Common "H5") -Filter "*.png" -File | ForEach-Obj
   Copy-IfChanged $_.FullName (Join-Path $ProjectRoot $_.Name)
 }
 Copy-Item -Path (Join-Path $Shared "*") -Destination (Join-Path $ProjectRoot "shared") -Force
+if (Test-Path (Join-Path $Common "H5\assets")) {
+  Copy-Item -Path (Join-Path $Common "H5\assets") -Destination $ProjectRoot -Recurse -Force
+}
 
 if (Test-Path $RootWechat) {
   New-Item -ItemType Directory -Path (Join-Path $RootWechat "shared") -Force | Out-Null

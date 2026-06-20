@@ -10,11 +10,17 @@ const COMMANDER_TOTAL_EXP_BY_LEVEL = [0, 0, 130, 320, 544, 790, 1056, 1338, 1636
 const getMaxEnergyByLevel = (level: number) => 300 + Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(level || 1))) * 5;
 const ENERGY_MAX = getMaxEnergyByLevel(1);
 const ENERGY_RECOVER_MS = 5 * 60 * 1000;
-const levels = [
+const legacyLevels = [
   { id: 1, code: "1-1", reward: 260 },
   { id: 2, code: "1-2", reward: 390 },
   { id: 3, code: "1-3", reward: 560 }
 ];
+const levels = (() => {
+  const result: Array<{ id: number; code: string; reward: number }> = [];
+  for (let stage = 1; stage <= 3; stage += 1) result.push({ id: result.length + 1, code: `序章-${stage}`, reward: 180 + stage * 60 });
+  for (let chapter = 1; chapter <= 9; chapter += 1) for (let stage = 1; stage <= 10; stage += 1) result.push({ id: result.length + 1, code: `${chapter}-${stage}`, reward: Math.round(280 + chapter * 210 + stage * 55 + (stage === 10 ? 320 : 0)) });
+  return result;
+})();
 const upgrades: Record<string, { max: number; baseCost: number }> = {
   fire: { max: 10, baseCost: 90 },
   armor: { max: 6, baseCost: 130 },
@@ -28,6 +34,7 @@ const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "go
   PILOT888: { minLevel: 3, rewards: [{ type: "gold", amount: 60000 }, { type: "item", itemId: "pilot_training_chip", amount: 3 }] },
   ACE2026: { minLevel: 10, rewards: [{ type: "gold", amount: 100000 }, { type: "stamina", amount: 100 }] }
 };
+const shopItems: Record<string, { priceDiamond: number; gold: number }> = { gold_200: { priceDiamond: 1, gold: 200 } };
 
 function baseProfile() {
   const now = Date.now();
@@ -43,6 +50,7 @@ function baseProfile() {
     scene: { pilotId: "pilot-s-lingyan", shipId: "ship-a-06", backgroundId: "bg-hangar-01" },
     owned: { pilots: ["pilot-s-lingyan"], ships: ["ship-a-06"], backgrounds: ["bg-hangar-01"] },
     ratings: {},
+    progress: { clearedStageIds: [] as string[], clearedChapterIds: [] as number[], stageStars: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 },
     localEarned: { gold: 0, diamonds: 0 }
   };
 }
@@ -59,6 +67,7 @@ function normalizeProfile(input: any = {}) {
     upgrades: { ...base.upgrades, ...(input.upgrades || {}) },
     fighterUpgrades: { ...base.fighterUpgrades, ...(input.fighterUpgrades || {}) },
     ratings: input.ratings || {}
+    ,progress: { ...base.progress, ...(input.progress || {}) }
   };
   profile.saveVersion = 5;
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
@@ -76,6 +85,9 @@ function normalizeProfile(input: any = {}) {
   profile.resources.diamonds = Math.max(0, Math.floor(Number(profile.resources.diamonds) || 0));
   profile.resources.lastEnergyAt = Math.floor(Number(profile.resources.lastEnergyAt) || Date.now());
   profile.coins = profile.resources.gold;
+  profile.progress.clearedStageIds = Array.from(new Set(Array.isArray(profile.progress.clearedStageIds) ? profile.progress.clearedStageIds.map(String) : []));
+  profile.progress.clearedChapterIds = Array.from(new Set(Array.isArray(profile.progress.clearedChapterIds) ? profile.progress.clearedChapterIds.map(Number).filter(Number.isFinite) : []));
+  profile.progress.stageStars = profile.progress.stageStars || {};
   for (const [key, definition] of Object.entries(upgrades)) profile.upgrades[key] = Math.max(0, Math.min(definition.max, Math.floor(Number(profile.upgrades[key]) || 0)));
   for (const key of ["attack", "armorPenetration", "hp"]) profile.fighterUpgrades[key] = Math.max(1, Math.min(profile.player.level, Math.floor(Number(profile.fighterUpgrades[key]) || 1)));
   return profile;
@@ -110,6 +122,15 @@ const game = {
       profile.unlockedLevel = Math.max(profile.unlockedLevel || 1, Math.min(levels.length, level.id + 1));
       profile.ratings = profile.ratings || {};
       profile.ratings[level.id] = Math.max(Number(profile.ratings[level.id]) || 0, rating.stars);
+      profile.progress = profile.progress || { clearedStageIds: [], clearedChapterIds: [], stageStars: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 };
+      const chapterIndex = level.id <= 3 ? 0 : Math.floor((level.id - 4) / 10) + 1;
+      const stageInChapter = level.id <= 3 ? level.id : ((level.id - 4) % 10) + 1;
+      const stageId = chapterIndex === 0 ? `prologue_${stageInChapter}` : `${chapterIndex}_${stageInChapter}`;
+      if (!profile.progress.clearedStageIds.includes(stageId)) profile.progress.clearCount += 1;
+      profile.progress.clearedStageIds = Array.from(new Set([...profile.progress.clearedStageIds, stageId]));
+      profile.progress.stageStars[level.id] = Math.max(Number(profile.progress.stageStars[level.id]) || 0, rating.stars);
+      if (rating.stars >= 3) profile.progress.perfectClearCount += 1;
+      if (stageInChapter === 10 && profile.progress.clearedStageIds.filter((id: string) => id.startsWith(`${chapterIndex}_`)).length >= 10 && !profile.progress.clearedChapterIds.includes(chapterIndex)) profile.progress.clearedChapterIds.push(chapterIndex);
     }
   }
 };
@@ -341,6 +362,18 @@ async function redeem(ctx: Context, body: Json) {
   return reply({ profile: publicProfile(saved), code, rewards: definition.rewards });
 }
 
+async function buyShopItem(ctx: Context, body: Json) {
+  const item = shopItems[String(body.itemId || "")];
+  if (!item) return error("商品不存在。", 404);
+  const { profile, revision } = await loadProfile(ctx);
+  if (profile.resources.diamonds < item.priceDiamond) return error("钻石不足。", 409);
+  profile.resources.diamonds -= item.priceDiamond;
+  game.profile.setGold(profile, game.profile.getGold(profile) + item.gold);
+  const saved = await saveProfile(ctx, profile, revision);
+  await ledger(ctx, "shop", item.gold, 0, { itemId: body.itemId, diamonds: -item.priceDiamond });
+  return reply({ profile: publicProfile(saved), itemId: body.itemId, gold: item.gold, priceDiamond: item.priceDiamond });
+}
+
 async function migrateAnonymous(ctx: Context, request: Request) {
   const sourceToken = request.headers.get("x-rexuezhanji-source-token") || "";
   if (!sourceToken) return error("缺少游客账号凭据。", 401);
@@ -373,6 +406,7 @@ Deno.serve(async (request) => {
     if (action === "upgrade") return await upgrade(ctx, body);
     if (action === "save-cosmetics") return await saveCosmetics(ctx, body);
     if (action === "redeem") return await redeem(ctx, body);
+    if (action === "shop-buy") return await buyShopItem(ctx, body);
     if (action === "migrate-anonymous") return await migrateAnonymous(ctx, request);
     return error("未知操作。", 404);
   } catch (caught) {

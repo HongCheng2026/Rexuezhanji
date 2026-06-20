@@ -98,6 +98,7 @@
       ratings: nextProfile.ratings || {},
       localEarned: nextProfile.localEarned || { gold: 0, diamonds: 0 }
       ,usedRedeemCodes: uniqueList(nextProfile.usedRedeemCodes)
+      ,progress: { clearedStageIds: uniqueList(nextProfile.progress?.clearedStageIds), clearedChapterIds: uniqueList(nextProfile.progress?.clearedChapterIds).map(Number).filter(Number.isFinite), stageStars: nextProfile.progress?.stageStars || {}, perfectClearCount: Math.max(0, Number(nextProfile.progress?.perfectClearCount) || 0), noDamageBossClearCount: Math.max(0, Number(nextProfile.progress?.noDamageBossClearCount) || 0), clearCount: Math.max(0, Number(nextProfile.progress?.clearCount) || 0) }
     };
 
     recoverEnergy(normalized);
