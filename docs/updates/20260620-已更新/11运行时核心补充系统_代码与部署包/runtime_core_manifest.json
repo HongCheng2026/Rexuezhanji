@@ -1,0 +1,47 @@
+{
+  "project": "热血战姬",
+  "package": "runtime-core-systems",
+  "noNewbieGuide": true,
+  "modules": [
+    {
+      "name": "资源加载与资源管理",
+      "sourceMd": "01_资源加载与资源管理系统_Codex可直接粘贴版.md",
+      "target": "src/systems/resourceManager.js"
+    },
+    {
+      "name": "暂停与复活",
+      "sourceMd": "02_暂停与复活系统_Codex可直接粘贴版.md",
+      "target": "src/systems/pauseReviveSystem.js"
+    },
+    {
+      "name": "奖励弹窗与道具背包",
+      "sourceMd": "03_奖励弹窗与道具背包系统_Codex可直接粘贴版.md",
+      "target": "src/systems/rewardInventorySystem.js"
+    },
+    {
+      "name": "数据埋点",
+      "sourceMd": "04_数据埋点系统_Codex可直接粘贴版.md",
+      "target": "src/systems/analyticsSystem.js"
+    },
+    {
+      "name": "资源命名规范",
+      "sourceMd": "05_资源命名规范与资源路径注册_Codex可直接粘贴版.md",
+      "target": "src/systems/assetNamingSystem.js"
+    },
+    {
+      "name": "错误兜底",
+      "sourceMd": "06_错误兜底系统_Codex可直接粘贴版.md",
+      "target": "src/systems/errorFallbackSystem.js"
+    }
+  ],
+  "deployGuide": "运行时核心补充系统部署说明给Codex.md",
+  "updatePackageGuide": "Codex执行更新包子文件夹说明.md",
+  "recommendedOrder": [
+    "errorFallbackSystem.js",
+    "assetNamingSystem.js",
+    "resourceManager.js",
+    "rewardInventorySystem.js",
+    "pauseReviveSystem.js",
+    "analyticsSystem.js"
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "project": "热血战姬",
+  "patch": "main-ui-structure-adjustment",
+  "no_newbie_guide": true,
+  "files": [
+    {
+      "source_md": "01_主界面左侧三入口按钮修改_Codex可直接粘贴版.md",
+      "target": "src/ui/main/mainLeftEntryConfig.js"
+    },
+    {
+      "source_md": "02_玩家头像名字铭牌荣誉等级模块_Codex可直接粘贴版.md",
+      "target": "src/ui/main/playerProfileHeaderConfig.js"
+    },
+    {
+      "source_md": "03_主界面右侧六宫格按钮修改_Codex可直接粘贴版.md",
+      "target": "src/ui/main/mainRightGridConfig.js"
+    },
+    {
+      "source_md": "04_底部礼包位改赞助我们_Codex可直接粘贴版.md",
+      "target": "src/ui/main/bottomPromoConfig.js"
+    },
+    {
+      "source_md": "05_底部聊天频道模块_Codex可直接粘贴版.md",
+      "target": "src/ui/main/mainChatChannelConfig.js"
+    },
+    {
+      "source_md": "06_主UI布局总配置_Codex可直接粘贴版.md",
+      "target": "src/ui/main/mainUiLayoutPatchConfig.js"
+    }
+  ],
+  "remove": [
+    "left entry: 作战任务",
+    "right grid: 邮件",
+    "right grid: 签到",
+    "right grid: 设置",
+    "bottom promo: 首充礼包"
+  ],
+  "add_or_replace": {
+    "left_entries": [
+      "战姬",
+      "战机",
+      "战机升级"
+    ],
+    "right_grid": [
+      [
+        "任务",
+        "活动",
+        "成就"
+      ],
+      [
+        "商店",
+        "好友",
+        "排行榜"
+      ]
+    ],
+    "profile": [
+      "上传头像",
+      "可改名字",
+      "成就铭牌",
+      "荣誉等级"
+    ],
+    "bottom_promo": [
+      "星穹之翼",
+      "赞助我们"
+    ],
+    "chat_channels": [
+      "系统",
+      "世界",
+      "公会",
+      "好友"
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "project": "热血战姬",
+  "noNewbieGuide": true,
+  "modules": [
+    {
+      "name": "关卡选择地图系统",
+      "sourceMd": "关卡选择地图系统_Codex可直接粘贴版.md",
+      "targetFile": "src/systems/chapterMapSystem.js",
+      "exports": [
+        "createFullChapterMapViewModel",
+        "createChapterMapViewModel",
+        "getCurrentRecommendedStage"
+      ],
+      "dependsOn": [],
+      "integrationPoint": "主UI点击 作战任务 / CHAPTER MAP"
+    },
+    {
+      "name": "战斗结算系统",
+      "sourceMd": "战斗结算系统_Codex可直接粘贴版.md",
+      "targetFile": "src/systems/battleSettlementSystem.js",
+      "exports": [
+        "settleBattle",
+        "calculateBattleStars",
+        "createSettlementViewModel"
+      ],
+      "dependsOn": [
+        "chapterMapSystem.js"
+      ],
+      "integrationPoint": "战斗结束时"
+    },
+    {
+      "name": "失败引导系统",
+      "sourceMd": "失败引导系统_Codex可直接粘贴版.md",
+      "targetFile": "src/systems/failGuideSystem.js",
+      "exports": [
+        "getFailGuideViewModel",
+        "handleFailGuideAction"
+      ],
+      "dependsOn": [
+        "battleSettlementSystem.js",
+        "enemyStageBalance.js",
+        "fighter upgrade system"
+      ],
+      "integrationPoint": "战斗失败结算时"
+    }
+  ],
+  "rules": {
+    "starRule": {
+      "oneStar": "通关",
+      "twoStar": "通关时生命高于50%",
+      "threeStar": "不漏怪通关"
+    },
+    "forbidden": [
+      "不要做新手引导",
+      "不要新增每日任务",
+      "不要手写93个关卡按钮",
+      "不要让失败界面只显示失败",
+      "不要让星级和通关状态不进存档"
+    ]
+  },
+  "saveDataRequired": [
+    "progress.clearedStageIds",
+    "progress.clearedChapterIds",
+    "progress.stageStars",
+    "progress.perfectClearCount",
+    "progress.noDamageBossClearCount",
+    "player.gold",
+    "player.exp"
+  ],
+  "recommendedOrder": [
+    "chapterMapSystem.js",
+    "battleSettlementSystem.js",
+    "failGuideSystem.js"
+  ]
+}

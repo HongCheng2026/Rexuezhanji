@@ -1,0 +1,366 @@
+(function registerBossSystem(root) {
+  var scope = root.RXGame || (root.RXGame = {});
+
+  var levelsConfig = scope.levels || {};
+  var balanceConfig = scope.balance || {};
+  var enemyBalance = scope.enemyStageBalance || {};
+  var weaponSys = scope.weaponSystem || {};
+
+  var BOSS_SPAWN_TIME = levelsConfig.BOSS_SPAWN_TIME || 60;
+
+  function spawnBossIfNeeded(state, level) {
+    if (state.bossSpawned || state.elapsed < BOSS_SPAWN_TIME) return;
+    state.bossSpawned = true;
+    state.bossWarning = 3;
+
+    var bossStats = getBossStats(level);
+    var waveConfig = bossStats.waveConfig || {};
+    state.boss = {
+      id: "boss-" + (level.id || level.code || "1"),
+      x: 960 + 130,
+      y: 540 / 2,
+      targetX: 960 - 126,
+      radius: 78,
+      hp: bossStats.hp,
+      maxHp: bossStats.hp,
+      damageTakenMultiplier: bossStats.damageTakenMultiplier,
+      originalDamageTakenMultiplier: bossStats.damageTakenMultiplier,
+      attackDamage: bossStats.attackDamage || bossStats.baseDamage || 1000,
+      bulletSpeed: (bossStats.bulletSpeed || 360) * (bossStats.bulletSpeedMultiplier || 1),
+      fireInterval: bossStats.fireInterval || 0.55,
+      bulletPattern: bossStats.bulletPattern || "boss_cycle",
+      waveConfig: waveConfig,
+      theme: bossStats.bossTheme || waveConfig.theme || "fan",
+      title: bossStats.title || waveConfig.title || "BOSS 接敌",
+      spawnedAt: state.elapsed,
+      fireTimer: 0,
+      minFireInterval: waveConfig.minFireInterval || 0.32,
+      aimInterval: waveConfig.aimInterval === null ? null : (waveConfig.aimInterval || 0.9),
+      waveTimer: waveConfig.aimInterval === null ? null : 0.2,
+      armorTimer: 0,
+      armorMode: "normal",
+      burstTimer: 0,
+      burstRemaining: 0,
+      burstTriggered: {},
+      pendingPattern: null,
+      patternIndex: 0,
+      direction: 1
+    };
+
+    state.boss.fireTimer = 0.8;
+    state.bossIntro = {
+      title: state.boss.title,
+      theme: state.boss.theme,
+      timer: 3,
+      duration: 3,
+      life: 3
+    };
+    state.shockwaves = state.shockwaves || [];
+    state.shockwaves.push({ x: 960 - 130, y: 270, radius: 18, life: 0.9, maxLife: 0.9, color: "#ff6b6b" });
+    state.notices.push({ text: state.boss.title, color: "#ff6b6b", x: 960 / 2, y: 86, life: 2.4 });
+    playSfx("bossWarning");
+  }
+
+  function playSfx(id) {
+    if (scope.audioSystem && scope.audioSystem.playSfx) scope.audioSystem.playSfx(id);
+  }
+
+  function getBossStats(level) {
+    if (enemyBalance && enemyBalance.getEnemyFinalStats) {
+      try {
+        return enemyBalance.getEnemyFinalStats({
+          chapterIndex: level.chapterIndex != null ? level.chapterIndex : 1,
+          stageInChapter: level.stageInChapter != null ? level.stageInChapter : (level.id || 1),
+          enemyType: "boss"
+        });
+      } catch (e) { /* fallback below */ }
+    }
+    if (balanceConfig.getEnemyHp) {
+      var hp = balanceConfig.getEnemyHp("boss", level);
+      var scaling = balanceConfig.getEnemyScalingForLevel(level, {});
+      return { hp: hp, damageTakenMultiplier: (scaling && scaling.damageTakenMultiplier) || 1, attackDamage: 80, bulletSpeed: 360 };
+    }
+    return { hp: 100000, damageTakenMultiplier: 1, attackDamage: 80, bulletSpeed: 360 };
+  }
+
+  function updateBoss(state, dt) {
+    var boss = state.boss;
+    updateBossTelegraphs(state, dt);
+    updateBossIntro(state, dt);
+    if (!boss) return;
+
+    if (boss.x > boss.targetX) {
+      boss.x -= 90 * dt;
+      return;
+    }
+
+    boss.y += boss.direction * 82 * dt;
+    if (boss.y < 96 || boss.y > 540 - 96) boss.direction *= -1;
+
+    if (boss.pendingPattern) {
+      boss.pendingPattern.timer -= dt;
+      if (boss.pendingPattern.timer <= 0) {
+        var readyPattern = boss.pendingPattern.id;
+        boss.pendingPattern = null;
+        fireBossPattern(state, boss, readyPattern);
+      }
+      return;
+    }
+
+    updateBurstState(state, boss, dt);
+    updateArmorState(state, boss, dt);
+
+    boss.fireTimer -= dt;
+    if (boss.waveTimer !== null) boss.waveTimer -= dt;
+
+    if (boss.burstRemaining > 0) {
+      if (boss.burstTimer <= 0) {
+        scheduleBossPattern(state, boss, "boss_burst_spread");
+        boss.burstTimer = (boss.waveConfig.burst && boss.waveConfig.burst.fireInterval) || 0.1;
+      }
+      return;
+    }
+
+    if (boss.fireTimer <= 0) {
+      var patterns = (boss.waveConfig && boss.waveConfig.cyclePatterns) || ["boss_spread", "boss_aim", "boss_lanes"];
+      var pattern = patterns[boss.patternIndex % patterns.length];
+      scheduleBossPattern(state, boss, pattern);
+      boss.patternIndex += 1;
+      boss.fireTimer = Math.max(boss.minFireInterval || 0.32, boss.fireInterval || 0.55);
+    }
+
+    if (boss.waveTimer !== null && boss.waveTimer <= 0) {
+      fireBossPattern(state, boss, "boss_aim");
+      boss.waveTimer = boss.aimInterval || 0.9;
+    }
+  }
+
+  function updateBossIntro(state, dt) {
+    if (!state.bossIntro) return;
+    state.bossIntro.timer -= dt;
+    state.bossIntro.life = Math.max(0, state.bossIntro.timer);
+    if (state.bossIntro.timer <= 0) state.bossIntro = null;
+  }
+
+  function updateArmorState(state, boss, dt) {
+    if (boss.theme !== "shield" && boss.theme !== "armorCore") return;
+    var config = boss.waveConfig || {};
+    boss.armorTimer -= dt;
+    if (boss.armorTimer > 0) return;
+    if (boss.armorMode === "shielded") {
+      boss.armorMode = "exposed";
+      boss.damageTakenMultiplier = Math.max(boss.originalDamageTakenMultiplier || 1, 1.15);
+      boss.armorTimer = config.exposedPhaseSeconds || 2.2;
+      state.notices.push({ text: "核心暴露", color: "#42f5c8", x: 960 / 2, y: 118, life: 0.9 });
+    } else {
+      boss.armorMode = "shielded";
+      boss.damageTakenMultiplier = Math.min(boss.originalDamageTakenMultiplier || 1, boss.theme === "armorCore" ? 0.32 : 0.5);
+      boss.armorTimer = config.shieldPhaseSeconds || 4;
+      state.notices.push({ text: "重甲护盾", color: "#ffd166", x: 960 / 2, y: 118, life: 0.9 });
+    }
+  }
+
+  function updateBurstState(state, boss, dt) {
+    boss.burstTimer -= dt;
+    if (boss.burstRemaining > 0) {
+      boss.burstRemaining = Math.max(0, boss.burstRemaining - dt);
+      return;
+    }
+
+    var config = (boss.waveConfig && boss.waveConfig.burst) || {};
+    if (config.disabled) return;
+    var triggers = config.triggerHpRates || [0.7, 0.4, 0.15];
+    var hpRate = boss.hp / Math.max(1, boss.maxHp);
+    for (var i = 0; i < triggers.length; i++) {
+      var trigger = triggers[i];
+      if (hpRate <= trigger && !boss.burstTriggered[String(trigger)]) {
+        boss.burstTriggered[String(trigger)] = true;
+        boss.burstRemaining = config.duration || 2;
+        boss.burstTimer = 0;
+        state.notices.push({ text: "BOSS 火力爆发", color: "#ff9fc5", x: 960 / 2, y: 116, life: 1.4 });
+        break;
+      }
+    }
+  }
+
+  function fireBossPattern(state, boss, pattern) {
+    if (!weaponSys.createBullet) return;
+    if (pattern === "boss_tutorial_line") {
+      fireAimed(state, boss, 0, boss.attackDamage, boss.bulletSpeed - 60, 6, "#ff8f5a", pattern);
+      pushBossBullet(state, boss.x - 70, boss.y - 36, Math.PI, boss.attackDamage, boss.bulletSpeed - 80, 5.4, "#ffb347", pattern);
+      pushBossBullet(state, boss.x - 70, boss.y + 36, Math.PI, boss.attackDamage, boss.bulletSpeed - 80, 5.4, "#ffb347", pattern);
+      return;
+    }
+    if (pattern === "boss_aim") {
+      fireAimed(state, boss, 0, boss.attackDamage, boss.bulletSpeed + 30, 8, "#ff9fc5", "boss_aim");
+      fireAimed(state, boss, -0.16, boss.attackDamage, boss.bulletSpeed + 10, 6, "#ff5d73", "boss_aim");
+      fireAimed(state, boss, 0.16, boss.attackDamage, boss.bulletSpeed + 10, 6, "#ff5d73", "boss_aim");
+      return;
+    }
+    if (pattern === "boss_lanes") {
+      var laneCount = (boss.waveConfig && boss.waveConfig.laneCount) || 4;
+      for (var i = 0; i < laneCount; i++) {
+        var y = 72 + i * ((540 - 144) / Math.max(1, laneCount - 1));
+        pushBossBullet(state, boss.x - 74, y, Math.PI, boss.attackDamage, boss.bulletSpeed + 45, 6, "#ff784d", "boss_lanes");
+      }
+      return;
+    }
+    if (pattern === "boss_cross") {
+      for (var c = 0; c < 5; c++) {
+        var offset = -0.34 + c * 0.17;
+        fireAimed(state, boss, offset, boss.attackDamage, boss.bulletSpeed + 25, 5.8, "#ff6b8a", pattern);
+        fireAimed(state, boss, -offset, boss.attackDamage, boss.bulletSpeed + 5, 5.2, "#ff9f43", pattern + "_return");
+      }
+      return;
+    }
+    if (pattern === "boss_charge_lane") {
+      var laneY = state.player ? state.player.y : boss.y;
+      pushBossBullet(state, boss.x - 76, laneY, Math.PI, boss.attackDamage, boss.bulletSpeed + 110, 9, "#ff4d4d", pattern);
+      pushBossBullet(state, boss.x - 76, laneY - 26, Math.PI, boss.attackDamage, boss.bulletSpeed + 80, 6, "#ff8f5a", pattern);
+      pushBossBullet(state, boss.x - 76, laneY + 26, Math.PI, boss.attackDamage, boss.bulletSpeed + 80, 6, "#ff8f5a", pattern);
+      return;
+    }
+    if (pattern === "boss_summon") {
+      state.notices.push({ text: "护卫群接敌", color: "#ffd166", x: 960 / 2, y: 118, life: 1 });
+      var guardBurst = (boss.waveConfig && boss.waveConfig.summonGuardBurst) || (boss.theme === "mothership" ? 8 : 5);
+      state.bossGuardBurst = Math.max(Math.floor(Number(state.bossGuardBurst) || 0), guardBurst);
+      state.enemyTimer = Math.min(state.enemyTimer || 0, 0.05);
+      fireSpread(state, boss, 5, (42 * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 40, 6, "#ffb347", pattern);
+      return;
+    }
+    if (pattern === "boss_sniper") {
+      fireAimed(state, boss, 0, boss.attackDamage, boss.bulletSpeed + 190, 8, "#ffd166", pattern);
+      return;
+    }
+    if (pattern === "boss_shield_pulse" || pattern === "boss_armor_pulse") {
+      fireSpread(state, boss, 8, (72 * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 20, 6, "#ffcf5a", pattern);
+      return;
+    }
+    if (pattern === "boss_rotating_fan") {
+      var base = Math.PI + Math.sin((state.elapsed || 0) * 2.2) * 0.7;
+      fireSpreadFromBase(state, boss, base, (boss.waveConfig && boss.waveConfig.spreadCount) || 11, ((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 82) * Math.PI / 180, boss.attackDamage, boss.bulletSpeed + 10, 6, "#ff5d73", pattern);
+      return;
+    }
+    if (pattern === "boss_burst_spread") {
+      var burst = (boss.waveConfig && boss.waveConfig.burst) || {};
+      fireSpread(state, boss, burst.bulletCount || 13, ((burst.arcDegrees || 84) * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed + 50, 6.5, "#ff6b8a", "boss_burst_spread");
+      return;
+    }
+
+    fireSpread(
+      state,
+      boss,
+      (boss.waveConfig && boss.waveConfig.spreadCount) || 9,
+      (((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 64) * Math.PI) / 180,
+      boss.attackDamage,
+      boss.bulletSpeed,
+      6,
+      "#ff5d73",
+      "boss_spread"
+    );
+  }
+
+  function scheduleBossPattern(state, boss, pattern) {
+    if (pattern === "boss_aim") {
+      fireBossPattern(state, boss, pattern);
+      return;
+    }
+    var delay = pattern === "boss_burst_spread" ? 0.72
+      : pattern === "boss_lanes" ? 0.62
+      : pattern === "boss_summon" ? 0.92
+      : pattern === "boss_sniper" || pattern === "boss_charge_lane" ? 0.78
+      : pattern === "boss_cross" || pattern === "boss_rotating_fan" ? 0.58
+      : 0.38;
+    boss.pendingPattern = { id: pattern, timer: delay };
+    addBossTelegraph(state, boss, pattern, delay);
+    state.notices.push({ text: getPatternNotice(pattern), color: "#ffd166", x: 960 / 2, y: 116, life: Math.max(0.55, delay) });
+  }
+
+  function getPatternNotice(pattern) {
+    if (pattern === "boss_lanes") return "封锁波预警";
+    if (pattern === "boss_burst_spread") return "火力爆发预警";
+    if (pattern === "boss_sniper") return "狙击锁定";
+    if (pattern === "boss_charge_lane") return "冲锋航道";
+    if (pattern === "boss_cross") return "交叉火力";
+    if (pattern === "boss_rotating_fan") return "旋翼弹幕";
+    if (pattern === "boss_summon") return "护卫召集";
+    if (pattern === "boss_shield_pulse" || pattern === "boss_armor_pulse") return "装甲脉冲";
+    return "扇形弹幕预警";
+  }
+
+  function addBossTelegraph(state, boss, pattern, delay) {
+    state.bossTelegraphs = state.bossTelegraphs || [];
+    var item = {
+      pattern: pattern,
+      x: boss.x - 74,
+      y: boss.y,
+      life: delay,
+      duration: delay,
+      color: pattern === "boss_lanes" ? "#ff784d" : pattern === "boss_burst_spread" ? "#ff6b8a" : "#ffd166"
+    };
+    if (pattern === "boss_lanes") {
+      item.type = "lanes";
+      item.laneCount = (boss.waveConfig && boss.waveConfig.laneCount) || 4;
+    } else if (pattern === "boss_summon") {
+      item.type = "summon";
+      item.color = boss.theme === "mothership" ? "#ff5d73" : "#ffb347";
+    } else if (pattern === "boss_sniper") {
+      item.type = "sniper";
+      item.targetY = state.player ? state.player.y : boss.y;
+      item.color = "#ffd166";
+    } else if (pattern === "boss_charge_lane") {
+      item.type = "charge";
+      item.targetY = state.player ? state.player.y : boss.y;
+      item.color = "#ff4d4d";
+    } else if (pattern === "boss_cross") {
+      item.type = "cross";
+      item.color = "#ff6b8a";
+    } else {
+      item.type = "cone";
+      item.arcDegrees = pattern === "boss_burst_spread"
+        ? ((boss.waveConfig && boss.waveConfig.burst && boss.waveConfig.burst.arcDegrees) || 84)
+        : ((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 64);
+    }
+    state.bossTelegraphs.push(item);
+    if (state.bossTelegraphs.length > 4) state.bossTelegraphs = state.bossTelegraphs.slice(-4);
+  }
+
+  function updateBossTelegraphs(state, dt) {
+    var list = state.bossTelegraphs || [];
+    for (var i = 0; i < list.length; i++) list[i].life -= dt;
+    state.bossTelegraphs = list.filter(function (item) { return item.life > 0; });
+  }
+
+  function fireSpread(state, boss, count, arc, damage, speed, radius, color, patternSource) {
+    fireSpreadFromBase(state, boss, Math.PI, count, arc, damage, speed, radius, color, patternSource);
+  }
+
+  function fireSpreadFromBase(state, boss, base, count, arc, damage, speed, radius, color, patternSource) {
+    var step = count > 1 ? arc / (count - 1) : 0;
+    var start = base - arc / 2;
+    for (var i = 0; i < count; i++) pushBossBullet(state, boss.x - 70, boss.y, start + step * i, damage, speed, radius, color, patternSource);
+  }
+
+  function fireAimed(state, boss, offset, damage, speed, radius, color, patternSource) {
+    var aim = Math.atan2(state.player.y - boss.y, state.player.x - boss.x);
+    pushBossBullet(state, boss.x - 70, boss.y, aim + offset, damage, speed, radius, color, patternSource);
+  }
+
+  function pushBossBullet(state, x, y, angle, damage, speed, radius, color, patternSource) {
+    var bullet = weaponSys.createBullet(x, y, angle, "enemy", damage, speed, radius, color, { owner: "enemy", shape: "circle", pierceRemaining: 0 });
+    bullet.age = 0;
+    bullet.patternSource = patternSource || "boss";
+    state.enemyBullets.push(bullet);
+  }
+
+  var api = {
+    spawnBossIfNeeded: spawnBossIfNeeded,
+    updateBoss: updateBoss
+  };
+
+  scope.bossSystem = api;
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
