@@ -234,7 +234,7 @@
       return;
     }
     if (Math.random() > (enemy.heavy ? 0.13 : 0.04)) return;
-    var types = ["spread", "laser", "missile", "shield", "life"];
+    var types = ["spread", "laser", "missile", "life"];
     var type = types[Math.floor(Math.random() * types.length)];
     state.powerups.push({
       x: enemy.x, y: enemy.y, radius: 15, speed: 110,

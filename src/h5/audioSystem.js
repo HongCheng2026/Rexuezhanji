@@ -12,6 +12,7 @@
     musicVolume: 0.32,
     sfxVolume: 0.42
   };
+  var bgmEnabled = false;
   var settings = loadSettings();
   var unlocked = false;
   var bgmCache = {};
@@ -108,10 +109,11 @@
   }
 
   function getBgmSrc(id) {
-    return id === "battle" ? audioAssets.bgmBattle : audioAssets.bgmLobby;
+    return null;
   }
 
   function ensureBgm(id) {
+    if (!bgmEnabled) return null;
     id = id === "battle" ? "battle" : "lobby";
     if (!bgmCache[id]) bgmCache[id] = createAudio(getBgmSrc(id), true, settings.musicVolume);
     if (bgmCache[id]) bgmCache[id].volume = settings.musicMuted ? 0 : settings.musicVolume;
@@ -130,7 +132,7 @@
   }
 
   function applyAllVolumes() {
-    ensureBgm(currentBgmId);
+    if (bgmEnabled) ensureBgm(currentBgmId);
     for (var id in sfxCache) {
       if (Object.prototype.hasOwnProperty.call(sfxCache, id)) applySfxVolume(id);
     }
@@ -139,16 +141,12 @@
   function unlock() {
     primeAudio();
     if (unlocked) {
-      playBgm(currentBgmId);
       return;
     }
     unlocked = true;
-    playBgm(currentBgmId);
   }
 
   function primeAudio() {
-    ensureBgm("lobby");
-    ensureBgm("battle");
     getSfx("uiClick");
     getSfx("pickup");
     getSfx("victory");
@@ -159,6 +157,7 @@
     id = id === "battle" ? "battle" : "lobby";
     if (currentBgmId !== id) stopBgm();
     currentBgmId = id;
+    if (!bgmEnabled) return;
     var bgm = ensureBgm(id);
     if (!bgm || settings.musicMuted || !unlocked) return;
     bgm.volume = settings.musicVolume;
@@ -169,6 +168,7 @@
   }
 
   function restartBgm() {
+    if (!bgmEnabled) return;
     var bgm = ensureBgm(currentBgmId);
     if (!bgm) return;
     try { bgm.currentTime = 0; } catch (e) {}

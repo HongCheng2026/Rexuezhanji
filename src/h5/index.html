@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>星空打飞机：第一章</title>
-    <link rel="stylesheet" href="style.css?v=20260709-starport-terminal-redesign" />
+    <link rel="stylesheet" href="style.css?v=20260711-reference-layout" />
   </head>
   <body>
     <main class="app-root">
@@ -50,6 +50,14 @@
             </button>
           </section>
 
+          <div class="top-command-crest" aria-hidden="true"></div>
+          <div class="starport-log" aria-hidden="true">
+            <strong>STARPORT LOG</strong>
+            <span>07.10 Mission Briefing Updated</span>
+            <span>07.10 Daily Supply Ready</span>
+            <span>07.09 Star Wings Preview</span>
+          </div>
+
           <nav class="quick-nav" aria-label="快捷入口">
             <button class="quick-icon lobby-action" type="button" data-panel="mail" aria-label="邮件">✉</button>
             <button class="quick-icon lobby-action" type="button" data-panel="signin" aria-label="签到">✓</button>
@@ -72,29 +80,30 @@
               <strong>战机强化</strong>
               <span>FIGHTER UPGRADE</span>
             </button>
+            <button class="feature-tile wide codex lobby-action" type="button" data-panel="enemyCodex">
+              <strong>图鉴</strong>
+              <span>CODEX</span>
+            </button>
           </nav>
-
-          <section class="hero-dock" aria-hidden="true">
-          </section>
 
           <nav class="right-entry-grid" aria-label="系统入口">
             <button class="menu-tile lobby-action" type="button" data-panel="task"><span>▣</span><strong>任务</strong><em>TASK</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="event"><span>✦</span><strong>活动</strong><em>EVENT</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="achievement"><span>◎</span><strong>成就</strong><em>ACHIEVEMENT</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="shop"><span>▤</span><strong>商店</strong><em>SHOP</em></button>
-            <button class="menu-tile lobby-action" type="button" data-panel="enemyCodex"><span>◎</span><strong>图鉴</strong><em>CODEX</em></button>
             <button class="menu-tile lobby-action" type="button" data-panel="ranking"><span>♛</span><strong>排行榜</strong><em>RANKING</em></button>
+            <button class="menu-tile lobby-action" type="button" data-panel="chat"><span>●</span><strong>聊天</strong><em>CHAT</em></button>
           </nav>
         </section>
 
         <footer class="lobby-footer">
-          <button class="promo-card lobby-action" type="button" data-panel="promo">
+          <button class="promo-card lobby-action" type="button" data-panel="starWingsGacha">
             <strong>星穹之翼</strong>
             <span>限时概率提升</span>
           </button>
-          <button class="gift-card lobby-action" type="button" data-panel="sponsor">
-            <strong>赞助我们</strong>
-            <span>SUPPORT US</span>
+          <button class="gift-card lobby-action" type="button" data-panel="contact">
+            <strong>联系我们</strong>
+            <span>CONTACT</span>
           </button>
           <button id="battleEntryButton" class="battle-entry" type="button">
             <span>‹</span>
@@ -102,6 +111,12 @@
             <span>›</span>
             <em>START BATTLE</em>
           </button>
+          <nav class="bottom-utility-nav" aria-label="底部功能入口">
+            <button class="lobby-action" type="button" data-panel="signin"><span>▣</span><strong>DAILY</strong><em>日常补给</em></button>
+            <button class="lobby-action" type="button" data-panel="shop"><span>▤</span><strong>SUPPLY</strong><em>补给站</em></button>
+            <button class="lobby-action" type="button" data-panel="shipGallery"><span>⚙</span><strong>HANGAR</strong><em>机库管理</em></button>
+            <button class="lobby-action" type="button" data-panel="achievement"><span>◎</span><strong>RESEARCH</strong><em>科技研发</em></button>
+          </nav>
           <button class="world-chat lobby-action" type="button" data-panel="chat">[世界] 王牌飞行员：欢迎加入飞行战队！</button>
         </footer>
 

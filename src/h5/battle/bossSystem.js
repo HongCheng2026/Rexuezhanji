@@ -193,8 +193,10 @@
     }
     if (pattern === "boss_aim") {
       fireAimed(state, boss, 0, boss.attackDamage, boss.bulletSpeed + 30, 8, "#ff9fc5", "boss_aim");
-      fireAimed(state, boss, -0.16, boss.attackDamage, boss.bulletSpeed + 10, 6, "#ff5d73", "boss_aim");
-      fireAimed(state, boss, 0.16, boss.attackDamage, boss.bulletSpeed + 10, 6, "#ff5d73", "boss_aim");
+      if ((state.level && Number(state.level.chapterIndex) || 0) >= 3) {
+        fireAimed(state, boss, -0.13, boss.attackDamage, boss.bulletSpeed, 6, "#ff5d73", "boss_aim");
+        fireAimed(state, boss, 0.13, boss.attackDamage, boss.bulletSpeed, 6, "#ff5d73", "boss_aim");
+      }
       return;
     }
     if (pattern === "boss_lanes") {
@@ -206,10 +208,11 @@
       return;
     }
     if (pattern === "boss_cross") {
-      for (var c = 0; c < 5; c++) {
-        var offset = -0.34 + c * 0.17;
-        fireAimed(state, boss, offset, boss.attackDamage, boss.bulletSpeed + 25, 5.8, "#ff6b8a", pattern);
-        fireAimed(state, boss, -offset, boss.attackDamage, boss.bulletSpeed + 5, 5.2, "#ff9f43", pattern + "_return");
+      for (var c = 0; c < 3; c++) {
+        var offset = -0.24 + c * 0.24;
+        if (Math.abs(offset) < 0.01) continue;
+        fireAimed(state, boss, offset, boss.attackDamage, boss.bulletSpeed + 5, 5.8, "#ff6b8a", pattern);
+        fireAimed(state, boss, -offset, boss.attackDamage, boss.bulletSpeed - 18, 5.2, "#ff9f43", pattern + "_return");
       }
       return;
     }
@@ -225,7 +228,7 @@
       var guardBurst = (boss.waveConfig && boss.waveConfig.summonGuardBurst) || (boss.theme === "mothership" ? 8 : 5);
       state.bossGuardBurst = Math.max(Math.floor(Number(state.bossGuardBurst) || 0), guardBurst);
       state.enemyTimer = Math.min(state.enemyTimer || 0, 0.05);
-      fireSpread(state, boss, 5, (42 * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 40, 6, "#ffb347", pattern);
+      fireSpread(state, boss, 3, (34 * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 70, 6, "#ffb347", pattern);
       return;
     }
     if (pattern === "boss_sniper") {
@@ -233,25 +236,25 @@
       return;
     }
     if (pattern === "boss_shield_pulse" || pattern === "boss_armor_pulse") {
-      fireSpread(state, boss, 8, (72 * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 20, 6, "#ffcf5a", pattern);
+      fireSpread(state, boss, 5, (58 * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 45, 6, "#ffcf5a", pattern);
       return;
     }
     if (pattern === "boss_rotating_fan") {
       var base = Math.PI + Math.sin((state.elapsed || 0) * 2.2) * 0.7;
-      fireSpreadFromBase(state, boss, base, (boss.waveConfig && boss.waveConfig.spreadCount) || 11, ((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 82) * Math.PI / 180, boss.attackDamage, boss.bulletSpeed + 10, 6, "#ff5d73", pattern);
+      fireSpreadFromBase(state, boss, base, Math.min((boss.waveConfig && boss.waveConfig.spreadCount) || 9, 9), ((Math.min((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 76, 76)) * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed - 8, 6, "#ff5d73", pattern);
       return;
     }
     if (pattern === "boss_burst_spread") {
       var burst = (boss.waveConfig && boss.waveConfig.burst) || {};
-      fireSpread(state, boss, burst.bulletCount || 13, ((burst.arcDegrees || 84) * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed + 50, 6.5, "#ff6b8a", "boss_burst_spread");
+      fireSpread(state, boss, Math.min(burst.bulletCount || 9, 9), ((Math.min(burst.arcDegrees || 72, 72)) * Math.PI) / 180, boss.attackDamage, boss.bulletSpeed + 18, 6.5, "#ff6b8a", "boss_burst_spread");
       return;
     }
 
     fireSpread(
       state,
       boss,
-      (boss.waveConfig && boss.waveConfig.spreadCount) || 9,
-      (((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 64) * Math.PI) / 180,
+      Math.min((boss.waveConfig && boss.waveConfig.spreadCount) || 7, 7),
+      (((Math.min((boss.waveConfig && boss.waveConfig.spreadArcDegrees) || 58, 58))) * Math.PI) / 180,
       boss.attackDamage,
       boss.bulletSpeed,
       6,
@@ -347,10 +350,18 @@
   }
 
   function pushBossBullet(state, x, y, angle, damage, speed, radius, color, patternSource) {
+    if (!canAddBossBullet(state)) return;
     var bullet = weaponSys.createBullet(x, y, angle, "enemy", damage, speed, radius, color, { owner: "enemy", shape: "circle", pierceRemaining: 0 });
     bullet.age = 0;
     bullet.patternSource = patternSource || "boss";
     state.enemyBullets.push(bullet);
+  }
+
+  function canAddBossBullet(state) {
+    var list = state && state.enemyBullets ? state.enemyBullets : [];
+    var chapter = state && state.level ? Number(state.level.chapterIndex) || 0 : 0;
+    var caps = [8, 14, 18, 24, 28, 32, 36, 40, 44, 48];
+    return list.length < (caps[Math.max(0, Math.min(caps.length - 1, chapter))] || 24);
   }
 
   var api = {

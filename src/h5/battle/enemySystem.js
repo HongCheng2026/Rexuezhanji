@@ -403,7 +403,7 @@
         enemy.canFire = enemy.bulletPattern !== "none" && (!enemy.fireProfile || enemy.fireProfile.canFire !== false);
         enemy.shootTimer = enemy.canFire ? 0 : 999;
         if (enemy.canFire) {
-          fireEnemyShot(state, enemy);
+          fireEnemyShot(state, enemy, true);
           enemy.shootTimer = enemy.shootInterval || 1.4;
         }
         if (enemy.heavy) state.notices.push({ text: "精英接敌", color: "#ffd166", x: enemy.x, y: enemy.y - 28, life: 0.8 });
@@ -421,20 +421,28 @@
     });
   }
 
-  function fireEnemyShot(state, enemy) {
+  function fireEnemyShot(state, enemy, openingShot) {
     if (!enemy || enemy.dead || !weaponSys.createBullet) return;
+    if (!canAddEnemyBullets(state, enemy.heavy ? 3 : 1)) return;
 
     var pattern = enemy.bulletPattern || (enemy.heavy ? "elite_spread" : "single");
     var damage = enemy.attackDamage || (enemy.heavy ? 40 : 10);
     var speed = enemy.bulletSpeed || (enemy.heavy ? 330 : 260);
+    if (openingShot) {
+      if (!enemy.heavy || pattern === "cross_fire" || pattern === "slow_wall" || pattern === "triple" || pattern === "escort_volley") {
+        fireAimedShot(state, enemy, damage, Math.max(145, speed * 0.78), enemy.heavy ? 5.4 : 4.5, enemy.heavy ? "#ff9fc5" : "#ff6b45", 0, pattern + "_entry");
+        return;
+      }
+      speed = Math.max(150, speed * 0.84);
+    }
 
     if (pattern === "elite_spread" || pattern === "elite_tutorial" || pattern === "elite_fan") {
       var eliteWave = enemy.waveConfig || {};
       fireSpread(
         state,
         enemy,
-        eliteWave.bulletCount || 5,
-        ((eliteWave.arcDegrees || 48) * Math.PI) / 180,
+        Math.min(eliteWave.bulletCount || 5, 5),
+        ((Math.min(eliteWave.arcDegrees || 48, 44)) * Math.PI) / 180,
         damage,
         speed,
         5.5,
@@ -448,14 +456,13 @@
     }
 
     if (pattern === "elite_guard" || pattern === "elite_shield_column" || pattern === "elite_guard_volley" || pattern === "escort_volley") {
-      fireOffsetVolley(state, enemy, [-34, -12, 12, 34], damage, speed + 10, 5.5, "#ff8f5a", pattern);
+      fireOffsetVolley(state, enemy, [-34, 0, 34], damage, speed + 10, 5.5, "#ff8f5a", pattern);
       return;
     }
 
     if (pattern === "elite_cross" || pattern === "cross_fire") {
-      fireAimedShot(state, enemy, damage, speed + 10, 5, "#ff6b8a", -0.28, pattern);
-      fireAimedShot(state, enemy, damage, speed + 10, 5, "#ff6b8a", 0.28, pattern);
-      fireSpread(state, enemy, 3, (26 * Math.PI) / 180, damage, speed, 4.8, "#ff9f43", pattern + "_fan");
+      fireAimedShot(state, enemy, damage, speed, 5, "#ff6b8a", -0.22, pattern);
+      fireAimedShot(state, enemy, damage, speed, 5, "#ff6b8a", 0.22, pattern);
       return;
     }
 
@@ -482,18 +489,17 @@
 
     if (pattern === "elite_rotating" || pattern === "elite_mothership" || pattern === "delayed_burst") {
       var turn = Math.sin((state.elapsed || 0) * 1.8 + enemy.id.length) * 0.55;
-      fireSpreadFromBase(state, enemy, Math.PI + turn, pattern === "delayed_burst" ? 6 : 7, (58 * Math.PI) / 180, damage, speed - 18, 5.6, "#ff5d73", pattern);
+      fireSpreadFromBase(state, enemy, Math.PI + turn, pattern === "delayed_burst" ? 4 : 5, (46 * Math.PI) / 180, damage, speed - 24, 5.6, "#ff5d73", pattern);
       return;
     }
 
     if (pattern === "elite_summon") {
-      fireSpread(state, enemy, 5, (42 * Math.PI) / 180, damage, speed, 5.5, "#ff784d", pattern);
-      fireOffsetVolley(state, enemy, [-20, 20], damage, speed - 45, 6.2, "#ffb347", pattern + "_block");
+      fireSpread(state, enemy, 3, (32 * Math.PI) / 180, damage, speed - 18, 5.5, "#ff784d", pattern);
       return;
     }
 
     if (pattern === "slow_wall") {
-      fireOffsetVolley(state, enemy, [-42, -21, 0, 21, 42], damage, Math.max(150, speed - 90), 7.2, "#ffb347", pattern);
+      fireOffsetVolley(state, enemy, [-44, 0, 44], damage, Math.max(140, speed - 105), 7.2, "#ffb347", pattern);
       return;
     }
 
@@ -534,6 +540,7 @@
   }
 
   function pushEnemyBullet(state, enemy, angle, damage, speed, radius, color, patternSource) {
+    if (!canAddEnemyBullets(state, 1)) return;
     var visual = getEnemyBulletVisual(patternSource);
     var bullet = weaponSys.createBullet(
       enemy.x - enemy.radius * 0.7,
@@ -549,6 +556,17 @@
     bullet.age = 0;
     bullet.patternSource = patternSource || "enemy";
     state.enemyBullets.push(bullet);
+  }
+
+  function getEnemyBulletCap(state) {
+    var chapter = state && state.level ? Number(state.level.chapterIndex) || 0 : 0;
+    var caps = [8, 14, 18, 24, 28, 32, 36, 40, 44, 48];
+    return caps[Math.max(0, Math.min(caps.length - 1, chapter))] || 24;
+  }
+
+  function canAddEnemyBullets(state, nextCount) {
+    var list = state && state.enemyBullets ? state.enemyBullets : [];
+    return list.length + Math.max(1, nextCount || 1) <= getEnemyBulletCap(state);
   }
 
   function getEnemyBulletVisual(patternSource) {

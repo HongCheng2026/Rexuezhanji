@@ -21,6 +21,7 @@ coverage/
 .cache/
 
 # Local screenshots and temporary verification assets
+tmp-*/
 tmp-*.png
 tmp-*.jpg
 tmp-*.jpeg
@@ -28,6 +29,7 @@ tmp-*.webp
 tmp-*.gif
 tmp-*.mp4
 tmp-*.webm
+*.bak
 *-screenshot.png
 *-snapshot.png
 

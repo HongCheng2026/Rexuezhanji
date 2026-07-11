@@ -26,7 +26,6 @@
   ];
 
   var EVENT_CONTENT = [
-    { tag: "概率提升", title: "星穹之翼", time: "预热中 / 限时机库", condition: "完成序章 3 后可查看活动池。", reward: "苍穹零式 / 星链研究券 / 钻石补给", status: "预告", text: "苍穹零式进入星港试飞序列，激光与贯穿流派获得专题展示。" },
     { tag: "突防试炼", title: "黑曜突防", time: "本周轮换 / 深空航线", condition: "通关 1-2 碎星航道后开放。", reward: "黑曜幽影试验券 / 导弹强化素材", status: "待接入", text: "暗核袭击机适合处理高压编队，活动展示导弹流清场路线。" },
     { tag: "破甲挑战", title: "金矢裁决", time: "本周轮换 / 高护甲目标", condition: "任意战机破甲强化达到 Lv.3。", reward: "金矢碎片 / 穿透模块 / 金币", status: "待接入", text: "金矢裁决强调短爆发和额外穿透，适合压制精英护盾目标。" },
     { tag: "每日补给", title: "每日出击补给", time: "每日刷新 / 05:00", condition: "今日完成任意关卡 1 次。", reward: "体力 30 / 金币 3000", status: "展示", text: "给日常出击准备的轻量补给，正式领取会在任务系统接入后开放。" },
@@ -63,7 +62,7 @@
     { category: "强化补给", title: "装甲维护包", price: "金币 6000", reward: "装甲舱维护素材", desc: "面向生命强化的素材补给展示。", status: "展示" },
     { category: "强化补给", title: "推进器调试包", price: "金币 6000", reward: "破甲 / 推进调试素材", desc: "面向破甲强化的素材补给展示。", status: "展示" },
     { category: "战机补给", title: "银翼整备箱", price: "钻石 12", reward: "银翼 06 整备零件", desc: "主力均衡战机的整备补给。", status: "待接入" },
-    { category: "战机补给", title: "星链研究券", price: "活动代币", reward: "苍穹零式研究进度", desc: "星穹之翼活动关联道具。", status: "预告" },
+    { category: "战机补给", title: "星链研究券", price: "活动代币", reward: "苍穹零式研究进度", desc: "星穹之翼抽取关联道具。", status: "预告" },
     { category: "活动礼包", title: "星港支援礼包", price: "钻石 18", reward: "金币 18000 / 体力 120", desc: "章节推进期的综合支援礼包。", status: "待接入" }
   ];
 
@@ -108,7 +107,7 @@
       "[系统] 今日出击补给已刷新，完成任意关卡可查看补给状态。",
       "[系统] 任务面板已同步本地通关、强化与收集记录。",
       "[系统] 商店当前为展示模式，真实购买仍需要云存档校验。",
-      "[系统] 星穹之翼活动处于预热展示阶段。",
+      "[系统] 星穹之翼抽取入口已独立开放预览。",
       "[系统] 排行榜为本地模拟榜，不上传玩家数据。",
       "[系统] 好友助战与聊天发送功能待接入。"
     ],
@@ -140,7 +139,7 @@
 
   var CHAT_PREVIEW_MESSAGES = [
     "[世界] 银翼小队：1-3 建议先把火力核心强化到 Lv.3。",
-    "[系统] 星穹之翼活动处于预热展示阶段。",
+    "[系统] 星穹之翼抽取入口已独立开放预览。",
     "[好友] 凌焰：需要火力支援时先叫我。",
     "[公会] 星港后勤：每日出击补给已刷新。",
     "[世界] 夜岚：深空航线不适合贪输出。",
@@ -152,7 +151,7 @@
   var MAIL_CONTENT = [
     { type: "公告", title: "星港大厅系统改修完成", time: "今日", text: "大厅入口与子面板已切换为战术终端样式。", reward: "金币 3000", status: "附件待接入" },
     { type: "补给", title: "每日出击补给提醒", time: "05:00", text: "完成任意关卡后可在任务与活动面板查看补给说明。", reward: "体力 30", status: "展示" },
-    { type: "活动", title: "星穹之翼预热", time: "本周", text: "苍穹零式与星链研究券将在活动系统接入后开放。", reward: "研究券预览", status: "预告" },
+    { type: "活动", title: "星穹之翼抽取预览", time: "本周", text: "苍穹零式与星链研究券已移至独立抽取入口展示。", reward: "研究券预览", status: "预告" },
     { type: "维护", title: "音频设置升级", time: "今日", text: "音乐、音效开关和音量已拆分控制，并保存到本地。", reward: "无", status: "已读" },
     { type: "情报", title: "黑曜突防侦察记录", time: "昨日", text: "暗核突防队建议优先准备导弹流与破甲强化。", reward: "情报档案", status: "展示" }
   ];
@@ -333,6 +332,39 @@
     return html + '</aside>';
   }
 
+  function renderRoute(progress) {
+    if (!progress) return "";
+    var target = Math.max(1, Number(progress.target) || 1);
+    var current = Math.max(0, Number(progress.current) || 0);
+    var percent = progressPercent(current, target);
+    var labels = ["1-1", "1-2", "1-3", "1-4", "BOSS"];
+    var html = '<div class="terminal-route" style="--route-progress:' + percent + '%">';
+    for (var i = 0; i < labels.length; i++) {
+      var threshold = (i / Math.max(1, labels.length - 1)) * 100;
+      html += '<span class="' + (percent >= threshold ? "active" : "") + '"><b></b><em>' + escapeHtml(labels[i]) + '</em></span>';
+    }
+    return html + '</div>';
+  }
+
+  function renderDock(data) {
+    data = data || {};
+    var stats = data.stats || [];
+    var html = '<aside class="terminal-dock">' +
+      '<section class="terminal-reward-box">' +
+        '<span>' + escapeHtml(data.kicker || "REWARD") + '</span>' +
+        '<div class="terminal-reward-icon" aria-hidden="true"></div>' +
+        '<strong>' + escapeHtml(data.reward || "") + '</strong>' +
+        '<p>' + escapeHtml(data.note || "") + '</p>' +
+        '<button type="button" class="' + (data.ready ? "is-ready" : "") + '" disabled>' + escapeHtml(data.action || "") + '</button>' +
+      '</section>' +
+      '<section class="terminal-overview-box"><span>' + escapeHtml(data.overviewTitle || "STATUS") + '</span>';
+    for (var i = 0; i < stats.length; i++) {
+      html += '<article><em>' + escapeHtml(stats[i].label) + '</em><strong>' + escapeHtml(stats[i].value) + '</strong></article>';
+    }
+    html += '</section></aside>';
+    return html;
+  }
+
   function renderActionCard(data) {
     var progress = data.progress;
     var statusClass = data.statusClass || (progress && progress.done ? "is-ready" : "");
@@ -343,6 +375,7 @@
     if (data.meta) html += '<dl>' + data.meta.map(function (row) { return '<div><dt>' + escapeHtml(row[0]) + '</dt><dd>' + escapeHtml(row[1]) + '</dd></div>'; }).join("") + '</dl>';
     if (progress) {
       html += '<div class="terminal-focus-progress"><span>' + escapeHtml(progress.label) + '</span><b>' + progress.current + '/' + progress.target + '</b></div>' +
+        renderRoute(progress) +
         renderProgressBar(progress.current, progress.target);
     }
     html += '<footer><em>' + escapeHtml(data.reward || "") + '</em><button type="button" disabled>' + escapeHtml(data.action || "查看详情") + '</button></footer></article>';
@@ -353,10 +386,10 @@
     var progress = data.progress;
     var statusClass = data.statusClass || (progress && progress.done ? "is-ready" : "");
     var html = '<article class="terminal-list-row">' +
-      '<span class="terminal-row-tag">' + escapeHtml(data.tag || "") + '</span>' +
-      '<div><strong>' + escapeHtml(data.title || "") + '</strong><p>' + escapeHtml(data.desc || "") + '</p>';
+      '<span class="terminal-row-icon" aria-hidden="true"></span>' +
+      '<div><span class="terminal-row-tag">' + escapeHtml(data.tag || "") + '</span><strong>' + escapeHtml(data.title || "") + '</strong><p>' + escapeHtml(data.desc || "") + '</p>';
     if (progress) html += '<small>' + escapeHtml(progress.label) + ' / ' + progress.current + '/' + progress.target + '</small>' + renderProgressBar(progress.current, progress.target);
-    html += '</div><em class="' + statusClass + '">' + escapeHtml(data.status || "") + '</em></article>';
+    html += '</div><span class="terminal-row-reward">' + escapeHtml(data.reward || "") + '</span><em class="' + statusClass + '">' + escapeHtml(data.status || "") + '</em></article>';
     return html;
   }
 
@@ -373,7 +406,9 @@
       (config.focus || "") +
       (config.list || "") +
       (config.footer || "") +
-      '</section></section></section>';
+      '</section>' +
+      (config.dock || "") +
+      '</section></section>';
     return html;
   }
 
@@ -391,7 +426,8 @@
         desc: row.item.desc,
         progress: row.progress,
         status: statusText(row.progress.done, row.claimed),
-        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : ""
+        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "",
+        reward: renderRewardList(row.item.rewards)
       });
     }
     list += '</div>';
@@ -416,7 +452,20 @@
         reward: renderRewardList(focus.item.rewards),
         action: focus.progress.done ? "领取待接入" : "继续推进"
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "REWARD",
+        reward: renderRewardList(focus.item.rewards),
+        note: focus.progress.label + " / " + focus.progress.current + "/" + focus.progress.target,
+        action: focus.progress.done ? "CLAIM" : "GO",
+        ready: focus.progress.done && !focus.claimed,
+        overviewTitle: "TODAY",
+        stats: [
+          { label: "TOTAL", value: TASK_CONTENT.length },
+          { label: "DONE", value: model.doneCount },
+          { label: "CLEAR", value: getClearCount(profile) }
+        ]
+      })
     });
   }
 
@@ -437,7 +486,8 @@
         desc: row.item.desc,
         progress: row.progress,
         status: statusText(row.progress.done, row.claimed),
-        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : ""
+        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "",
+        reward: renderRewardList(row.item.rewards)
       });
     }
     list += '</div>';
@@ -462,7 +512,20 @@
         reward: renderRewardList(focus.item.rewards),
         action: "成就铭牌"
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "BADGE",
+        reward: renderRewardList(focus.item.rewards),
+        note: focus.progress.label + " / " + focus.progress.current + "/" + focus.progress.target,
+        action: focus.progress.done ? "READY" : "LOCKED",
+        ready: focus.progress.done && !focus.claimed,
+        overviewTitle: "HONOR",
+        stats: [
+          { label: "TOTAL", value: ACHIEVEMENT_CONTENT.length },
+          { label: "DONE", value: model.doneCount },
+          { label: "BEST", value: getBestHonor(profile) ? "Tier " + getBestHonor(profile) : "0" }
+        ]
+      })
     });
   }
 
@@ -470,7 +533,7 @@
     var focus = EVENT_CONTENT[0];
     var list = '<div class="terminal-list">';
     for (var i = 1; i < EVENT_CONTENT.length; i++) {
-      list += renderListRow({ tag: EVENT_CONTENT[i].tag, title: EVENT_CONTENT[i].title, desc: EVENT_CONTENT[i].text, status: EVENT_CONTENT[i].status });
+      list += renderListRow({ tag: EVENT_CONTENT[i].tag, title: EVENT_CONTENT[i].title, desc: EVENT_CONTENT[i].text, status: EVENT_CONTENT[i].status, reward: EVENT_CONTENT[i].reward });
     }
     list += '</div>';
     return renderTerminalShell({
@@ -493,7 +556,20 @@
         action: "查看活动",
         meta: [["时间", focus.time], ["条件", focus.condition]]
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "EVENT",
+        reward: focus.reward,
+        note: focus.condition,
+        action: focus.status,
+        ready: false,
+        overviewTitle: "OPS",
+        stats: [
+          { label: "TOTAL", value: EVENT_CONTENT.length },
+          { label: "CLEAR", value: getClearCount(profile) },
+          { label: "STATE", value: focus.status }
+        ]
+      })
     });
   }
 
@@ -502,7 +578,7 @@
     var focus = SHOP_CONTENT[0];
     var list = '<div class="terminal-list">';
     for (var i = 1; i < SHOP_CONTENT.length; i++) {
-      list += renderListRow({ tag: SHOP_CONTENT[i].category, title: SHOP_CONTENT[i].title, desc: SHOP_CONTENT[i].desc + " / " + SHOP_CONTENT[i].price, status: SHOP_CONTENT[i].status });
+      list += renderListRow({ tag: SHOP_CONTENT[i].category, title: SHOP_CONTENT[i].title, desc: SHOP_CONTENT[i].desc + " / " + SHOP_CONTENT[i].price, status: SHOP_CONTENT[i].status, reward: SHOP_CONTENT[i].reward });
     }
     list += '</div>';
     return renderTerminalShell({
@@ -525,7 +601,20 @@
         action: "购买待接入",
         meta: [["价格", focus.price], ["规则", "展示态，不扣费"]]
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "SUPPLY",
+        reward: focus.reward,
+        note: focus.price,
+        action: focus.status,
+        ready: false,
+        overviewTitle: "WALLET",
+        stats: [
+          { label: "GOLD", value: formatNumber(resources.gold != null ? resources.gold : profile && profile.coins || 0) },
+          { label: "DIAMOND", value: formatNumber(resources.diamonds || 0) },
+          { label: "ITEMS", value: SHOP_CONTENT.length }
+        ]
+      })
     });
   }
 
@@ -555,7 +644,20 @@
         reward: focus.role + " / 战力 " + formatNumber(focus.power),
         action: "助战待接入"
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "ALLY",
+        reward: focus.role,
+        note: "POWER " + formatNumber(focus.power),
+        action: focus.action,
+        ready: false,
+        overviewTitle: "LINK",
+        stats: [
+          { label: "TOTAL", value: FRIEND_CONTENT.length },
+          { label: "ONLINE", value: "3" },
+          { label: "STATE", value: focus.tag }
+        ]
+      })
     });
   }
 
@@ -602,7 +704,20 @@
         reward: "战力 " + formatNumber(combatPower) + " / 通关 " + clearCount,
         action: "上传待接入"
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "RANK",
+        reward: formatNumber(combatPower),
+        note: playerName,
+        action: "LOCAL",
+        ready: false,
+        overviewTitle: "MY DATA",
+        stats: [
+          { label: "POWER", value: formatNumber(combatPower) },
+          { label: "CLEAR", value: formatNumber(clearCount) },
+          { label: "HONOR", value: bestHonor ? "Tier " + bestHonor : "0" }
+        ]
+      })
     });
   }
 
@@ -639,7 +754,20 @@
         { label: "消息", value: Object.keys(CHAT_CONTENT).reduce(function (sum, key) { return sum + CHAT_CONTENT[key].length; }, 0) },
         { label: "发送", value: "待接入" }
       ]),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "CHANNEL",
+        reward: String(Object.keys(CHAT_CONTENT).reduce(function (sum, key) { return sum + CHAT_CONTENT[key].length; }, 0)),
+        note: "PREVIEW ONLY",
+        action: "SEND LOCKED",
+        ready: false,
+        overviewTitle: "COMMS",
+        stats: [
+          { label: "CHANNEL", value: keys.length },
+          { label: "MESSAGE", value: Object.keys(CHAT_CONTENT).reduce(function (sum, key) { return sum + CHAT_CONTENT[key].length; }, 0) },
+          { label: "STATE", value: "LOCAL" }
+        ]
+      })
     });
   }
 
@@ -669,7 +797,20 @@
         reward: focus.time + " / " + focus.reward,
         action: "附件待接入"
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "MAIL",
+        reward: focus.reward,
+        note: focus.time,
+        action: focus.status,
+        ready: false,
+        overviewTitle: "INBOX",
+        stats: [
+          { label: "TOTAL", value: MAIL_CONTENT.length },
+          { label: "ATTACH", value: "2" },
+          { label: "STATE", value: focus.status }
+        ]
+      })
     });
   }
 
@@ -699,7 +840,20 @@
         reward: focus.reward,
         action: "签到待接入"
       }),
-      list: list
+      list: list,
+      dock: renderDock({
+        kicker: "SIGN",
+        reward: focus.reward,
+        note: "DAY " + focus.day,
+        action: focus.status,
+        ready: false,
+        overviewTitle: "ROUTE",
+        stats: [
+          { label: "CYCLE", value: "7" },
+          { label: "TODAY", value: "DAY " + focus.day },
+          { label: "FINAL", value: "DAY 7" }
+        ]
+      })
     });
   }
 
@@ -728,7 +882,20 @@
         { label: "音效", value: sfxOn ? "开启" : "关闭" },
         { label: "保存", value: "本地" }
       ]),
-      list: controls
+      list: controls,
+      dock: renderDock({
+        kicker: "AUDIO",
+        reward: musicOn ? "MUSIC ON" : "MUSIC OFF",
+        note: "BGM " + musicVolume + "% / SFX " + sfxVolume + "%",
+        action: "SAVED",
+        ready: musicOn || sfxOn,
+        overviewTitle: "SYSTEM",
+        stats: [
+          { label: "MUSIC", value: musicOn ? "ON" : "OFF" },
+          { label: "SFX", value: sfxOn ? "ON" : "OFF" },
+          { label: "SAVE", value: "LOCAL" }
+        ]
+      })
     });
   }
 

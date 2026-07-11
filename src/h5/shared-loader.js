@@ -2,7 +2,7 @@
   const pagePath = decodeURIComponent(location.pathname).replace(/\\/g, "/");
   const isLocalServer = /^(127\.0\.0\.1|localhost|\[::1\])$/i.test(location.hostname);
   const isSourceH5 = isLocalServer || /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) || /(?:^|\/)H5(?:\/|$)/.test(pagePath) || /(?:^|\/)h5\//i.test(pagePath);
-  const cacheVersion = "20260709-starport-terminal-redesign";
+  const cacheVersion = "20260710-a-hologram-cockpit";
   // Netlify manual ZIP uploads may omit nested folders. Production therefore loads
   // the mirrored root copies, while source-H5 keeps using the canonical shared folder.
   const base = isSourceH5 ? "../shared/" : "";
@@ -31,7 +31,8 @@
     "ui/battleHudView.js",
     "ui/pilotGalleryView.js",
     "ui/shipGalleryView.js",
-    "ui/mainFeaturePanelsView.js"
+    "ui/mainFeaturePanelsView.js",
+    "ui/starWingsGachaView.js"
   ];
   for (var i = 0; i < h5Files.length; i++) {
     document.write('<script src="' + h5Files[i] + '?v=' + cacheVersion + '"><\/script>');

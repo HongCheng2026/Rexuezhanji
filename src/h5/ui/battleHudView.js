@@ -53,11 +53,8 @@
   function renderItemSlots(state) {
     var container = root.document && root.document.querySelector("#battleItemSlots");
     if (!container || !state || !state.player) return;
-    var shield = Math.max(0, Math.ceil(state.player.shield || 0));
     var recent = Array.isArray(state.itemFeed) ? state.itemFeed.slice(-1).reverse() : [];
-    var html = '<article class="item-slot' + (shield > 0 ? " active" : "") + '">' +
-      '<strong>\u62a4\u76fe</strong><span>' + (shield > 0 ? shield + "s" : "\u5f85\u62fe\u53d6") + '</span>' +
-    '</article>';
+    var html = "";
 
     if (recent.length) {
       for (var i = 0; i < recent.length; i += 1) {
@@ -66,7 +63,7 @@
         html += '<article class="item-slot active recent"><strong>' + name + '</strong><span>\u521a\u62fe\u53d6</span></article>';
       }
     } else {
-      html += '<article class="item-slot"><strong>\u8865\u7ed9</strong><span>\u7a7a\u69fd</span></article>';
+      html += '<article class="item-slot"><strong>\u6218\u573a\u8865\u7ed9</strong><span>\u5f85\u6295\u653e</span></article>';
     }
 
     container.innerHTML = html;

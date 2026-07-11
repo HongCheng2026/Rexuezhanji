@@ -83,7 +83,9 @@
     "ship-hangar-panel",
     "fighter-upgrade-panel",
     "profile-dossier-panel",
-    "main-feature-panel"
+    "main-feature-panel",
+    "star-wings-gacha-panel",
+    "contact-panel"
   ];
   var demoConfig = createDemoConfig();
   var profile = loadProfile();
@@ -116,8 +118,8 @@
     mail: ["MAIL", "邮件", "邮件展示公告、补给、活动和维护信息。"],
     signin: ["SIGN IN", "签到", "七日航线奖励为本地展示态。"],
     setting: ["SETTING", "设置", "音乐和音效设置可即时生效并保存到本地。"],
-    promo: ["PROMO", "星穹之翼", "限时活动入口已接通。"],
-    sponsor: ["SUPPORT", "赞助我们", "赞助入口为本地展示态。"],
+    starWingsGacha: ["STAR WINGS", "星穹之翼", "限时抽取入口已独立接通。"],
+    contact: ["CONTACT", "联系我们", "二维码联系入口为本地展示态。"],
     chat: ["CHAT", "世界频道", "频道消息为本地预览，发送待接入。"]  };
 
   applyRuntimeAssetCssVars();
@@ -134,7 +136,13 @@
   function applyRuntimeAssetCssVars() {
     var background = assetsConfig.BACKGROUND_ASSETS && assetsConfig.BACKGROUND_ASSETS[0];
     if (!background || !background.src || !root.document || !root.document.documentElement) return;
-    root.document.documentElement.style.setProperty("--rx-hangar-bg", "url(" + JSON.stringify(background.src) + ")");
+    var docStyle = root.document.documentElement.style;
+    docStyle.setProperty("--rx-hangar-bg", "url(" + JSON.stringify(background.src) + ")");
+    var hudAssets = assetsConfig.UI_A_HUD_ASSETS || {};
+    Object.keys(hudAssets).forEach(function exposeHudAsset(key) {
+      var cssName = "--rx-a-" + key.replace(/[A-Z]/g, function (match) { return "-" + match.toLowerCase(); });
+      docStyle.setProperty(cssName, "url(" + JSON.stringify(hudAssets[key]) + ")");
+    });
   }
 
   function loadProfile() {
@@ -729,13 +737,15 @@
     }
     drawBackground();
     drawStars();
-    drawPowerups();
-    drawBullets();
+    drawPlayerBullets();
     drawEnemies();
     drawBoss();
-    drawPlayer();
     drawParticles();
     drawShockwaves();
+    drawSkillEffects();
+    drawPowerups();
+    drawEnemyBullets();
+    drawPlayer();
     drawEnemyTelegraphs();
     drawBossTelegraphs();
     drawBossIntro();
@@ -759,7 +769,7 @@
     ctx.fillStyle = "#d7fff5";
     for (var i = 0; i < stars.length; i += 1) {
       var star = stars[i];
-      ctx.globalAlpha = 0.35 + Math.min(0.65, star.size / 2);
+      ctx.globalAlpha = 0.18 + Math.min(0.46, star.size / 2.8);
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
       ctx.fill();
@@ -810,7 +820,9 @@
       var enemy = enemies[i];
       var image = getImage(enemy.image);
       if (image.complete && image.naturalWidth) {
-        drawRotatedImage(image, enemy.x, enemy.y, enemy.radius * 2.5, enemy.radius * 2, -Math.PI / 2);
+        var spriteW = enemy.radius * (enemy.heavy ? 2.18 : 2.04);
+        var spriteH = enemy.radius * (enemy.heavy ? 2.92 : 2.72);
+        drawRotatedImage(image, enemy.x, enemy.y, spriteW, spriteH, -Math.PI / 2);
       } else {
         ctx.fillStyle = enemy.heavy ? "#ff8a5c" : "#ffcf5a";
         ctx.beginPath();
@@ -885,56 +897,357 @@
   }
 
   function drawBullets() {
+    drawPlayerBullets();
+    drawEnemyBullets();
+  }
+
+  function drawPlayerBullets() {
     drawBulletList(state && state.bullets, false);
+  }
+
+  function drawEnemyBullets() {
     drawBulletList(state && state.enemyBullets, true);
+  }
+
+  function drawSkillEffects() {
+    var effects = state && state.skillEffects ? state.skillEffects : [];
+    if (!effects.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    for (var i = 0; i < effects.length; i += 1) {
+      var effect = effects[i];
+      var progress = 1 - Math.max(0, Math.min(1, effect.life / Math.max(0.01, effect.duration || 1)));
+      var alpha = Math.max(0, Math.min(1, effect.life / Math.max(0.01, effect.duration || 1)));
+      var color = effect.color || "#82f7ff";
+      if (effect.type === "stellar-beam") {
+        var beamHeight = (effect.height || 80) * (0.38 + Math.sin(progress * Math.PI) * 0.62);
+        var grad = ctx.createLinearGradient(effect.x, effect.y - beamHeight / 2, effect.x, effect.y + beamHeight / 2);
+        grad.addColorStop(0, "rgba(130, 247, 255, 0)");
+        grad.addColorStop(0.36, "rgba(130, 247, 255, " + (0.22 * alpha).toFixed(3) + ")");
+        grad.addColorStop(0.5, "rgba(244, 255, 255, " + (0.72 * alpha).toFixed(3) + ")");
+        grad.addColorStop(0.64, "rgba(130, 247, 255, " + (0.22 * alpha).toFixed(3) + ")");
+        grad.addColorStop(1, "rgba(130, 247, 255, 0)");
+        ctx.fillStyle = grad;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 28 * alpha;
+        ctx.fillRect(effect.x - 20, effect.y - beamHeight / 2, effect.width || 820, beamHeight);
+        ctx.strokeStyle = "rgba(220, 255, 255, " + (0.9 * alpha).toFixed(3) + ")";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(effect.x - 6, effect.y);
+        ctx.lineTo(effect.x + (effect.width || 820), effect.y);
+        ctx.stroke();
+      } else if (effect.type === "dark-core") {
+        var radius = (effect.radius || 120) * (0.42 + progress * 0.58);
+        var darkGrad = ctx.createRadialGradient(effect.x, effect.y, radius * 0.1, effect.x, effect.y, radius);
+        darkGrad.addColorStop(0, "rgba(255, 255, 255, " + (0.74 * alpha).toFixed(3) + ")");
+        darkGrad.addColorStop(0.24, "rgba(184, 108, 255, " + (0.5 * alpha).toFixed(3) + ")");
+        darkGrad.addColorStop(0.62, "rgba(91, 43, 172, " + (0.26 * alpha).toFixed(3) + ")");
+        darkGrad.addColorStop(1, "rgba(12, 4, 32, 0)");
+        ctx.fillStyle = darkGrad;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(205, 166, 255, " + (0.72 * alpha).toFixed(3) + ")";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, radius * (1.04 - progress * 0.34), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (effect.type === "golden-lances") {
+        ctx.strokeStyle = "rgba(255, 209, 102, " + (0.78 * alpha).toFixed(3) + ")";
+        ctx.shadowColor = "#ffd166";
+        ctx.shadowBlur = 18 * alpha;
+        ctx.lineWidth = 3;
+        var lanes = effect.lanes || [];
+        for (var lane = 0; lane < lanes.length; lane += 1) {
+          var y = effect.y + lanes[lane];
+          ctx.beginPath();
+          ctx.moveTo(effect.x, y);
+          ctx.lineTo(effect.x + (effect.width || 760), y + (lane - lanes.length / 2) * 4);
+          ctx.stroke();
+          ctx.fillStyle = "rgba(255, 244, 184, " + (0.72 * alpha).toFixed(3) + ")";
+          ctx.beginPath();
+          ctx.moveTo(effect.x + 42 + progress * 180, y);
+          ctx.lineTo(effect.x + 12 + progress * 180, y - 8);
+          ctx.lineTo(effect.x + 12 + progress * 180, y + 8);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
   }
 
   function drawBulletList(list, enemy) {
     list = list || [];
     for (var i = 0; i < list.length; i += 1) {
       var bullet = list[i];
-      var color = bullet.color || (enemy ? "#ff6b8a" : "#d7fff5");
-      ctx.save();
-      ctx.translate(bullet.x, bullet.y);
-      ctx.rotate(bullet.angle || 0);
-      ctx.fillStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = enemy ? 8 : 12;
-      var bulletSprite = enemy ? getEnemyBulletSprite(bullet) : null;
-      if (bulletSprite && bulletSprite.complete && bulletSprite.naturalWidth) {
-        var spriteSize = Math.max(18, (bullet.radius || 5) * 4.2);
-        ctx.drawImage(bulletSprite, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
-        ctx.restore();
-        continue;
-      }
-      if (!enemy && bullet.trailColor) {
-        ctx.fillStyle = bullet.trailColor;
-        ctx.fillRect(-Math.max(14, bullet.width || 14), -1.5, Math.max(14, bullet.width || 14), 3);
-        ctx.fillStyle = color;
-      }
-      if (bullet.shape === "beam") {
-        var bw = bullet.width || 34;
-        var bh = bullet.height || 6;
-        ctx.fillRect(-bw * 0.25, -bh / 2, bw, bh);
-        ctx.fillStyle = "rgba(214, 249, 255, 0.88)";
-        ctx.fillRect(-bw * 0.2, -1, bw * 0.82, 2);
-      } else if (bullet.shape === "triangle") {
-        var tw = bullet.width || 18;
-        var th = bullet.height || 14;
-        ctx.beginPath();
-        ctx.moveTo(tw * 0.62, 0);
-        ctx.lineTo(-tw * 0.45, -th * 0.5);
-        ctx.lineTo(-tw * 0.2, 0);
-        ctx.lineTo(-tw * 0.45, th * 0.5);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.arc(0, 0, bullet.radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
+      if (enemy) drawEnemyBullet(bullet);
+      else drawPlayerBullet(bullet);
     }
+  }
+
+  function drawPlayerBullet(bullet) {
+    var visual = getPlayerBulletVisual(bullet);
+    ctx.save();
+    ctx.translate(bullet.x, bullet.y);
+    ctx.rotate(bullet.angle || 0);
+    ctx.globalCompositeOperation = "lighter";
+    drawBulletTrail(visual.trailColor || bullet.trailColor, visual.trailLength, visual.trailHeight);
+    ctx.shadowColor = visual.glow;
+    ctx.shadowBlur = visual.shadowBlur;
+    if (visual.shape === "beam") drawPlasmaBeam(visual);
+    else if (visual.shape === "lance") drawLanceBullet(visual);
+    else if (visual.shape === "bolt") drawBoltBullet(visual);
+    else drawOrbBullet(visual);
+    ctx.restore();
+  }
+
+  function drawEnemyBullet(bullet) {
+    var visual = getEnemyBulletRenderProfile(bullet);
+    var sprite = getEnemyBulletSprite(bullet);
+    ctx.save();
+    ctx.translate(bullet.x, bullet.y);
+    ctx.rotate(bullet.angle || 0);
+    ctx.shadowColor = visual.glow;
+    ctx.shadowBlur = visual.shadowBlur;
+    if (sprite && sprite.complete && sprite.naturalWidth) {
+      var spriteSize = visual.spriteSize || Math.max(16, (bullet.radius || 5) * 3.2);
+      ctx.globalAlpha = visual.spriteAlpha;
+      ctx.drawImage(sprite, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+      ctx.globalAlpha = 1;
+    }
+    if (visual.shape === "beam") {
+      drawEnemyBeam(visual);
+    } else if (visual.shape === "lance") {
+      drawLanceBullet(visual);
+    } else {
+      drawEnemyCore(visual);
+    }
+    ctx.restore();
+  }
+
+  function getPlayerBulletVisual(bullet) {
+    var type = bullet.type || "normal";
+    var base = {
+      shape: bullet.shape || "orb",
+      core: bullet.color || "#d7fff5",
+      glow: bullet.color || "#d7fff5",
+      inner: "rgba(255,255,255,0.9)",
+      width: bullet.width || Math.max(10, (bullet.radius || 4) * 3),
+      height: bullet.height || Math.max(5, (bullet.radius || 4) * 1.6),
+      radius: bullet.radius || 4,
+      trailColor: bullet.trailColor || "rgba(191,252,255,0.28)",
+      trailLength: 20,
+      trailHeight: 2,
+      shadowBlur: 10
+    };
+    if (type === "spread") {
+      base.shape = "bolt";
+      base.core = "#ffd166";
+      base.glow = "rgba(255, 197, 80, 0.78)";
+      base.inner = "#fff6bd";
+      base.width = Math.max(13, bullet.width || 14);
+      base.height = Math.max(5, bullet.height || 6);
+      base.trailColor = "rgba(255, 196, 82, 0.24)";
+      base.trailLength = 18;
+      base.shadowBlur = 8;
+    } else if (type === "laser" || type === "stellarBeam") {
+      base.shape = "beam";
+      base.core = "#5ee7ff";
+      base.glow = "rgba(76, 229, 255, 0.72)";
+      base.inner = "#e8fbff";
+      base.width = Math.max(32, bullet.width || 38);
+      base.height = Math.max(4, bullet.height || 6);
+      base.trailColor = "rgba(94, 231, 255, 0.2)";
+      base.trailLength = Math.max(28, base.width * 0.7);
+      base.shadowBlur = 10;
+    } else if (type === "missile" || type === "goldenLance" || type === "cluster") {
+      base.shape = "lance";
+      base.core = type === "cluster" ? "#b889ff" : "#ffb347";
+      base.glow = type === "cluster" ? "rgba(184, 137, 255, 0.62)" : "rgba(255, 178, 71, 0.68)";
+      base.inner = type === "cluster" ? "#f0dcff" : "#fff0b8";
+      base.width = Math.max(18, bullet.width || 22);
+      base.height = Math.max(8, bullet.height || 10);
+      base.trailColor = type === "cluster" ? "rgba(184, 137, 255, 0.22)" : "rgba(255, 172, 74, 0.22)";
+      base.trailLength = 26;
+      base.shadowBlur = 9;
+    } else if (type === "nova" || type === "darkCore") {
+      base.shape = "orb";
+      base.core = type === "darkCore" ? "#b889ff" : "#82f7ff";
+      base.glow = type === "darkCore" ? "rgba(184, 137, 255, 0.72)" : "rgba(130, 247, 255, 0.74)";
+      base.radius = Math.max(8, bullet.radius || 9);
+      base.trailLength = 24;
+      base.shadowBlur = 16;
+    }
+    return base;
+  }
+
+  function getEnemyBulletRenderProfile(bullet) {
+    var source = (bullet && (bullet.bulletVisualId || bullet.patternSource)) || "single";
+    var profile = {
+      shape: bullet.shape === "beam" ? "beam" : "orb",
+      core: bullet.color || "#ff6b45",
+      glow: bullet.color || "#ff6b45",
+      inner: "#fff3df",
+      width: Math.max(12, bullet.width || (bullet.radius || 5) * 3),
+      height: Math.max(5, bullet.height || (bullet.radius || 5) * 1.4),
+      radius: Math.max(4.5, bullet.radius || 4.5),
+      spriteAlpha: 0.72,
+      spriteSize: Math.max(16, (bullet.radius || 5) * 3.2),
+      shadowBlur: 10
+    };
+    if (source.indexOf("slow_wall") >= 0 || source.indexOf("wall") >= 0 || source.indexOf("shield") >= 0) {
+      profile.shape = "beam";
+      profile.core = "#ffb347";
+      profile.glow = "rgba(255, 147, 70, 0.78)";
+      profile.inner = "#fff0b8";
+      profile.width = Math.max(18, bullet.width || 20);
+      profile.height = Math.max(5, bullet.height || 6);
+      profile.shadowBlur = 9;
+    } else if (source.indexOf("sniper") >= 0) {
+      profile.shape = "lance";
+      profile.core = "#fff2a8";
+      profile.glow = "rgba(255, 216, 112, 0.82)";
+      profile.inner = "#ffffff";
+      profile.width = Math.max(26, bullet.width || 28);
+      profile.height = Math.max(5, bullet.height || 6);
+      profile.shadowBlur = 14;
+    } else if (source.indexOf("rotating") >= 0) {
+      profile.shape = "lance";
+      profile.core = "#ff6bff";
+      profile.glow = "rgba(255, 100, 230, 0.68)";
+      profile.inner = "#ffe4ff";
+      profile.width = Math.max(18, bullet.width || 18);
+      profile.height = Math.max(8, bullet.height || 10);
+    } else if (source.indexOf("mothership") >= 0 || source.indexOf("delayed_burst") >= 0) {
+      profile.core = "#ff5d73";
+      profile.glow = "rgba(255, 73, 112, 0.78)";
+      profile.inner = "#ffe1e7";
+      profile.radius = Math.max(6, bullet.radius || 6);
+      profile.shadowBlur = 14;
+    } else if (source.indexOf("triple") >= 0 || source.indexOf("cross") >= 0 || source.indexOf("fan") >= 0) {
+      profile.core = "#ff7c93";
+      profile.glow = "rgba(255, 97, 126, 0.78)";
+      profile.inner = "#ffe5eb";
+      profile.radius = Math.max(4.8, bullet.radius || 4.8);
+    }
+    return profile;
+  }
+
+  function drawBulletTrail(color, length, height) {
+    if (!color || !length) return;
+    var grad = ctx.createLinearGradient(-length, 0, 3, 0);
+    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(0.58, color);
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    drawCapsule(-length, -(height || 2) / 2, length, height || 2, (height || 2) / 2);
+  }
+
+  function drawPlasmaBeam(visual) {
+    var w = visual.width;
+    var h = visual.height;
+    ctx.fillStyle = colorOrDefault(visual.glow, "rgba(94,231,255,0.42)");
+    drawCapsule(-w * 0.25, -h * 0.72, w, h * 1.44, h);
+    ctx.fillStyle = visual.core;
+    drawCapsule(-w * 0.18, -h * 0.45, w * 0.9, h * 0.9, h * 0.45);
+    ctx.fillStyle = visual.inner;
+    drawCapsule(-w * 0.08, -1, w * 0.72, 2, 1);
+  }
+
+  function drawBoltBullet(visual) {
+    var w = visual.width;
+    var h = visual.height;
+    ctx.fillStyle = colorOrDefault(visual.glow, "rgba(255,209,102,0.35)");
+    ctx.beginPath();
+    ctx.moveTo(w * 0.72, 0);
+    ctx.lineTo(w * 0.04, -h * 0.74);
+    ctx.lineTo(-w * 0.48, -h * 0.36);
+    ctx.lineTo(-w * 0.28, 0);
+    ctx.lineTo(-w * 0.48, h * 0.36);
+    ctx.lineTo(w * 0.04, h * 0.74);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = visual.inner;
+    drawCapsule(-w * 0.16, -1, w * 0.56, 2, 1);
+  }
+
+  function drawLanceBullet(visual) {
+    var w = visual.width;
+    var h = visual.height;
+    ctx.fillStyle = colorOrDefault(visual.glow, "rgba(255,179,71,0.38)");
+    ctx.beginPath();
+    ctx.moveTo(w * 0.72, 0);
+    ctx.lineTo(-w * 0.34, -h * 0.62);
+    ctx.lineTo(-w * 0.12, 0);
+    ctx.lineTo(-w * 0.34, h * 0.62);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = visual.core;
+    ctx.beginPath();
+    ctx.moveTo(w * 0.48, 0);
+    ctx.lineTo(-w * 0.18, -h * 0.34);
+    ctx.lineTo(-w * 0.04, 0);
+    ctx.lineTo(-w * 0.18, h * 0.34);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = visual.inner;
+    drawCapsule(-w * 0.1, -1, w * 0.34, 2, 1);
+  }
+
+  function drawOrbBullet(visual) {
+    var radius = visual.radius;
+    var grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 1.8);
+    grad.addColorStop(0, visual.inner || "#ffffff");
+    grad.addColorStop(0.38, visual.core);
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = visual.core;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawEnemyBeam(visual) {
+    ctx.fillStyle = colorOrDefault(visual.glow, "rgba(255,139,71,0.38)");
+    drawCapsule(-visual.width * 0.48, -visual.height * 0.62, visual.width, visual.height * 1.24, visual.height);
+    ctx.fillStyle = visual.core;
+    drawCapsule(-visual.width * 0.42, -visual.height * 0.38, visual.width * 0.84, visual.height * 0.76, visual.height);
+    ctx.fillStyle = visual.inner;
+    drawCapsule(-visual.width * 0.22, -1, visual.width * 0.44, 2, 1);
+  }
+
+  function drawEnemyCore(visual) {
+    drawOrbBullet(visual);
+    ctx.strokeStyle = colorOrDefault(visual.glow, "rgba(255,107,69,0.62)");
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, visual.radius * 1.45, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function drawCapsule(x, y, width, height, radius) {
+    radius = Math.max(0, Math.min(radius || 0, Math.abs(height) / 2, Math.abs(width) / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function colorOrDefault(value, fallback) {
+    return value || fallback;
   }
 
   function getEnemyBulletSprite(bullet) {
@@ -1284,7 +1597,7 @@
     var buttonWidthPct = (buttonRect.width / screenRect.width) * 100;
     var buttonTopPct = ((buttonRect.top - screenRect.top) / screenRect.height) * 100;
     var anchorOffsetX = clamp(parsePercentNumber(pose.anchorOffsetX, defaults.anchorOffsetX || 0), -2, 2);
-    var widthRatio = clamp(parseFloatNumber(pose.buttonWidthRatio, defaults.buttonWidthRatio || 0.88), 0.84, 0.9);
+    var widthRatio = clamp(parseFloatNumber(pose.buttonWidthRatio, defaults.buttonWidthRatio || 0.88), 0.68, 0.9);
     var overlapRatio = clamp(parseFloatNumber(pose.buttonOverlapRatio, defaults.buttonOverlapRatio || 0.2), 0.15, 0.25);
     var buttonOverlapPx = clamp(buttonRect.height * overlapRatio, 16, 26);
     var pilotLeft = buttonCenterXPct + buttonWidthPct * (anchorOffsetX / 100);
@@ -1513,7 +1826,6 @@
     var rating = result.rating || {};
     var honorTier = Math.max(0, Math.floor(Number(rating.honorTier) || 0));
     var honorIcon = icons[rating.honorIcon] || icons.starBadge || "";
-    var honorLabel = rating.honorLabel || rating.label || (result.isWin ? "1星" : "未通关");
     var honorStars = renderSettlementHonorStars(honorTier, honorIcon);
     dom.shopScreen.classList.remove("settlement-victory-intro-mode", "settlement-chest-mode");
     dom.shopScreen.classList.add("settlement-ceremony-mode", "settlement-opened-mode", result.isWin ? "settlement-win-mode" : "settlement-fail-mode");
@@ -1545,7 +1857,6 @@
       '<div class="settlement-honor-visual">' +
         honorStars +
         '<strong class="settlement-honor-caption">作战评级</strong>' +
-        '<em class="settlement-honor-subcaption">' + escapeHtml(honorLabel) + '</em>' +
       '</div>' +
       renderSettlementRatingStats(rating);
     rewardPanel.appendChild(headline);
@@ -1576,6 +1887,8 @@
     icons = icons || {};
     if (!dom.shopScreen || !dom.shopScreen.style) return;
     dom.shopScreen.style.setProperty("--settlement-primary-button", "url('" + (icons.primaryButton || "") + "')");
+    dom.shopScreen.style.setProperty("--settlement-honor-divider", "url('" + (icons.honorDivider || "") + "')");
+    dom.shopScreen.style.setProperty("--settlement-reward-slot", "url('" + (icons.rewardSlot || "") + "')");
   }
 
   function renderSettlementHonorStars(tier, crownIcon) {
@@ -1595,15 +1908,13 @@
 
   function renderSettlementRatingStats(rating) {
     rating = rating || {};
-    var killRatio = Math.max(0, Number(rating.killRatio) || 0);
+    var killedEnemies = Math.max(0, Math.floor(Number(rating.killedEnemies) || 0));
     var damageTaken = Math.max(0, Math.floor(Number(rating.damageTaken) || 0));
     var bossTime = Number(rating.bossClearTime);
-    var hpRatio = Math.max(0, Math.min(1, Number(rating.hpRatio) || 0));
     return '<div class="settlement-rating-stats">' +
-      '<span><b>清场</b><strong>' + Math.round(killRatio * 100) + '%</strong></span>' +
+      '<span><b>击落敌机</b><strong>' + killedEnemies + '架</strong></span>' +
       '<span><b>受击</b><strong>' + damageTaken + '</strong></span>' +
-      '<span><b>BOSS</b><strong>' + (bossTime >= 999 || !isFinite(bossTime) ? "--" : Math.ceil(bossTime) + "s") + '</strong></span>' +
-      '<span><b>生命</b><strong>' + Math.round(hpRatio * 100) + '%</strong></span>' +
+      '<span><b>BOSS时间</b><strong>' + (bossTime >= 999 || !isFinite(bossTime) ? "--" : Math.ceil(bossTime) + "s") + '</strong></span>' +
     '</div>';
   }
 
@@ -1644,7 +1955,6 @@
           '<div class="battle-report-copy">' +
             '<span>MISSION CLEAR</span>' +
             '<strong>航线压制完成</strong>' +
-            '<em>' + escapeHtml(getHonorLabel(rating, result.isWin !== false)) + '</em>' +
           '</div>' +
         '</section>' +
         renderSettlementRatingStats(rating) +
@@ -1721,9 +2031,7 @@
       '<section class="battle-report-main">' +
         renderSettlementPilotHeader(pilot, title, result.isWin ? "胜利数据已写入航线记录。" : "本次未通关，宝箱不会出现。") +
         '<div class="battle-report-grade">' +
-          '<span>GRADE</span>' +
           renderSettlementHonorStars(honorTier, honorIcon) +
-          '<strong>' + escapeHtml(getHonorLabel(rating, Boolean(result.isWin))) + '</strong>' +
         '</div>' +
       '</section>' +
       renderSettlementRatingStats(rating);
@@ -1742,6 +2050,21 @@
       grid.appendChild(card);
     });
     body.appendChild(grid);
+
+    var actionBar = document.createElement("section");
+    actionBar.className = "battle-report-actions";
+    function appendReportAction(action, label, primary) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "battle-report-action" + (primary ? " primary" : "");
+      button.dataset.settlementAction = action;
+      button.textContent = label;
+      actionBar.appendChild(button);
+    }
+    appendReportAction(result.isWin ? "next" : "replay", result.isWin ? "下一关" : "再战", true);
+    if (result.isWin) appendReportAction("replay", "再战", false);
+    appendReportAction("chapter", "返回关卡", false);
+    body.appendChild(actionBar);
     dom.upgradeList.appendChild(body);
 
     dom.nextLevelButton.textContent = result.isWin ? "下一关" : "再战";
@@ -1765,15 +2088,13 @@
 
   function renderSettlementRatingStats(rating) {
     rating = rating || {};
-    var killRatio = Math.max(0, Number(rating.killRatio) || 0);
+    var killedEnemies = Math.max(0, Math.floor(Number(rating.killedEnemies) || 0));
     var damageTaken = Math.max(0, Math.floor(Number(rating.damageTaken) || 0));
     var bossTime = Number(rating.bossClearTime);
-    var hpRatio = Math.max(0, Math.min(1, Number(rating.hpRatio) || 0));
     return '<div class="settlement-rating-stats battle-report-stats">' +
-      '<span><b>清场</b><strong>' + Math.round(killRatio * 100) + '%</strong></span>' +
+      '<span><b>击落敌机</b><strong>' + killedEnemies + '架</strong></span>' +
       '<span><b>受击</b><strong>' + damageTaken + '</strong></span>' +
-      '<span><b>BOSS</b><strong>' + (bossTime >= 999 || !isFinite(bossTime) ? "--" : Math.ceil(bossTime) + "s") + '</strong></span>' +
-      '<span><b>生命</b><strong>' + Math.round(hpRatio * 100) + '%</strong></span>' +
+      '<span><b>BOSS时间</b><strong>' + (bossTime >= 999 || !isFinite(bossTime) ? "--" : Math.ceil(bossTime) + "s") + '</strong></span>' +
     '</div>';
   }
 
@@ -1790,16 +2111,6 @@
         '<p>' + escapeHtml(message || "") + '</p>' +
       '</div>' +
     '</section>';
-  }
-
-  function getHonorLabel(rating, isWin) {
-    if (!isWin) return "未通关";
-    var tier = Math.max(0, Math.floor(Number(rating && (rating.honorTier || rating.stars)) || 0));
-    if (tier >= 5) return "三星彩冠";
-    if (tier >= 4) return "三星金冠";
-    if (tier >= 3) return "三星";
-    if (tier >= 2) return "二星";
-    return "一星";
   }
 
   function formatLevelProgress(levelProgress) {
@@ -2341,6 +2652,15 @@
       renderEnemyCodexPanel();
       return;
     }
+    if (shared.starWingsGachaView && shared.starWingsGachaView.renderPanel) {
+      if (shared.starWingsGachaView.renderPanel(key, dom, {
+        profile: profile,
+        assets: assetsConfig.UI_A_HUD_ASSETS || {}
+      })) {
+        openFeaturePanelShell(key === "starWingsGacha" ? "star-wings-gacha-panel" : "contact-panel");
+        return;
+      }
+    }
     if (shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.renderPanel) {
       if (shared.mainFeaturePanelsView.renderPanel(key, dom, {
         profile: profile,
@@ -2502,6 +2822,8 @@
 
   function bindEvents() {
     root.addEventListener("pointerdown", unlockAudio, { once: true });
+    root.addEventListener("click", unlockAudio, { once: true });
+    root.addEventListener("touchstart", unlockAudio, { once: true, passive: true });
     root.addEventListener("keydown", unlockAudio, { once: true });
     document.addEventListener("click", function onAnyUiClick(event) {
       if (event.target && event.target.closest && event.target.closest("button")) playSfx("button");
@@ -2541,6 +2863,14 @@
       openBattleSelect();
     });
     dom.upgradeList.addEventListener("click", function onSettlementChest(event) {
+      var reportAction = event.target && event.target.closest ? event.target.closest("[data-settlement-action]") : null;
+      if (reportAction) {
+        var action = reportAction.dataset ? reportAction.dataset.settlementAction : "";
+        if (action === "next") dom.nextLevelButton.click();
+        if (action === "replay") dom.replayButton.click();
+        if (action === "chapter") dom.backToChapterButton.click();
+        return;
+      }
       var victoryChest = event.target && event.target.closest ? event.target.closest("[data-open-victory-chest]") : null;
       if (victoryChest && lastBattleResult) {
         renderSettlementChest(lastBattleResult);
@@ -2564,6 +2894,10 @@
     });
     dom.featurePanel.addEventListener("click", function onFighterUpgradeClick(event) {
       if (handleSettingPanelClick(event)) return;
+      if (shared.starWingsGachaView && shared.starWingsGachaView.handleEvent && shared.starWingsGachaView.handleEvent(event, dom)) {
+        playSfx("button");
+        return;
+      }
       var back = event.target && event.target.closest ? event.target.closest("[data-feature-back]") : null;
       if (back) {
         closeFeaturePanel();

@@ -11,7 +11,10 @@
   const shipLobbyAsset = (file) => runtimeAsset("ships/lobby", file);
   const shipBattleAsset = (file) => runtimeAsset("ships/battle", file);
   const enemyCodexAsset = (file) => runtimeAsset("enemies/codex", file);
+  const enemyBattleAsset = (file) => runtimeAsset("enemies/battle", file);
   const enemyBulletAsset = (file) => runtimeAsset("enemies/bullets", file);
+  const uiHudAsset = (file) => runtimeAsset("ui/a-hud", file);
+  const uiHudV5Asset = (file) => runtimeAsset("ui/a-hud-v5", file);
 
   const RANK_DAMAGE = {
     pilot: { SS: 60, S: 55, A: 50, B: 45 },
@@ -25,36 +28,36 @@
 
   const DEFAULT_LOBBY_POSES = {
     pilot: {
-      left: "57.3%",
-      bottom: "-1%",
-      width: "30.5%",
-      height: "87%",
-      maxHeight: "90%",
+      left: "50.5%",
+      bottom: "-3%",
+      width: "26%",
+      height: "70%",
+      maxHeight: "74%",
       anchorOffsetX: "0%",
-      buttonWidthRatio: 0.88,
+      buttonWidthRatio: 0.74,
       buttonOverlapRatio: 0.2,
       opacity: "1",
       translateX: "-50%",
       translateY: "0",
       rotate: "0deg",
       scale: "1",
-      filter: "drop-shadow(0 24px 38px rgba(0, 0, 0, 0.5)) brightness(1.08) contrast(1.06) saturate(1.08)"
+      filter: "drop-shadow(0 26px 42px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 18px rgba(67, 200, 255, 0.16)) brightness(1.08) contrast(1.08) saturate(1.08)"
     },
     ship: {
-      left: "73%",
-      top: "50%",
-      width: "82%",
-      height: "56%",
-      opacity: "0.92",
+      left: "58%",
+      top: "47%",
+      width: "66%",
+      height: "43%",
+      opacity: "0.72",
       translateX: "-50%",
       translateY: "-50%",
       rotate: "-1deg",
       scale: "1",
-      filter: "drop-shadow(0 24px 36px rgba(0, 0, 0, 0.56)) drop-shadow(0 0 12px rgba(67, 200, 255, 0.1)) brightness(0.88) contrast(1.03) saturate(0.92)",
-      shadowLeft: "73%",
-      shadowTop: "76%",
-      shadowWidth: "74%",
-      shadowHeight: "14%",
+      filter: "drop-shadow(0 24px 36px rgba(0, 0, 0, 0.58)) drop-shadow(0 0 20px rgba(67, 200, 255, 0.2)) brightness(0.86) contrast(1.05) saturate(0.92)",
+      shadowLeft: "58%",
+      shadowTop: "70%",
+      shadowWidth: "52%",
+      shadowHeight: "12%",
       shadowRotate: "-2deg",
       shadowOpacity: "0.6"
     }
@@ -104,8 +107,50 @@
   }));
 
   const BACKGROUND_ASSETS = [
-    { id: DEFAULT_BACKGROUND_ID, rank: "BASE", name: "\u661f\u6e2f\u5927\u5385", src: runtimeAsset("backgrounds", "lobby-bg-01.png") }
+    { id: DEFAULT_BACKGROUND_ID, rank: "BASE", name: "\u661f\u6e2f\u5927\u5385", src: runtimeAsset("backgrounds", "lobby-command-cockpit-a.png") }
   ];
+
+  const UI_A_HUD_ASSETS = {
+    panelFrame: uiHudAsset("panel-frame.png"),
+    dockFrame: uiHudAsset("dock-frame.png"),
+    routeFrame: uiHudAsset("route-frame.png"),
+    railFrame: uiHudAsset("rail-frame.png"),
+    rewardDock: uiHudAsset("reward-dock.png"),
+    panelTexture: uiHudAsset("panel-texture.png"),
+    iconSprite: uiHudAsset("icon-sprite.png"),
+    gachaBanner: uiHudAsset("gacha-banner.png"),
+    gachaMachine: uiHudAsset("gacha-machine.png"),
+    gachaCurrency: uiHudAsset("gacha-currency.png"),
+    gachaTenPull: uiHudAsset("gacha-ten-pull.png"),
+    gachaCardBlue: uiHudAsset("gacha-card-blue.png"),
+    gachaCardPurple: uiHudAsset("gacha-card-purple.png"),
+    gachaCardGold: uiHudAsset("gacha-card-gold.png"),
+    gachaAircraftCard: uiHudAsset("gacha-aircraft-card.png"),
+    gachaBurst: uiHudAsset("gacha-burst.png"),
+    gachaProbability: uiHudAsset("gacha-probability.png"),
+    contactPanel: uiHudAsset("contact-panel.png"),
+    qrPlaceholder: uiHudAsset("qr-placeholder.png"),
+    resourceCapsule: uiHudAsset("resource-capsule.png"),
+    starWingsButton: uiHudAsset("star-wings-button.png"),
+    contactButton: uiHudAsset("contact-button.png"),
+    quickIcons: uiHudAsset("quick-icons.png"),
+    chatStrip: uiHudAsset("chat-strip.png"),
+    v5PilotCard: uiHudV5Asset("v5-pilot-card.png"),
+    v5ResourceLeft: uiHudV5Asset("v5-resource-left.png"),
+    v5ResourceRight: uiHudV5Asset("v5-resource-right.png"),
+    v5TopCrest: uiHudV5Asset("v5-top-crest.png"),
+    v5QuickNav: uiHudV5Asset("v5-quick-nav.png"),
+    v5LeftTile: uiHudV5Asset("v5-left-tile.png"),
+    v5LeftTileShip: uiHudV5Asset("v5-left-tile-ship.png"),
+    v5LeftTileCodex: uiHudV5Asset("v5-left-tile-codex.png"),
+    v5MenuTile: uiHudV5Asset("v5-menu-tile.png"),
+    v5MenuTileAlt: uiHudV5Asset("v5-menu-tile-alt.png"),
+    v5PromoCard: uiHudV5Asset("v5-promo-card.png"),
+    v5ContactCard: uiHudV5Asset("v5-contact-card.png"),
+    v5StartButton: uiHudV5Asset("v5-start-button.png"),
+    v5UtilityButton: uiHudV5Asset("v5-utility-button.png"),
+    v5ChatStrip: uiHudV5Asset("v5-chat-strip.png")
+  };
 
   const CHAPTER_COVER_ASSETS = Array.from({ length: 10 }, (_, index) => ({
     chapterIndex: index,
@@ -125,17 +170,17 @@
       runtimeAsset("enemies", "enemy-elite-02.png")
     ],
     enemySprites: {
-      small: [enemyCodexAsset("enemy-scout-01.png")],
-      scout: [enemyCodexAsset("enemy-scout-01.png")],
-      shooter: [enemyCodexAsset("enemy-shooter-01.png")],
-      shield: [enemyCodexAsset("enemy-shield-01.png")],
-      charger: [enemyCodexAsset("enemy-charger-01.png")],
-      bomber: [enemyCodexAsset("enemy-bomber-01.png")],
-      sniper: [enemyCodexAsset("enemy-sniper-01.png")],
-      guard: [enemyCodexAsset("enemy-guard-01.png")],
-      rotor: [enemyCodexAsset("enemy-rotor-01.png")],
-      core: [enemyCodexAsset("enemy-core-01.png")],
-      elite: [enemyCodexAsset("enemy-core-01.png"), enemyCodexAsset("enemy-guard-01.png")]
+      small: [enemyBattleAsset("enemy-battle-scout-01.png")],
+      scout: [enemyBattleAsset("enemy-battle-scout-01.png")],
+      shooter: [enemyBattleAsset("enemy-battle-shooter-01.png")],
+      shield: [enemyBattleAsset("enemy-battle-shield-01.png")],
+      charger: [enemyBattleAsset("enemy-battle-charger-01.png")],
+      bomber: [enemyBattleAsset("enemy-battle-bomber-01.png")],
+      sniper: [enemyBattleAsset("enemy-battle-sniper-01.png")],
+      guard: [enemyBattleAsset("enemy-battle-guard-01.png")],
+      rotor: [enemyBattleAsset("enemy-battle-rotor-01.png")],
+      core: [enemyBattleAsset("enemy-battle-core-01.png")],
+      elite: [enemyBattleAsset("enemy-battle-core-01.png"), enemyBattleAsset("enemy-battle-guard-01.png")]
     }
   };
 
@@ -151,15 +196,15 @@
   };
 
   const ENEMY_CODEX = [
-    { id: "scout", name: "侦察机", firstChapter: 0, attack: "直线入场，少量单发弹。", bulletType: "single", danger: "低威胁清兵目标。", src: enemyCodexAsset("enemy-scout-01.png") },
-    { id: "shooter", name: "射击机", firstChapter: 1, attack: "三连弹或交叉火力。", bulletType: "triple", danger: "第一章开始教玩家躲子弹。", src: enemyCodexAsset("enemy-shooter-01.png") },
-    { id: "shield", name: "护盾机", firstChapter: 2, attack: "慢速封路弹，护甲更高。", bulletType: "slow_wall", danger: "需要识别护盾并绕开弹线。", src: enemyCodexAsset("enemy-shield-01.png") },
-    { id: "charger", name: "冲锋机", firstChapter: 4, attack: "航道预警后高速突进。", bulletType: "single", danger: "危险来自撞击路线。", src: enemyCodexAsset("enemy-charger-01.png") },
-    { id: "bomber", name: "轰炸机", firstChapter: 5, attack: "横移投放爆雷。", bulletType: "bomb_mine", danger: "不要停在爆点附近。", src: enemyCodexAsset("enemy-bomber-01.png") },
-    { id: "sniper", name: "狙击机", firstChapter: 6, attack: "锁定线后发射高速狙击弹。", bulletType: "sniper_warning", danger: "看见锁定线先躲。", src: enemyCodexAsset("enemy-sniper-01.png") },
-    { id: "guard", name: "母舰护卫", firstChapter: 7, attack: "护卫齐射与编队压迫。", bulletType: "triple", danger: "常和 BOSS 或精英一起出现。", src: enemyCodexAsset("enemy-guard-01.png") },
-    { id: "rotor", name: "旋翼封锁机", firstChapter: 8, attack: "旋转封锁弹幕。", bulletType: "rotating", danger: "等缺口，不要硬穿。", src: enemyCodexAsset("enemy-rotor-01.png") },
-    { id: "core", name: "精英核心", firstChapter: 9, attack: "母舰混合机制与分裂弹。", bulletType: "mothership_core", danger: "终章高压目标，优先处理。", src: enemyCodexAsset("enemy-core-01.png") }
+    { id: "scout", name: "侦察机", firstChapter: 0, attack: "直线入场，少量单发弹。", bulletType: "single", danger: "低威胁清兵目标。", src: enemyBattleAsset("enemy-battle-scout-01.png") },
+    { id: "shooter", name: "射击机", firstChapter: 1, attack: "三连弹或交叉火力。", bulletType: "triple", danger: "第一章开始教玩家躲子弹。", src: enemyBattleAsset("enemy-battle-shooter-01.png") },
+    { id: "shield", name: "护盾机", firstChapter: 2, attack: "慢速封路弹，护甲更高。", bulletType: "slow_wall", danger: "需要识别护盾并绕开弹线。", src: enemyBattleAsset("enemy-battle-shield-01.png") },
+    { id: "charger", name: "冲锋机", firstChapter: 4, attack: "航道预警后高速突进。", bulletType: "single", danger: "危险来自撞击路线。", src: enemyBattleAsset("enemy-battle-charger-01.png") },
+    { id: "bomber", name: "轰炸机", firstChapter: 5, attack: "横移投放爆雷。", bulletType: "bomb_mine", danger: "不要停在爆点附近。", src: enemyBattleAsset("enemy-battle-bomber-01.png") },
+    { id: "sniper", name: "狙击机", firstChapter: 6, attack: "锁定线后发射高速狙击弹。", bulletType: "sniper_warning", danger: "看见锁定线先躲。", src: enemyBattleAsset("enemy-battle-sniper-01.png") },
+    { id: "guard", name: "母舰护卫", firstChapter: 7, attack: "护卫齐射与编队压迫。", bulletType: "triple", danger: "常和 BOSS 或精英一起出现。", src: enemyBattleAsset("enemy-battle-guard-01.png") },
+    { id: "rotor", name: "旋翼封锁机", firstChapter: 8, attack: "旋转封锁弹幕。", bulletType: "rotating", danger: "等缺口，不要硬穿。", src: enemyBattleAsset("enemy-battle-rotor-01.png") },
+    { id: "core", name: "精英核心", firstChapter: 9, attack: "母舰混合机制与分裂弹。", bulletType: "mothership_core", danger: "终章高压目标，优先处理。", src: enemyBattleAsset("enemy-battle-core-01.png") }
   ];
 
   const SETTLEMENT_ICON_ASSETS = {
@@ -176,12 +221,11 @@
     emptySlot: runtimeAsset("ui-icons/settlement", "empty-slot.png"),
     victoryAura: runtimeAsset("ui-icons/settlement", "victory-aura.png"),
     defeatAura: runtimeAsset("ui-icons/settlement", "defeat-aura.png"),
-    honorFrame: runtimeAsset("ui-icons/settlement", "honor-frame.png")
+    honorFrame: runtimeAsset("ui-icons/settlement", "honor-frame.png"),
+    honorDivider: runtimeAsset("ui-icons/settlement", "honor-divider.png")
   };
 
   const AUDIO_ASSETS = {
-    bgmLobby: runtimeAsset("audio", "bgm-lobby.wav"),
-    bgmBattle: runtimeAsset("audio", "bgm-battle.wav"),
     uiClick: runtimeAsset("audio", "sfx-ui-click.wav"),
     button: runtimeAsset("audio", "sfx-ui-click.wav"),
     start: runtimeAsset("audio", "sfx-start.wav"),
@@ -217,6 +261,7 @@
     ASSET_PATHS,
     ENEMY_CODEX,
     ENEMY_BULLET_CODEX,
+    UI_A_HUD_ASSETS,
     SETTLEMENT_ICON_ASSETS,
     AUDIO_ASSETS
   };

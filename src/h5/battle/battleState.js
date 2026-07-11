@@ -30,6 +30,7 @@
       powerups: [],
       particles: [],
       shockwaves: [],
+      skillEffects: [],
       notices: [],
       itemFeed: [],
       killStats: {

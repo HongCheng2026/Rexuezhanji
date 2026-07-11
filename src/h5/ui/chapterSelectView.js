@@ -257,9 +257,7 @@
     }
     var stageId = level.chapterIndex === 0 ? "prologue_" + level.stageInChapter : level.chapterIndex + "_" + level.stageInChapter;
     var tier = Math.max(0, Math.floor(Number(profile.progress.stageHonors[stageId]) || 0));
-    var shortLabels = { 1: "1星", 2: "2星", 3: "3星", 4: "皇冠", 5: "彩冠" };
-    var longLabels = { 1: "1星", 2: "2星", 3: "3星", 4: "三星+皇冠", 5: "三星+彩冠" };
-    return { tier: tier, shortLabel: shortLabels[tier] || "", longLabel: longLabels[tier] || "" };
+    return { tier: tier, shortLabel: "", longLabel: "" };
   }
 
   function renderHonorBadge(honor, compact) {

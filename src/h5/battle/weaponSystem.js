@@ -6,15 +6,15 @@
   var POWERUPS = levelsConfig.POWERUPS || {};
 
   var WEAPON_VISUALS = {
-    normal: { displayName: "脉冲弹", shape: "circle", color: "#bffcff", trailColor: "rgba(191,252,255,0.45)", radius: 4 },
-    spread: { displayName: (POWERUPS.spread && POWERUPS.spread.name) || "裂星霰翼", shape: "circle", color: "#ffd166", trailColor: "rgba(255,209,102,0.45)", radius: 4 },
-    laser: { displayName: (POWERUPS.laser && POWERUPS.laser.name) || "苍蓝贯星炮", shape: "beam", color: "#5ee7ff", trailColor: "rgba(94,231,255,0.55)", radius: 5, width: 34, height: 6 },
-    missile: { displayName: (POWERUPS.missile && POWERUPS.missile.name) || "灵蜂追猎弹", shape: "triangle", color: "#ffb347", trailColor: "rgba(255,159,67,0.48)", radius: 7, width: 18, height: 14 },
-    nova: { displayName: "星链超载", shape: "circle", color: "#82f7ff", trailColor: "rgba(130,247,255,0.5)", radius: 10 },
-    cluster: { displayName: "暗核重爆", shape: "triangle", color: "#b889ff", trailColor: "rgba(184,137,255,0.48)", radius: 9, width: 22, height: 16 },
-    stellarBeam: { displayName: "星链贯星炮", shape: "beam", color: "#82f7ff", trailColor: "rgba(130,247,255,0.62)", radius: 10, width: 130, height: 12 },
-    darkCore: { displayName: "暗核坍缩弹", shape: "circle", color: "#b889ff", trailColor: "rgba(184,137,255,0.55)", radius: 13 },
-    goldenLance: { displayName: "金矢裁决阵", shape: "triangle", color: "#ffd166", trailColor: "rgba(255,209,102,0.58)", radius: 8, width: 30, height: 12 }
+    normal: { displayName: "脉冲弹", shape: "bolt", color: "#bffcff", trailColor: "rgba(191,252,255,0.24)", radius: 4, width: 13, height: 6 },
+    spread: { displayName: (POWERUPS.spread && POWERUPS.spread.name) || "裂星霰翼", shape: "bolt", color: "#ffd166", trailColor: "rgba(255,209,102,0.24)", radius: 4, width: 14, height: 6 },
+    laser: { displayName: (POWERUPS.laser && POWERUPS.laser.name) || "苍蓝贯星炮", shape: "beam", color: "#5ee7ff", trailColor: "rgba(94,231,255,0.2)", radius: 5, width: 34, height: 5 },
+    missile: { displayName: (POWERUPS.missile && POWERUPS.missile.name) || "灵蜂追猎弹", shape: "lance", color: "#ffb347", trailColor: "rgba(255,159,67,0.22)", radius: 7, width: 20, height: 10 },
+    nova: { displayName: "星链超载", shape: "orb", color: "#82f7ff", trailColor: "rgba(130,247,255,0.28)", radius: 10 },
+    cluster: { displayName: "暗核重爆", shape: "lance", color: "#b889ff", trailColor: "rgba(184,137,255,0.22)", radius: 9, width: 22, height: 12 },
+    stellarBeam: { displayName: "星链贯星炮", shape: "beam", color: "#82f7ff", trailColor: "rgba(130,247,255,0.34)", radius: 10, width: 130, height: 10 },
+    darkCore: { displayName: "暗核坍缩弹", shape: "orb", color: "#b889ff", trailColor: "rgba(184,137,255,0.28)", radius: 13 },
+    goldenLance: { displayName: "金矢裁决阵", shape: "lance", color: "#ffd166", trailColor: "rgba(255,209,102,0.3)", radius: 8, width: 30, height: 12 }
   };
 
   var WEAPON_LEVEL_TABLE = {
@@ -151,7 +151,7 @@
         x + 34, y, 0, "normal",
         getPlayerDamage(loadout, "normal", 1),
         650, 4, WEAPON_VISUALS.normal.color,
-        { owner: "player", shape: "circle", pierceRemaining: getPierceBudget(loadout, state), trailColor: WEAPON_VISUALS.normal.trailColor }
+        { owner: "player", shape: "bolt", width: WEAPON_VISUALS.normal.width, height: WEAPON_VISUALS.normal.height, pierceRemaining: getPierceBudget(loadout, state), trailColor: WEAPON_VISUALS.normal.trailColor }
       ));
       return;
     }
@@ -175,7 +175,7 @@
           x + 32, y, start + step * i, "spread",
           getPlayerDamage(loadout, "spread", level),
           610 + level * 5, 4, WEAPON_VISUALS.spread.color,
-          { owner: "player", shape: "circle", pierceRemaining: pierce, trailColor: WEAPON_VISUALS.spread.trailColor }
+          { owner: "player", shape: "bolt", width: WEAPON_VISUALS.spread.width, height: WEAPON_VISUALS.spread.height, pierceRemaining: pierce, trailColor: WEAPON_VISUALS.spread.trailColor }
         ));
       }
       return;
@@ -188,7 +188,7 @@
           x + 38, y + offsets[j], 0, "laser",
           getPlayerDamage(loadout, "laser", level),
           920 + level * 6, 5, WEAPON_VISUALS.laser.color,
-          { owner: "player", shape: "beam", width: 38 + Math.floor(level / 2), height: 6 + (level >= 8 ? 2 : 0), pierceRemaining: pierce, trailColor: WEAPON_VISUALS.laser.trailColor }
+          { owner: "player", shape: "beam", width: 38 + Math.floor(level / 2), height: 5 + (level >= 8 ? 1 : 0), pierceRemaining: pierce, trailColor: WEAPON_VISUALS.laser.trailColor }
         ));
       }
       return;
@@ -203,7 +203,7 @@
           x + 28, y + mOffsets[k], angle, "missile",
           getPlayerDamage(loadout, "missile", level),
           460 + level * 12, 7, WEAPON_VISUALS.missile.color,
-          { owner: "player", shape: "triangle", width: 18, height: 14, pierceRemaining: pierce, trailColor: WEAPON_VISUALS.missile.trailColor }
+          { owner: "player", shape: "lance", width: 20, height: 10, pierceRemaining: pierce, trailColor: WEAPON_VISUALS.missile.trailColor }
         ));
       }
     }
@@ -282,13 +282,14 @@
           x + 34, y + (i - 1) * 12, offsets[i], "cluster",
           Math.round(getPlayerDamage(loadout, "missile", 2) * (Number(skill.damageMultiplier) || 1.45)),
           560, 9, WEAPON_VISUALS.cluster.color,
-          { owner: "player", shape: "triangle", width: 22, height: 16, pierceRemaining: 0, trailColor: WEAPON_VISUALS.cluster.trailColor }
+          { owner: "player", shape: "lance", width: 22, height: 12, pierceRemaining: 0, trailColor: WEAPON_VISUALS.cluster.trailColor }
         ));
       }
     }
   }
 
   function updateActiveSkill(state, dt) {
+    updateSkillEffects(state, dt);
     var runtime = state && state.player ? state.player.activeSkill : null;
     if (!runtime || runtime.maxCharges <= 0) return;
     runtime.charges = Math.max(0, Math.min(runtime.maxCharges, Math.floor(Number(runtime.charges) || 0)));
@@ -306,6 +307,12 @@
     }
   }
 
+  function updateSkillEffects(state, dt) {
+    var list = state && state.skillEffects ? state.skillEffects : [];
+    for (var i = 0; i < list.length; i++) list[i].life -= dt;
+    if (state) state.skillEffects = list.filter(function (item) { return item.life > 0; });
+  }
+
   function tryCastActiveSkill(state, loadout) {
     if (!state || !state.player) return false;
     var runtime = state.player.activeSkill;
@@ -321,6 +328,13 @@
     return true;
   }
 
+  function addSkillEffect(state, effect) {
+    if (!state || !effect) return;
+    state.skillEffects = state.skillEffects || [];
+    effect.duration = effect.duration || effect.life || 0.8;
+    state.skillEffects.push(effect);
+  }
+
   function castActiveSkillPattern(state, loadout, skill) {
     var x = state.player.x;
     var y = state.player.y;
@@ -328,6 +342,7 @@
     var damageMultiplier = Number(skill.damageMultiplier) || 3.5;
 
     if (skill.id === "stellar-beam") {
+      addSkillEffect(state, { type: "stellar-beam", x: x + 70, y: y, width: 850, height: 86, life: 0.55, duration: 0.55, color: "#82f7ff" });
       for (var i = 0; i < 5; i++) {
         var offset = (i - 2) * 10;
         bullets.push(createBullet(
@@ -341,6 +356,7 @@
     }
 
     if (skill.id === "dark-core") {
+      addSkillEffect(state, { type: "dark-core", x: x + 260, y: y, radius: 132, life: 0.95, duration: 0.95, color: "#b86cff" });
       bullets.push(createBullet(
         x + 44, y, 0, "darkCore",
         Math.round(getPlayerDamage(loadout, "missile", 10) * damageMultiplier),
@@ -352,13 +368,14 @@
 
     if (skill.id === "golden-lances") {
       var lanes = [-42, -26, -10, 10, 26, 42];
+      addSkillEffect(state, { type: "golden-lances", x: x + 76, y: y, lanes: lanes.slice(), width: 830, life: 0.62, duration: 0.62, color: "#ffd166" });
       for (var j = 0; j < lanes.length; j++) {
         var angle = (j - (lanes.length - 1) / 2) * 0.025;
         bullets.push(createBullet(
           x + 46, y + lanes[j], angle, "goldenLance",
           Math.round(getPlayerDamage(loadout, "spread", 10) * damageMultiplier),
           880, 8, WEAPON_VISUALS.goldenLance.color,
-          { owner: "player", shape: "triangle", width: 30, height: 12, pierceRemaining: 8, trailColor: WEAPON_VISUALS.goldenLance.trailColor, armorPierceRatio: 0.7 }
+          { owner: "player", shape: "lance", width: 30, height: 12, pierceRemaining: 8, trailColor: WEAPON_VISUALS.goldenLance.trailColor, armorPierceRatio: 0.7 }
         ));
       }
     }

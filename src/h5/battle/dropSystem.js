@@ -20,8 +20,13 @@
     }
 
     var type = choosePowerupType(state, director, forceReason || "scheduled");
+    if (!type) {
+      state.powerTimer = getNextSupplyDelay(state, director);
+      return;
+    }
     createPowerup(state, type, 960 + 26, getSafeSupplyY(state), 118);
     director.spawned += 1;
+    if (type === "life") director.lifeSpawned = (director.lifeSpawned || 0) + 1;
     director.lastDropAt = state.elapsed || 0;
     if (isWeaponType(type)) director.lastWeaponAt = state.elapsed || 0;
     if (forceReason === "bossPrep" || ((state.elapsed || 0) >= 55 && (state.elapsed || 0) < 64 && !state.boss)) {
@@ -32,7 +37,7 @@
 
   function ensureSupplyDirector(state) {
     if (state.supplyDirector) return state.supplyDirector;
-    state.supplyDirector = { spawned: 0, collected: 0, lastDropAt: -99, lastWeaponAt: -99, bossPrepDropped: false };
+    state.supplyDirector = { spawned: 0, collected: 0, lifeSpawned: 0, lastDropAt: -99, lastWeaponAt: -99, bossPrepDropped: false };
     return state.supplyDirector;
   }
 
@@ -45,7 +50,7 @@
     var sinceDrop = elapsed - getDirectorTime(director.lastDropAt);
     var sinceWeapon = elapsed - getDirectorTime(director.lastWeaponAt);
     if (elapsed >= 55 && elapsed < 64 && !director.bossPrepDropped) return "bossPrep";
-    if (getHpRatio(state) < 0.32 && sinceDrop >= 7) return "rescue";
+    if (getHpRatio(state) < 0.3 && sinceDrop >= 9 && (director.lifeSpawned || 0) < 1) return "rescue";
     if (elapsed < 58 && !allWeaponsMaxed(state) && sinceWeapon >= 9) return "weaponNudge";
     if (sinceDrop >= 12) return "antiDry";
     return "";
@@ -123,14 +128,14 @@
 
   function chooseWeaponPickup(state, source) {
     var available = getAvailableWeaponTypes(state);
-    if (!available.length) return getHpRatio(state) < 0.55 ? "life" : "shield";
+    if (!available.length) return "";
     return pickLowestWeaponPickup(state, available) || available[0];
   }
 
   function weightedPick(items) {
     var total = 0;
     for (var i = 0; i < items.length; i++) total += Math.max(0, items[i].weight || 0);
-    if (total <= 0) return items.length ? items[0].type : "shield";
+    if (total <= 0) return items.length ? items[0].type : "";
     var roll = Math.random() * total;
     for (var j = 0; j < items.length; j++) {
       roll -= Math.max(0, items[j].weight || 0);
@@ -170,56 +175,39 @@
     var totalLevel = getWeaponTotalLevel(state);
     var weaponsMaxed = allWeaponsMaxed(state);
 
-    if (source === "rescue") return hpRatio < 0.24 || Math.random() < 0.55 ? "life" : "shield";
+    if (source === "rescue") return (hpRatio < 0.3 && (director.lifeSpawned || 0) < 1) ? "life" : "";
     if (source === "weaponNudge") return chooseWeaponPickup(state, source);
     if (source === "bossPrep") {
       var bossPick = weightedPick([
-        { type: "weapon", weight: weaponsMaxed ? 0 : (totalLevel < MAX_WEAPON_LEVEL * WEAPON_TYPES.length ? 45 : 10) },
-        { type: "shield", weight: 40 },
-        { type: "life", weight: hpRatio < 0.7 ? 25 : 15 }
+        { type: "weapon", weight: weaponsMaxed ? 0 : (totalLevel < MAX_WEAPON_LEVEL * WEAPON_TYPES.length ? 90 : 0) },
+        { type: "life", weight: hpRatio < 0.3 && (director.lifeSpawned || 0) < 1 ? 12 : 0 }
       ]);
       return bossPick === "weapon" ? chooseWeaponPickup(state, source) : bossPick;
     }
 
     var weaponWeight = 35;
-    var shieldWeight = 40;
-    var lifeWeight = 25;
+    var lifeWeight = 0;
     if (elapsed < 20) {
       weaponWeight = 80;
-      shieldWeight = 15;
-      lifeWeight = 5;
     } else if (elapsed < 50) {
       weaponWeight = 65;
-      shieldWeight = 25;
-      lifeWeight = 10;
     } else if (elapsed < 60) {
       weaponWeight = 45;
-      shieldWeight = 35;
-      lifeWeight = 20;
     } else {
       weaponWeight = 35;
-      shieldWeight = 40;
-      lifeWeight = 25;
     }
-    if (hpRatio < 0.25) {
+    if (hpRatio < 0.3 && (director.lifeSpawned || 0) < 1) {
       weaponWeight = Math.min(weaponWeight, 10);
-      shieldWeight = Math.max(shieldWeight, 35);
-      lifeWeight = Math.max(lifeWeight, 55);
-    } else if (hpRatio < 0.45) {
-      weaponWeight = Math.min(weaponWeight, 25);
-      shieldWeight = Math.max(shieldWeight, 35);
-      lifeWeight = Math.max(lifeWeight, 40);
+      lifeWeight = 45;
     }
     if (source === "kill") {
       weaponWeight *= 0.85;
-      shieldWeight += 5;
-      lifeWeight += hpRatio < 0.8 ? 6 : 2;
+      lifeWeight = hpRatio < 0.3 && (director.lifeSpawned || 0) < 1 ? Math.max(lifeWeight, 12) : 0;
     }
 
     if (weaponsMaxed) weaponWeight = 0;
     var pick = weightedPick([
       { type: "weapon", weight: weaponWeight },
-      { type: "shield", weight: shieldWeight },
       { type: "life", weight: lifeWeight }
     ]);
     return pick === "weapon" ? chooseWeaponPickup(state, source) : pick;
@@ -355,7 +343,9 @@
     if (getWeaponTotalLevel(state) >= 12) chance *= 0.65;
     if (Math.random() > chance) return;
     var type = choosePowerupType(state, director, "kill");
+    if (!type) return;
     createPowerup(state, type, enemy.x, enemy.y, 110);
+    if (type === "life") director.lifeSpawned = (director.lifeSpawned || 0) + 1;
     director.lastDropAt = state.elapsed || 0;
     if (isWeaponType(type)) director.lastWeaponAt = state.elapsed || 0;
   }
