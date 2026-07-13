@@ -16,11 +16,16 @@
     };
     var state = null;
     var imageCache = {};
+    var backgroundGradient = null;
 
     if (!ctx) throw new Error("Canvas renderer requires a 2D context.");
 
   function drawScene(nextState) {
     state = nextState;
+    if (state && state.level && assetsConfig.getBossVisual) {
+      var bossVisual = assetsConfig.getBossVisual(state.level.chapterIndex, state.level.stageInChapter);
+      if (bossVisual && bossVisual.src) getImage(bossVisual.src);
+    }
     ctx.save();
     if (state && state.shake > 0) {
       ctx.translate((Math.random() - 0.5) * state.shake * 20, (Math.random() - 0.5) * state.shake * 20);
@@ -46,11 +51,13 @@
   }
 
   function drawBackground() {
-    var gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-    gradient.addColorStop(0, "#07111f");
-    gradient.addColorStop(0.55, "#0d1d2c");
-    gradient.addColorStop(1, "#17101e");
-    ctx.fillStyle = gradient;
+    if (!backgroundGradient) {
+      backgroundGradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+      backgroundGradient.addColorStop(0, "#07111f");
+      backgroundGradient.addColorStop(0.55, "#0d1d2c");
+      backgroundGradient.addColorStop(1, "#17101e");
+    }
+    ctx.fillStyle = backgroundGradient;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
 
@@ -60,9 +67,7 @@
     for (var i = 0; i < stars.length; i += 1) {
       var star = stars[i];
       ctx.globalAlpha = 0.18 + Math.min(0.46, star.size / 2.8);
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(star.x - star.size / 2, star.y - star.size / 2, star.size, star.size);
     }
     ctx.globalAlpha = 1;
   }
@@ -127,9 +132,14 @@
     var boss = state && state.boss;
     if (!boss) return;
     drawBossThemeAura(boss);
-    var image = getImage(assetsConfig.ASSET_PATHS.boss);
+    var visual = boss.visual || {};
+    var image = getImage(visual.src || assetsConfig.ASSET_PATHS.boss);
     if (image.complete && image.naturalWidth) {
-      drawRotatedImage(image, boss.x - 12, boss.y, 168, 156, -Math.PI / 2);
+      if (visual.src) {
+        drawCenteredImage(image, boss.x + (visual.offsetX || 0), boss.y + (visual.offsetY || 0), visual.drawWidth || 168, visual.drawHeight || 156, visual.drawAngle || 0);
+      } else {
+        drawRotatedImage(image, boss.x - 12, boss.y, 168, 156, -Math.PI / 2);
+      }
     } else {
       ctx.fillStyle = "#ff5d73";
       ctx.beginPath();
@@ -270,11 +280,16 @@
 
   function drawBulletList(list, enemy) {
     list = list || [];
+    if (!enemy && list.length) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+    }
     for (var i = 0; i < list.length; i += 1) {
       var bullet = list[i];
       if (enemy) drawEnemyBullet(bullet);
       else drawPlayerBullet(bullet);
     }
+    if (!enemy && list.length) ctx.restore();
   }
 
   function drawPlayerBullet(bullet) {
@@ -282,10 +297,7 @@
     ctx.save();
     ctx.translate(bullet.x, bullet.y);
     ctx.rotate(bullet.angle || 0);
-    ctx.globalCompositeOperation = "lighter";
     drawBulletTrail(visual.trailColor || bullet.trailColor, visual.trailLength, visual.trailHeight);
-    ctx.shadowColor = visual.glow;
-    ctx.shadowBlur = visual.shadowBlur;
     if (visual.shape === "beam") drawPlasmaBeam(visual);
     else if (visual.shape === "lance") drawLanceBullet(visual);
     else if (visual.shape === "bolt") drawBoltBullet(visual);
@@ -299,8 +311,6 @@
     ctx.save();
     ctx.translate(bullet.x, bullet.y);
     ctx.rotate(bullet.angle || 0);
-    ctx.shadowColor = visual.glow;
-    ctx.shadowBlur = visual.shadowBlur;
     if (sprite && sprite.complete && sprite.naturalWidth) {
       var spriteSize = visual.spriteSize || Math.max(16, (bullet.radius || 5) * 3.2);
       ctx.globalAlpha = visual.spriteAlpha;
@@ -318,6 +328,7 @@
   }
 
   function getPlayerBulletVisual(bullet) {
+    if (bullet && bullet._renderProfile) return bullet._renderProfile;
     var type = bullet.type || "normal";
     var base = {
       shape: bullet.shape || "orb",
@@ -370,10 +381,12 @@
       base.trailLength = 24;
       base.shadowBlur = 16;
     }
+    bullet._renderProfile = base;
     return base;
   }
 
   function getEnemyBulletRenderProfile(bullet) {
+    if (bullet && bullet._renderProfile) return bullet._renderProfile;
     var source = (bullet && (bullet.bulletVisualId || bullet.patternSource)) || "single";
     var profile = {
       shape: bullet.shape === "beam" ? "beam" : "orb",
@@ -422,17 +435,14 @@
       profile.inner = "#ffe5eb";
       profile.radius = Math.max(4.8, bullet.radius || 4.8);
     }
+    bullet._renderProfile = profile;
     return profile;
   }
 
   function drawBulletTrail(color, length, height) {
     if (!color || !length) return;
-    var grad = ctx.createLinearGradient(-length, 0, 3, 0);
-    grad.addColorStop(0, "rgba(255,255,255,0)");
-    grad.addColorStop(0.58, color);
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = grad;
-    drawCapsule(-length, -(height || 2) / 2, length, height || 2, (height || 2) / 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(-length, -(height || 2) / 2, length, height || 2);
   }
 
   function drawPlasmaBeam(visual) {
@@ -488,14 +498,12 @@
 
   function drawOrbBullet(visual) {
     var radius = visual.radius;
-    var grad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 1.8);
-    grad.addColorStop(0, visual.inner || "#ffffff");
-    grad.addColorStop(0.38, visual.core);
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = grad;
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = visual.glow || visual.core;
     ctx.beginPath();
     ctx.arc(0, 0, radius * 1.8, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
     ctx.fillStyle = visual.core;
     ctx.beginPath();
     ctx.arc(0, 0, radius * 0.72, 0, Math.PI * 2);
@@ -819,6 +827,14 @@
     ctx.translate(centerX, centerY);
     ctx.rotate(angle);
     ctx.drawImage(image, -height / 2, -width / 2, height, width);
+    ctx.restore();
+  }
+
+  function drawCenteredImage(image, centerX, centerY, width, height, angle) {
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(angle || 0);
+    ctx.drawImage(image, -width / 2, -height / 2, width, height);
     ctx.restore();
   }
 

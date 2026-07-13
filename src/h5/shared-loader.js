@@ -3,7 +3,7 @@
   const isLocalServer = /^(127\.0\.0\.1|localhost|\[::1\])$/i.test(location.hostname);
   const isReleasePackage = /(?:^|\/)release\/netlify-h5(?:\/|$)/i.test(pagePath);
   const isSourceH5 = !isReleasePackage && (isLocalServer || /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) || /(?:^|\/)H5(?:\/|$)/.test(pagePath) || /(?:^|\/)h5\//i.test(pagePath));
-  const cacheVersion = "20260713-profile-power-v1";
+  const cacheVersion = "20260713-story-bosses-v2";
   // Netlify manual ZIP uploads may omit nested folders. Production therefore loads
   // the mirrored root copies, while source-H5 keeps using the canonical shared folder.
   const base = isSourceH5 ? "../shared/" : "";
@@ -38,6 +38,12 @@
     "ui/shipGalleryView.js",
     "ui/mainFeaturePanelsView.js",
     "ui/starWingsGachaView.js",
+    "app/lobbyController.js",
+    "app/profileController.js",
+    "app/fighterUpgradeController.js",
+    "app/featurePanelController.js",
+    "app/battleFlowController.js",
+    "app/gameEventRouter.js",
     "app/gameApp.js"
   ];
   for (var i = 0; i < h5Files.length; i++) {

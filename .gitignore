@@ -21,6 +21,8 @@ coverage/
 .cache/
 
 # Local screenshots and temporary verification assets
+output/
+tmp/
 tmp-*/
 tmp-*.png
 tmp-*.jpg

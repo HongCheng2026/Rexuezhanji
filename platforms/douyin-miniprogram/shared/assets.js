@@ -257,6 +257,25 @@
     }
   };
 
+  const BOSS_VISUALS = {
+    1: { id: "messiah-observer", title: "弥赛亚·观测投影节点", src: runtimeAsset("bosses", "chapter-01-messiah-observer.png"), drawWidth: 210, drawHeight: 235, hitRadiusX: 76, hitRadiusY: 96, drawAngle: 0 },
+    2: { id: "armored-beast", title: "玄甲空兽", src: runtimeAsset("bosses", "chapter-02-armored-beast.png"), drawWidth: 260, drawHeight: 200, hitRadiusX: 112, hitRadiusY: 82, drawAngle: 0 },
+    3: { id: "spaceport-warden", title: "失落空港守墓者", src: runtimeAsset("bosses", "chapter-03-spaceport-warden.png"), drawWidth: 205, drawHeight: 270, hitRadiusX: 82, hitRadiusY: 115, drawAngle: 0 },
+    4: { id: "shield-relay-atlas", title: "天幕护盾中继·阿特拉斯", src: runtimeAsset("bosses", "chapter-04-shield-relay-atlas.png"), drawWidth: 250, drawHeight: 250, hitRadiusX: 106, hitRadiusY: 106, drawAngle: 0 },
+    5: { id: "elite-conductor-zero", title: "黑潮节拍者·零式", src: runtimeAsset("bosses", "chapter-05-elite-conductor-zero.png"), drawWidth: 190, drawHeight: 285, hitRadiusX: 70, hitRadiusY: 122, drawAngle: 0 },
+    6: { id: "starbreaker-dreadnought", title: "断星级主力舰·噬光", src: runtimeAsset("bosses", "chapter-06-starbreaker-dreadnought.png"), drawWidth: 300, drawHeight: 170, hitRadiusX: 132, hitRadiusY: 68, drawAngle: 0 },
+    7: { id: "bastion-colossus", title: "母舰外壳·壁垒巨像", src: runtimeAsset("bosses", "chapter-07-bastion-colossus.png"), drawWidth: 250, drawHeight: 245, hitRadiusX: 110, hitRadiusY: 104, drawAngle: 0 },
+    8: { id: "mobile-nest-city", title: "迁徙基地中枢·巢城", src: runtimeAsset("bosses", "chapter-08-mobile-nest-city.png"), drawWidth: 270, drawHeight: 230, hitRadiusX: 116, hitRadiusY: 96, drawAngle: 0 },
+    9: { id: "messiah-queen", title: "黑潮女王·弥赛亚", src: runtimeAsset("bosses", "chapter-09-messiah-queen.png"), drawWidth: 230, drawHeight: 310, hitRadiusX: 92, hitRadiusY: 138, drawAngle: 0 }
+  };
+
+  function getBossVisual(chapterIndex, stageInChapter) {
+    var chapter = Number(chapterIndex);
+    var stage = Number(stageInChapter);
+    if (chapter < 1 || chapter > 9 || stage < 1 || stage > 10) return null;
+    return BOSS_VISUALS[chapter] || null;
+  }
+
   const ENEMY_BULLET_CODEX = {
     single: { id: "single", name: "单发弹", firstChapter: 1, danger: "慢速直线弹，横移即可规避。", src: enemyBulletAsset("bullet-single.png"), color: "#ff6b45", shape: "circle", radius: 4.5 },
     triple: { id: "triple", name: "三连弹", firstChapter: 1, danger: "三枚小角度扇形弹，注意中线空隙。", src: enemyBulletAsset("bullet-triple.png"), color: "#ff7c93", shape: "circle", radius: 4.8 },
@@ -333,6 +352,8 @@
     BACKGROUND_ASSETS,
     CHAPTER_COVER_ASSETS,
     ASSET_PATHS,
+    BOSS_VISUALS,
+    getBossVisual,
     ENEMY_CODEX,
     ENEMY_BULLET_CODEX,
     UI_A_HUD_ASSETS,

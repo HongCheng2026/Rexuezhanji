@@ -82,18 +82,28 @@
   function checkProjectileCollisions(state) {
     var playerBullets = state && state.bullets ? state.bullets : [];
     var enemyBullets = state && state.enemyBullets ? state.enemyBullets : [];
+    if (!playerBullets.length || !enemyBullets.length) return;
+
+    // Enemy bullets are capped at a small number. Build a compact list once,
+    // skip elite/BOSS bullets entirely, then use cheap axis and squared checks.
+    var cancellableBullets = [];
+    for (var enemyIndex = 0; enemyIndex < enemyBullets.length; enemyIndex++) {
+      var indexedEnemyBullet = enemyBullets[enemyIndex];
+      if (!indexedEnemyBullet || indexedEnemyBullet.dead || !canCancelEnemyBullet(indexedEnemyBullet)) continue;
+      cancellableBullets.push(indexedEnemyBullet);
+    }
+    if (!cancellableBullets.length) return;
+
     for (var i = 0; i < playerBullets.length; i++) {
       var playerBullet = playerBullets[i];
       if (!playerBullet || playerBullet.dead) continue;
-      for (var j = 0; j < enemyBullets.length; j++) {
-        var enemyBullet = enemyBullets[j];
-        if (!enemyBullet || enemyBullet.dead || playerBullet.dead) continue;
-        if (distance(playerBullet, enemyBullet) >= playerBullet.radius + enemyBullet.radius) continue;
+      for (var j = 0; j < cancellableBullets.length; j++) {
+        var enemyBullet = cancellableBullets[j];
+        if (!enemyBullet || enemyBullet.dead) continue;
+        if (!circlesOverlap(playerBullet, enemyBullet)) continue;
 
-        var patternSource = enemyBullet.patternSource || "";
-        var isRoadblock = patternSource.indexOf("slow_wall") >= 0;
-        var isNormalEnemyBullet = enemyBullet.sourceEnemyClass === "normal";
-        if (!isRoadblock && (!isNormalEnemyBullet || Math.random() >= 0.1)) continue;
+        var isRoadblock = isRoadblockBullet(enemyBullet);
+        if (!isRoadblock && Math.random() >= 0.1) continue;
 
         playerBullet.dead = true;
         enemyBullet.dead = true;
@@ -104,8 +114,26 @@
           isRoadblock ? "#ffcf70" : "#9cf7ff",
           7
         );
+        break;
       }
     }
+  }
+
+  function isRoadblockBullet(bullet) {
+    return ((bullet && bullet.patternSource) || "").indexOf("slow_wall") >= 0;
+  }
+
+  function canCancelEnemyBullet(bullet) {
+    return isRoadblockBullet(bullet) || bullet.sourceEnemyClass === "normal";
+  }
+
+  function circlesOverlap(a, b) {
+    var dx = a.x - b.x;
+    var radius = (Number(a.radius) || 0) + (Number(b.radius) || 0);
+    if (dx <= -radius || dx >= radius) return false;
+    var dy = a.y - b.y;
+    if (dy <= -radius || dy >= radius) return false;
+    return dx * dx + dy * dy < radius * radius;
   }
 
   function clearForActiveSkill(state, rewardSource) {
@@ -156,7 +184,7 @@
       }
 
       if (alreadyHit) continue;
-      if (distance(target, bullet) >= target.radius + bullet.radius) continue;
+      if (!targetIntersectsCircle(target, bullet)) continue;
 
       // 标记命中
       if (typeof hitIds.add === "function") {
@@ -219,7 +247,7 @@
         shockwave(state, enemy.x, enemy.y, "#ff9f43", 0.28, 145);
       }
     }
-    if (state.boss && distance(source, state.boss) < radius + state.boss.radius) {
+    if (state.boss && targetIntersectsCircle(state.boss, { x: source.x, y: source.y, radius: radius })) {
       state.boss.hp -= damage * getBulletDamageTakenMultiplier(state.boss, source);
       if (state.boss.hp <= 0 && !state.boss.dead) {
         state.boss.dead = true;
@@ -229,6 +257,18 @@
         shockwave(state, state.boss.x, state.boss.y, "#ff6b8a", 0.5, 260);
       }
     }
+  }
+
+  function targetIntersectsCircle(target, circle) {
+    var hitRadiusX = Number(target && target.hitRadiusX);
+    var hitRadiusY = Number(target && target.hitRadiusY);
+    var circleRadius = Math.max(0, Number(circle && circle.radius) || 0);
+    if (!(hitRadiusX > 0) || !(hitRadiusY > 0)) {
+      return distance(target, circle) < (Number(target && target.radius) || 0) + circleRadius;
+    }
+    var dx = (circle.x - target.x) / (hitRadiusX + circleRadius);
+    var dy = (circle.y - target.y) / (hitRadiusY + circleRadius);
+    return dx * dx + dy * dy < 1;
   }
 
   function getBulletDamageTakenMultiplier(target, bullet) {

@@ -1,0 +1,321 @@
+(function registerGameEventRouter(root) {
+  "use strict";
+
+  var scope = root.RXGame || (root.RXGame = {});
+
+  function create(options) {
+    options = options || {};
+    var shared = options.shared || scope;
+    var dom = options.dom || {};
+    var canvas = options.canvas;
+    var keys = options.keys;
+    var pointer = options.pointer;
+    var levels = options.levels || [];
+    var audioSystem = options.audioSystem || null;
+    var clamp = options.clamp || function clampValue(value, min, max) { return Math.max(min, Math.min(max, Number(value) || min)); };
+    var playSfx = options.playSfx;
+    var handleStoryReplayClick = options.handleStoryReplayClick;
+    var settlePendingBattle = options.settlePendingBattle;
+    var resumeGame = options.resumeGame;
+    var startSelectedLevel = options.startSelectedLevel;
+    var openBattleSelect = options.openBattleSelect;
+    var pauseGame = options.pauseGame;
+    var tryCastActiveSkill = options.tryCastActiveSkill;
+    var renderShop = options.renderShop;
+    var showShop = options.showShop;
+    var renderSettlementChest = options.renderSettlementChest;
+    var renderSettlement = options.renderSettlement;
+    var abortBattle = options.abortBattle;
+    var closeFeaturePanel = options.closeFeaturePanel;
+    var calculateTotalPower = options.calculateTotalPower;
+    var isCloudMode = options.isCloudMode;
+    var saveProfile = options.saveProfile;
+    var renderLobby = options.renderLobby;
+    var upgradeFighterStat = options.upgradeFighterStat;
+    var handleProfilePanelClick = options.handleProfilePanelClick;
+    var handleAvatarUpload = options.handleAvatarUpload;
+    var openFeaturePanel = options.openFeaturePanel;
+    var syncLobbyViewportScale = options.syncLobbyViewportScale;
+    var updatePointer = options.updatePointer;
+    var bound = false;
+
+    function unlockAudio() {
+      if (!audioSystem || !audioSystem.unlock) return;
+      audioSystem.unlock();
+      if (options.getState() && options.getState().mode === "fight") audioSystem.playBgm("battle");
+      else audioSystem.playBgm("lobby");
+    }
+
+    function refreshSettingPanel() {
+      if (!dom.featurePanel || dom.featurePanel.classList.contains("hidden")) return;
+      if (!dom.featurePanelTitle || dom.featurePanelTitle.textContent !== "设置") return;
+      if (!shared.mainFeaturePanelsView || !shared.mainFeaturePanelsView.renderPanel) return;
+      shared.mainFeaturePanelsView.renderPanel("setting", dom, {
+        profile: options.getProfile(),
+        levels: levels,
+        combatPower: calculateTotalPower(),
+        audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
+      });
+    }
+
+    function handleSettingPanelClick(event) {
+      if (!audioSystem) return false;
+      var toggle = event.target && event.target.closest ? event.target.closest("[data-audio-toggle]") : null;
+      if (toggle) {
+        unlockAudio();
+        if (toggle.dataset.audioToggle === "music" && audioSystem.setMusicMuted) {
+          var musicMuted = audioSystem.getSettings && audioSystem.getSettings().musicMuted;
+          audioSystem.setMusicMuted(!musicMuted);
+        }
+        if (toggle.dataset.audioToggle === "sfx" && audioSystem.setSfxMuted) {
+          var sfxMuted = audioSystem.getSettings && audioSystem.getSettings().sfxMuted;
+          audioSystem.setSfxMuted(!sfxMuted);
+        }
+        refreshSettingPanel();
+        return true;
+      }
+      var action = event.target && event.target.closest ? event.target.closest("[data-setting-action]") : null;
+      if (action && action.dataset.settingAction === "restart-bgm" && audioSystem.restartBgm) {
+        unlockAudio();
+        audioSystem.restartBgm();
+        refreshSettingPanel();
+        return true;
+      }
+      return false;
+    }
+
+    function handleSettingPanelInput(event) {
+      if (!audioSystem) return;
+      var input = event.target && event.target.closest ? event.target.closest("[data-audio-volume]") : null;
+      if (!input) return;
+      var value = Math.max(0, Math.min(1, Number(input.value || 0) / 100));
+      unlockAudio();
+      if (input.dataset.audioVolume === "music" && audioSystem.setMusicVolume) audioSystem.setMusicVolume(value);
+      if (input.dataset.audioVolume === "sfx" && audioSystem.setSfxVolume) audioSystem.setSfxVolume(value);
+      var row = input.closest(".settings-control-row");
+      if (row) {
+        var text = row.querySelector("p");
+        if (text) text.textContent = "当前 " + Math.round(value * 100) + "%，拖动后即时生效。";
+      }
+    }
+
+  function bindEvents() {
+    if (bound) return;
+    bound = true;
+    root.addEventListener("pointerdown", unlockAudio, { once: true });
+    root.addEventListener("click", unlockAudio, { once: true });
+    root.addEventListener("touchstart", unlockAudio, { once: true, passive: true });
+    root.addEventListener("keydown", unlockAudio, { once: true });
+    document.addEventListener("click", handleStoryReplayClick, true);
+    document.addEventListener("click", function onAnyUiClick(event) {
+      if (event.target && event.target.closest && event.target.closest("button")) playSfx("button");
+    });
+    dom.startButton.addEventListener("click", function onStart() {
+      if (options.getState().mode === "settlement-error") settlePendingBattle();
+      else if (options.getState().mode === "paused") resumeGame();
+      else startSelectedLevel();
+    });
+    dom.battleEntryButton.addEventListener("click", openBattleSelect);
+    if (dom.pauseButton) {
+      dom.pauseButton.addEventListener("click", function onPause() {
+        if (options.getState().mode === "paused") resumeGame();
+        else pauseGame();
+      });
+    }
+    if (dom.activeSkillButton) {
+      dom.activeSkillButton.addEventListener("click", function onActiveSkillClick() {
+        tryCastActiveSkill();
+      });
+    }
+    if (dom.shopButton) {
+      dom.shopButton.addEventListener("click", function onShop() {
+        if (options.getBattleContext()) cancelAnimationFrame(options.getBattleContext().animationId);
+        options.getState().mode = "shop";
+        renderShop();
+        showShop();
+      });
+    }
+    dom.replayButton.addEventListener("click", startSelectedLevel);
+    dom.backToChapterButton.addEventListener("click", openBattleSelect);
+    dom.nextLevelButton.addEventListener("click", function onNext() {
+      if (options.getLastBattleResult() && !options.getLastBattleResult().isWin) {
+        startSelectedLevel();
+        return;
+      }
+      options.setSelectedLevel(clamp(options.getSelectedLevel() + 1, 1, levels.length));
+      openBattleSelect();
+    });
+    dom.upgradeList.addEventListener("click", function onSettlementChest(event) {
+      var reportAction = event.target && event.target.closest ? event.target.closest("[data-settlement-action]") : null;
+      if (reportAction) {
+        var action = reportAction.dataset ? reportAction.dataset.settlementAction : "";
+        if (action === "next") dom.nextLevelButton.click();
+        if (action === "replay") dom.replayButton.click();
+        if (action === "chapter") dom.backToChapterButton.click();
+        return;
+      }
+      var victoryChest = event.target && event.target.closest ? event.target.closest("[data-open-victory-chest]") : null;
+      if (victoryChest && options.getLastBattleResult()) {
+        renderSettlementChest(options.getLastBattleResult());
+        return;
+      }
+      var target = event.target && event.target.closest ? event.target.closest("[data-open-settlement]") : null;
+      if (target && options.getLastBattleResult()) {
+        playSfx("chest");
+        renderSettlement(options.getLastBattleResult());
+      }
+    });
+    dom.chapterSelect.addEventListener("click", function onPauseAction(event) {
+      var action = event.target && event.target.dataset ? event.target.dataset.pauseAction : "";
+      if (!action) return;
+      if (action === "resume") resumeGame();
+      if (action === "chapter") abortBattle("chapter");
+      if (action === "lobby") abortBattle("lobby");
+    });
+    dom.closeFeaturePanel.addEventListener("click", function close() {
+      closeFeaturePanel();
+    });
+    dom.featurePanel.addEventListener("click", function onFighterUpgradeClick(event) {
+      if (handleSettingPanelClick(event)) return;
+      if (shared.starWingsGachaView && shared.starWingsGachaView.handleEvent && shared.starWingsGachaView.handleEvent(event, dom)) {
+        playSfx("button");
+        return;
+      }
+      if (shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.handleEvent && shared.mainFeaturePanelsView.handleEvent(event, dom, {
+        profile: options.getProfile(),
+        levels: levels,
+        combatPower: calculateTotalPower(),
+        audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
+      })) {
+        playSfx("button");
+        return;
+      }
+      var activityClaim = event.target && event.target.closest ? event.target.closest("[data-activity-claim]") : null;
+      if (activityClaim && !activityClaim.disabled && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimActivityReward) {
+        if (isCloudMode()) {
+          dom.featurePanelBody.textContent = "正式服活动奖励将在服务端活动接口开放后领取。";
+          return;
+        }
+        var activityResult = shared.mainFeaturePanelsView.claimActivityReward(options.getProfile(), activityClaim.dataset.activityClaim, { levels: levels });
+        if (activityResult && activityResult.ok) {
+          playSfx("button");
+          saveProfile();
+          renderLobby();
+          shared.mainFeaturePanelsView.renderPanel("task", dom, {
+            profile: options.getProfile(),
+            levels: levels,
+            combatPower: calculateTotalPower(),
+            audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
+          });
+        }
+        return;
+      }
+      var achievementClaim = event.target && event.target.closest ? event.target.closest("[data-achievement-claim]") : null;
+      if (achievementClaim && !achievementClaim.disabled && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimAchievement) {
+        if (isCloudMode()) {
+          dom.featurePanelBody.textContent = "正式服成就奖励将在服务端成就接口开放后领取。";
+          return;
+        }
+        var achievementResult = shared.mainFeaturePanelsView.claimAchievement(options.getProfile(), achievementClaim.dataset.achievementClaim, { levels: levels });
+        if (achievementResult && achievementResult.ok) {
+          playSfx("button");
+          saveProfile();
+          renderLobby();
+          shared.mainFeaturePanelsView.renderPanel("achievement", dom, {
+            profile: options.getProfile(),
+            levels: levels,
+            combatPower: calculateTotalPower(),
+            audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
+          });
+        }
+        return;
+      }
+      var taskClaim = event.target && event.target.closest ? event.target.closest("[data-task-claim]") : null;
+      if (taskClaim && !taskClaim.disabled && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimTask) {
+        if (isCloudMode()) {
+          dom.featurePanelBody.textContent = "正式服任务奖励将在服务端任务接口开放后领取。";
+          return;
+        }
+        var claimResult = shared.mainFeaturePanelsView.claimTask(options.getProfile(), taskClaim.dataset.taskClaim, { levels: levels });
+        if (claimResult && claimResult.ok) {
+          playSfx("button");
+          saveProfile();
+          renderLobby();
+          shared.mainFeaturePanelsView.renderPanel("task", dom, {
+            profile: options.getProfile(),
+            levels: levels,
+            combatPower: calculateTotalPower(),
+            audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
+          });
+        }
+        return;
+      }
+      var back = event.target && event.target.closest ? event.target.closest("[data-feature-back]") : null;
+      if (back) {
+        closeFeaturePanel();
+        return;
+      }
+      var target = event.target && event.target.closest ? event.target.closest("[data-fighter-upgrade]") : null;
+      if (!target || target.disabled) return;
+      upgradeFighterStat(target.dataset.fighterUpgrade);
+    });
+    dom.featurePanel.addEventListener("click", function closeBackdrop(event) {
+      handleProfilePanelClick(event);
+      if (event.target === dom.featurePanel) closeFeaturePanel();
+    });
+    dom.featurePanel.addEventListener("input", handleSettingPanelInput);
+    dom.featurePanel.addEventListener("change", handleSettingPanelInput);
+    if (dom.avatarUpload) dom.avatarUpload.addEventListener("change", handleAvatarUpload);
+    Array.prototype.forEach.call(document.querySelectorAll(".lobby-action"), function bind(button) {
+      button.addEventListener("click", function openPanel() {
+        openFeaturePanel(button.dataset.panel);
+      });
+    });
+
+    root.addEventListener("keydown", function onKeyDown(event) {
+      var gameKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space"].indexOf(event.code) >= 0;
+      if (gameKey) event.preventDefault();
+      keys.add(event.code);
+      if (event.code === "Space" && event.repeat) return;
+      if (event.code === "Space" && options.getState().mode === "fight" && shared.weaponSystem) {
+        if (!tryCastActiveSkill()) shared.weaponSystem.shoot(options.getState(), options.getCurrentLoadout(), options.getState().bullets);
+      }
+      if (event.code === "KeyP") {
+        if (options.getState().mode === "paused") resumeGame();
+        else pauseGame();
+      }
+    });
+
+    root.addEventListener("keyup", function onKeyUp(event) {
+      keys.delete(event.code);
+    });
+    root.addEventListener("resize", syncLobbyViewportScale);
+
+    canvas.addEventListener("pointerdown", function onPointerDown(event) {
+      pointer.active = true;
+      updatePointer(event);
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointermove", function onPointerMove(event) {
+      if (pointer.active) updatePointer(event);
+    });
+    canvas.addEventListener("pointerup", function onPointerUp(event) {
+      pointer.active = false;
+      canvas.releasePointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointercancel", function onPointerCancel() {
+      pointer.active = false;
+    });
+  }
+
+
+    return {
+      bind: bindEvents,
+      isBound: function isBound() { return bound; }
+    };
+  }
+
+  var api = { create: create };
+  scope.gameEventRouter = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : window);

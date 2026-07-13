@@ -5,6 +5,7 @@
   var balanceConfig = scope.balance || {};
   var enemyBalance = scope.enemyStageBalance || {};
   var weaponSys = scope.weaponSystem || {};
+  var assetsConfig = scope.assets || {};
 
   var BOSS_SPAWN_TIME = levelsConfig.BOSS_SPAWN_TIME || 60;
 
@@ -15,12 +16,26 @@
 
     var bossStats = getBossStats(level);
     var waveConfig = bossStats.waveConfig || {};
+    var visual = assetsConfig.getBossVisual
+      ? assetsConfig.getBossVisual(level.chapterIndex, level.stageInChapter)
+      : null;
+    var drawWidth = visual ? visual.drawWidth : 168;
+    var drawHeight = visual ? visual.drawHeight : 156;
+    var hitRadiusX = visual ? visual.hitRadiusX : 78;
+    var hitRadiusY = visual ? visual.hitRadiusY : 78;
+    var minY = Math.max(96, drawHeight / 2 + 12);
+    var maxY = 540 - minY;
     state.boss = {
       id: "boss-" + (level.id || level.code || "1"),
-      x: 960 + 130,
+      x: 960 + drawWidth / 2 + 24,
       y: 540 / 2,
-      targetX: 960 - 126,
-      radius: 78,
+      targetX: 960 - drawWidth / 2 - 18,
+      radius: Math.max(hitRadiusX, hitRadiusY),
+      hitRadiusX: hitRadiusX,
+      hitRadiusY: hitRadiusY,
+      minY: minY,
+      maxY: maxY,
+      visual: visual,
       hp: bossStats.hp,
       maxHp: bossStats.hp,
       damageTakenMultiplier: bossStats.damageTakenMultiplier,
@@ -31,7 +46,7 @@
       bulletPattern: bossStats.bulletPattern || "boss_cycle",
       waveConfig: waveConfig,
       theme: bossStats.bossTheme || waveConfig.theme || "fan",
-      title: bossStats.title || waveConfig.title || "BOSS 接敌",
+      title: (visual && Number(level.stageInChapter) === 10 && visual.title) || bossStats.title || waveConfig.title || "BOSS 接敌",
       spawnedAt: state.elapsed,
       fireTimer: 0,
       minFireInterval: waveConfig.minFireInterval || 0.32,
@@ -56,7 +71,7 @@
       life: 3
     };
     state.shockwaves = state.shockwaves || [];
-    state.shockwaves.push({ x: 960 - 130, y: 270, radius: 18, life: 0.9, maxLife: 0.9, color: "#ff6b6b" });
+    state.shockwaves.push({ x: state.boss.targetX, y: 270, radius: 18, life: 0.9, maxLife: 0.9, color: "#ff6b6b" });
     state.notices.push({ text: state.boss.title, color: "#ff6b6b", x: 960 / 2, y: 86, life: 2.4 });
     playSfx("bossWarning");
   }
@@ -95,7 +110,13 @@
     }
 
     boss.y += boss.direction * 82 * dt;
-    if (boss.y < 96 || boss.y > 540 - 96) boss.direction *= -1;
+    if (boss.y < boss.minY) {
+      boss.y = boss.minY;
+      boss.direction = 1;
+    } else if (boss.y > boss.maxY) {
+      boss.y = boss.maxY;
+      boss.direction = -1;
+    }
 
     if (boss.pendingPattern) {
       boss.pendingPattern.timer -= dt;
