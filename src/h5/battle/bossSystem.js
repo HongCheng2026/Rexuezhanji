@@ -354,6 +354,8 @@
     var bullet = weaponSys.createBullet(x, y, angle, "enemy", damage, speed, radius, color, { owner: "enemy", shape: "circle", pierceRemaining: 0 });
     bullet.age = 0;
     bullet.patternSource = patternSource || "boss";
+    bullet.sourceEnemyType = "boss";
+    bullet.sourceEnemyClass = "boss";
     state.enemyBullets.push(bullet);
   }
 

@@ -528,7 +528,9 @@
       var fakeEnemy = {
         x: enemy.x,
         y: enemy.y + offsets[i],
-        radius: enemy.radius
+        radius: enemy.radius,
+        enemyType: enemy.enemyType,
+        heavy: enemy.heavy
       };
       pushEnemyBullet(state, fakeEnemy, Math.PI, damage, speed, radius, color, patternSource);
     }
@@ -555,6 +557,8 @@
     );
     bullet.age = 0;
     bullet.patternSource = patternSource || "enemy";
+    bullet.sourceEnemyType = enemy.enemyType || (enemy.heavy ? "elite" : "small");
+    bullet.sourceEnemyClass = enemy.heavy ? "heavy" : "normal";
     state.enemyBullets.push(bullet);
   }
 

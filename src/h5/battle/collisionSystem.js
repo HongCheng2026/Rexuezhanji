@@ -17,6 +17,8 @@
    * 检测所有碰撞
    */
   function checkCollisions(state, profile, loadout) {
+    checkProjectileCollisions(state);
+
     // 玩家子弹 vs 敌军
     for (var i = 0; i < state.enemies.length; i++) {
       hitTargetWithBullets(state, state.enemies[i], loadout || profile);
@@ -76,9 +78,68 @@
     state.powerups = state.powerups.filter(function (p) { return !p.dead; });
   }
 
-  /**
-   * 子弹命中目标
-   */
+  /** Player bullets vs enemy bullets. */
+  function checkProjectileCollisions(state) {
+    var playerBullets = state && state.bullets ? state.bullets : [];
+    var enemyBullets = state && state.enemyBullets ? state.enemyBullets : [];
+    for (var i = 0; i < playerBullets.length; i++) {
+      var playerBullet = playerBullets[i];
+      if (!playerBullet || playerBullet.dead) continue;
+      for (var j = 0; j < enemyBullets.length; j++) {
+        var enemyBullet = enemyBullets[j];
+        if (!enemyBullet || enemyBullet.dead || playerBullet.dead) continue;
+        if (distance(playerBullet, enemyBullet) >= playerBullet.radius + enemyBullet.radius) continue;
+
+        var patternSource = enemyBullet.patternSource || "";
+        var isRoadblock = patternSource.indexOf("slow_wall") >= 0;
+        var isNormalEnemyBullet = enemyBullet.sourceEnemyClass === "normal";
+        if (!isRoadblock && (!isNormalEnemyBullet || Math.random() >= 0.1)) continue;
+
+        playerBullet.dead = true;
+        enemyBullet.dead = true;
+        burst(
+          state,
+          (playerBullet.x + enemyBullet.x) / 2,
+          (playerBullet.y + enemyBullet.y) / 2,
+          isRoadblock ? "#ffcf70" : "#9cf7ff",
+          7
+        );
+      }
+    }
+  }
+
+  function clearForActiveSkill(state, rewardSource) {
+    var result = { enemyBulletsCleared: 0, normalEnemiesCleared: 0 };
+    if (!state) return result;
+
+    var enemyBullets = state.enemyBullets || [];
+    for (var i = 0; i < enemyBullets.length; i++) {
+      if (!enemyBullets[i].dead) result.enemyBulletsCleared += 1;
+      enemyBullets[i].dead = true;
+    }
+    state.enemyBullets = [];
+
+    var enemies = state.enemies || [];
+    for (var j = 0; j < enemies.length; j++) {
+      var enemy = enemies[j];
+      if (!enemy || enemy.dead || isHeavyEnemy(enemy)) continue;
+      enemy.dead = true;
+      result.normalEnemiesCleared += 1;
+      recordKill(state, enemy, rewardSource);
+      maybeDropPowerup(state, enemy);
+      queueSfx(enemy.maxHp > 5 ? "explosionHeavy" : "explosionSmall");
+      burst(state, enemy.x, enemy.y, enemy.maxHp > 5 ? "#ff8a5c" : "#42d6b5", 24);
+      shockwave(state, enemy.x, enemy.y, enemy.maxHp > 5 ? "#ff8a5c" : "#42d6b5", 0.32, enemy.maxHp > 5 ? 190 : 145);
+    }
+    state.enemies = enemies.filter(function (enemy) { return !enemy.dead; });
+    return result;
+  }
+
+  function isHeavyEnemy(enemy) {
+    return enemy.heavy === true || enemy.enemyType === "elite" || enemy.enemyType === "core" || enemy.enemyType === "guard";
+  }
+
+  /** Player bullets vs an enemy target. */
   function hitTargetWithBullets(state, target, rewardSource) {
     if (target && target.canTakeDamage === false) return;
     for (var i = 0; i < state.bullets.length; i++) {
@@ -307,6 +368,7 @@
     splashDamage: splashDamage,
     damagePlayer: damagePlayer,
     applyPowerup: applyPowerup,
+    clearForActiveSkill: clearForActiveSkill,
     maybeDropPowerup: maybeDropPowerup,
     dropCoins: dropCoins,
     recordKill: recordKill,

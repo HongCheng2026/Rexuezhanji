@@ -9,7 +9,8 @@
 ## 高频入口
 
 - H5 入口：`src/h5/index.html`
-- 主控制器：`src/h5/game.js`（大文件，按需分段读取）
+- 启动器：`src/h5/game.js`；页面协调：`src/h5/app/gameApp.js`（大文件，按需分段读取）
+- 统一数据入口：`src/h5/app/gameGateway.js`
 - 全局样式：`src/h5/style.css`（大文件，按需分段读取）
 - H5 模块：`src/h5/battle/`、`src/h5/ui/`、`src/h5/meta/`
 - 跨端共享配置：`src/shared/`
@@ -24,13 +25,17 @@
 - 小程序平台目录和 `release/` 由同步脚本生成或镜像，不作为日常首改位置
 - 修改 `src/shared/` 后，发布或小程序验证前运行 `scripts/sync-release.ps1`
 
+## UI 样式约束
+
+- 新增或重构 UI 必须使用页面级根类隔离样式。禁止无作用域的组件选择器；禁止用文件末尾追加覆盖代替冲突清理；修改共享选择器前必须审计影响范围，并完成相关页面视觉回归。
+
 ## 禁止与谨慎
 
 - 不主动读取：`archive/`、`docs/chat-backups/`、`assets/originals/`、`assets/references/`、`*.log`
 - 不手动修改：`release/` 生成产物
 - 不删除：`archive/` 历史文件
 - 不把 `service_role` 密钥写入前端；前端只允许公开 `publishableKey`
-- 大文件必须定向读取：`game.js`、`style.css`、`enemyStageBalance.js`、`game-api/index.ts`、大 SQL 迁移
+- 大文件必须定向读取：`app/gameApp.js`、`style.css`、`enemyStageBalance.js`、`game-api/index.ts`、大 SQL 迁移
 
 ## Token 节流规则
 

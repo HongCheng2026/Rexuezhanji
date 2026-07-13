@@ -10,7 +10,9 @@
 
   const LOBBY_DEFAULTS = {
     player: {
+      uid: "",
       name: "王牌飞行员",
+      signature: "保持航线，火力覆盖。",
       avatar: assets.DEFAULT_AVATAR || "",
       level: 1,
       exp: 0,
@@ -75,6 +77,8 @@
     player.expMax = levelConfig.getCommanderExpToNextLevel ? levelConfig.getCommanderExpToNextLevel(player.level) : oldExpMax;
     player.exp = player.level >= maxLevel ? 0 : Math.max(0, player.totalExp - ((levelConfig.COMMANDER_TOTAL_EXP_BY_LEVEL || [])[player.level] || 0));
     player.avatar = player.avatar && player.avatar !== "guide.png" ? player.avatar : LOBBY_DEFAULTS.player.avatar;
+    player.uid = String(player.uid || "").replace(/\D/g, "").slice(0, 18);
+    player.signature = String(player.signature || LOBBY_DEFAULTS.player.signature).trim().slice(0, 36) || LOBBY_DEFAULTS.player.signature;
     player.honorLevel = normalizeHonorLevel(player.honorLevel, player.badge);
     player.badge = honorLevelToText(player.honorLevel);
 
@@ -112,7 +116,7 @@
       ratings: nextProfile.ratings || {},
       localEarned: nextProfile.localEarned || { gold: 0, diamonds: 0 }
       ,usedRedeemCodes: uniqueList(nextProfile.usedRedeemCodes)
-      ,progress: { clearedStageIds: uniqueList(nextProfile.progress?.clearedStageIds), clearedChapterIds: uniqueList(nextProfile.progress?.clearedChapterIds).map(Number).filter(Number.isFinite), stageStars: nextProfile.progress?.stageStars || {}, stageHonors: nextProfile.progress?.stageHonors || {}, perfectClearCount: Math.max(0, Number(nextProfile.progress?.perfectClearCount) || 0), noDamageBossClearCount: Math.max(0, Number(nextProfile.progress?.noDamageBossClearCount) || 0), clearCount: Math.max(0, Number(nextProfile.progress?.clearCount) || 0) }
+      ,progress: { clearedStageIds: uniqueList(nextProfile.progress?.clearedStageIds), clearedChapterIds: uniqueList(nextProfile.progress?.clearedChapterIds).map(Number).filter(Number.isFinite), stageStars: nextProfile.progress?.stageStars || {}, stageHonors: nextProfile.progress?.stageHonors || {}, storySeenSceneIds: uniqueList(nextProfile.progress?.storySeenSceneIds), perfectClearCount: Math.max(0, Number(nextProfile.progress?.perfectClearCount) || 0), noDamageBossClearCount: Math.max(0, Number(nextProfile.progress?.noDamageBossClearCount) || 0), clearCount: Math.max(0, Number(nextProfile.progress?.clearCount) || 0) }
     };
 
     recoverEnergy(normalized);

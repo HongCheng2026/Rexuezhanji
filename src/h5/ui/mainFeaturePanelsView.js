@@ -2,174 +2,32 @@
   "use strict";
 
   var scope = root.RXGame || (root.RXGame = {});
-
-  var TASK_CONTENT = [
-    { id: "task_first_sortie", category: "成长", title: "首次出击", desc: "完成任意一次实战出击，建立基础作战记录。", condition: { type: "clear_count", target: 1, label: "累计通关 1 次" }, rewards: [{ type: "gold", amount: 2000 }] },
-    { id: "task_prologue_1", category: "成长", title: "序章校准", desc: "通关序章 1，确认基础火控和移动手感。", condition: { type: "clear_stage", stageId: "prologue_1", label: "通关序章 1" }, rewards: [{ type: "gold", amount: 3000 }] },
-    { id: "task_prologue_3", category: "成长", title: "黑潮警报", desc: "通关序章 3，完成新兵航线第一轮压测。", condition: { type: "clear_stage", stageId: "prologue_3", label: "通关序章 3" }, rewards: [{ type: "gold", amount: 5000 }] },
-    { id: "task_stage_1_1", category: "成长", title: "星港外围", desc: "突破 1-1 星港外围，打开第一章主航道。", condition: { type: "clear_stage", stageId: "1_1", label: "通关 1-1 星港外围" }, rewards: [{ type: "gold", amount: 6000 }] },
-    { id: "task_stage_1_2", category: "成长", title: "碎星航道", desc: "突破 1-2 碎星航道，熟悉更密集的敌机编队。", condition: { type: "clear_stage", stageId: "1_2", label: "通关 1-2 碎星航道" }, rewards: [{ type: "gold", amount: 8000 }] },
-    { id: "task_stage_1_3", category: "成长", title: "核心闸门", desc: "突破 1-3 核心闸门，完成第一章关键防线。", condition: { type: "clear_stage", stageId: "1_3", label: "通关 1-3 核心闸门" }, rewards: [{ type: "gold", amount: 12000 }] },
-    { id: "task_attack_3", category: "强化", title: "火力核心 Lv.3", desc: "将战机攻击强化到 3 级，提升清场效率。", condition: { type: "fighter_upgrade", stat: "attack", target: 3, label: "火力核心达到 Lv.3" }, rewards: [{ type: "gold", amount: 4000 }] },
-    { id: "task_hp_3", category: "强化", title: "装甲舱 Lv.3", desc: "将战机生命强化到 3 级，提高容错空间。", condition: { type: "fighter_upgrade", stat: "hp", target: 3, label: "装甲舱达到 Lv.3" }, rewards: [{ type: "gold", amount: 4000 }] },
-    { id: "task_pen_3", category: "强化", title: "推进器 Lv.3", desc: "将破甲推进强化到 3 级，压制高护甲目标。", condition: { type: "fighter_upgrade", stat: "armorPenetration", target: 3, label: "推进器达到 Lv.3" }, rewards: [{ type: "gold", amount: 4000 }] },
-    { id: "task_upgrade_total_10", category: "强化", title: "整备总检", desc: "战机三项强化总等级达到 10，形成稳定养成基础。", condition: { type: "fighter_upgrade_total", target: 10, label: "强化总等级达到 10" }, rewards: [{ type: "gold", amount: 10000 }] },
-    { id: "task_clear_3", category: "作战", title: "连续出击", desc: "累计通关 3 次，建立稳定的出击节奏。", condition: { type: "clear_count", target: 3, label: "累计通关 3 次" }, rewards: [{ type: "gold", amount: 5000 }] },
-    { id: "task_clear_10", category: "作战", title: "星港巡航", desc: "累计通关 10 次，熟悉主要敌机和 Boss 节奏。", condition: { type: "clear_count", target: 10, label: "累计通关 10 次" }, rewards: [{ type: "gold", amount: 12000 }] },
-    { id: "task_clear_20", category: "作战", title: "航线守备", desc: "累计通关 20 次，完成稳定守备轮值。", condition: { type: "clear_count", target: 20, label: "累计通关 20 次" }, rewards: [{ type: "gold", amount: 24000 }] },
-    { id: "task_perfect_1", category: "作战", title: "完美作战", desc: "获得 1 次完美通关，证明路线和输出节奏达标。", condition: { type: "perfect_count", target: 1, label: "完美通关 1 次" }, rewards: [{ type: "gold", amount: 8000 }] },
-    { id: "task_perfect_5", category: "作战", title: "无漏航线", desc: "获得 5 次完美通关，掌握关键弹幕空隙。", condition: { type: "perfect_count", target: 5, label: "完美通关 5 次" }, rewards: [{ type: "gold", amount: 18000 }] },
-    { id: "task_boss_no_damage_1", category: "作战", title: "王牌规避", desc: "完成 1 次无伤 Boss 战，验证高压规避能力。", condition: { type: "no_damage_boss_count", target: 1, label: "无伤 Boss 1 次" }, rewards: [{ type: "gold", amount: 10000 }] },
-    { id: "task_roster_2", category: "收集", title: "战姬集结", desc: "拥有 2 名战姬，准备多风格作战阵容。", condition: { type: "owned_pilots", target: 2, label: "拥有 2 名战姬" }, rewards: [{ type: "gold", amount: 8000 }] },
-    { id: "task_hangar_2", category: "收集", title: "双机整备", desc: "拥有 2 架战机，完成基础机库扩编。", condition: { type: "owned_ships", target: 2, label: "拥有 2 架战机" }, rewards: [{ type: "gold", amount: 8000 }] },
-    { id: "task_rank_ship", category: "收集", title: "高阶机体展示", desc: "当前出战 A 级或 S 级战机，展示主力机体整备状态。", condition: { type: "selected_ship_rank", ranks: ["A", "S"], target: 1, label: "出战 A/S 级战机" }, rewards: [{ type: "gold", amount: 6000 }] }
-  ];
-
-  var EVENT_CONTENT = [
-    { tag: "突防试炼", title: "黑曜突防", time: "本周轮换 / 深空航线", condition: "通关 1-2 碎星航道后开放。", reward: "黑曜幽影试验券 / 导弹强化素材", status: "待接入", text: "暗核袭击机适合处理高压编队，活动展示导弹流清场路线。" },
-    { tag: "破甲挑战", title: "金矢裁决", time: "本周轮换 / 高护甲目标", condition: "任意战机破甲强化达到 Lv.3。", reward: "金矢碎片 / 穿透模块 / 金币", status: "待接入", text: "金矢裁决强调短爆发和额外穿透，适合压制精英护盾目标。" },
-    { tag: "每日补给", title: "每日出击补给", time: "每日刷新 / 05:00", condition: "今日完成任意关卡 1 次。", reward: "体力 30 / 金币 3000", status: "展示", text: "给日常出击准备的轻量补给，正式领取会在任务系统接入后开放。" },
-    { tag: "章节推进", title: "星港突破", time: "长期开放", condition: "通关第一章关键节点。", reward: "金币 / 荣誉经验 / 机库展示位", status: "进行中", text: "根据章节推进展示阶段奖励，帮助玩家明确下一条主线航路。" },
-    { tag: "七日成长", title: "新兵七日航线", time: "新账号前 7 日", condition: "完成登录、强化、通关、收集目标。", reward: "银翼整备箱 / 战姬招募券 / 钻石", status: "预告", text: "面向新手的七日目标板，当前先展示内容结构，不触发真实奖励。" }
-  ];
-
-  var ACHIEVEMENT_CONTENT = [
-    { id: "ach_first_clear", category: "通关", title: "初战告捷", badge: "初战告捷", desc: "完成第一次通关。", metric: "clearCount", target: 1, rewards: [{ type: "gold", amount: 2000 }] },
-    { id: "ach_outer_clear", category: "通关", title: "星港外围清剿", badge: "外围清剿", desc: "通关 1-1 星港外围。", metric: "stage:1_1", target: 1, rewards: [{ type: "gold", amount: 5000 }] },
-    { id: "ach_gate_clear", category: "通关", title: "核心闸门突破", badge: "闸门突破", desc: "通关 1-3 核心闸门。", metric: "stage:1_3", target: 1, rewards: [{ type: "gold", amount: 9000 }] },
-    { id: "ach_chapter_runner", category: "通关", title: "章节推进者", badge: "推进者", desc: "累计通关 10 次。", metric: "clearCount", target: 10, rewards: [{ type: "gold", amount: 12000 }] },
-    { id: "ach_perfect_1", category: "技巧", title: "完美作战", badge: "完美作战", desc: "获得 1 次完美通关。", metric: "perfectClearCount", target: 1, rewards: [{ type: "gold", amount: 8000 }] },
-    { id: "ach_perfect_20", category: "技巧", title: "无漏之翼", badge: "无漏之翼", desc: "获得 20 次完美通关。", metric: "perfectClearCount", target: 20, rewards: [{ type: "gold", amount: 30000 }] },
-    { id: "ach_boss_no_damage", category: "技巧", title: "无伤 Boss", badge: "王牌规避", desc: "累计无伤 Boss 5 次。", metric: "noDamageBossClearCount", target: 5, rewards: [{ type: "gold", amount: 20000 }] },
-    { id: "ach_bullet_dance", category: "技巧", title: "弹幕穿梭", badge: "弹幕穿梭", desc: "以完美通关记录证明规避路线。", metric: "perfectClearCount", target: 5, rewards: [{ type: "gold", amount: 16000 }] },
-    { id: "ach_limit_recycle", category: "技巧", title: "极限回收", badge: "补给猎手", desc: "累计通关 20 次，形成稳定回收节奏。", metric: "clearCount", target: 20, rewards: [{ type: "gold", amount: 22000 }] },
-    { id: "ach_attack_5", category: "养成", title: "火力校准", badge: "火力校准", desc: "攻击强化达到 Lv.5。", metric: "upgrade:attack", target: 5, rewards: [{ type: "gold", amount: 12000 }] },
-    { id: "ach_hp_5", category: "养成", title: "装甲成型", badge: "装甲成型", desc: "生命强化达到 Lv.5。", metric: "upgrade:hp", target: 5, rewards: [{ type: "gold", amount: 12000 }] },
-    { id: "ach_pen_5", category: "养成", title: "推进稳定", badge: "推进稳定", desc: "破甲强化达到 Lv.5。", metric: "upgrade:armorPenetration", target: 5, rewards: [{ type: "gold", amount: 12000 }] },
-    { id: "ach_upgrade_total", category: "养成", title: "王牌机库", badge: "王牌机库", desc: "三项战机强化总等级达到 15。", metric: "upgradeTotal", target: 15, rewards: [{ type: "gold", amount: 24000 }] },
-    { id: "ach_pilot_roster", category: "收集", title: "战姬集结", badge: "战姬集结", desc: "拥有 3 名战姬。", metric: "ownedPilots", target: 3, rewards: [{ type: "gold", amount: 15000 }] },
-    { id: "ach_ship_roster", category: "收集", title: "银翼整备", badge: "银翼整备", desc: "拥有 3 架战机。", metric: "ownedShips", target: 3, rewards: [{ type: "gold", amount: 15000 }] },
-    { id: "ach_s_rank_file", category: "收集", title: "S 级档案", badge: "S 级档案", desc: "拥有任意 S 级战姬或战机。", metric: "ownedSRank", target: 1, rewards: [{ type: "gold", amount: 20000 }] },
-    { id: "ach_honor_record", category: "收集", title: "星港荣誉", badge: "星港荣誉", desc: "任意关卡荣誉达到 Tier 3。", metric: "bestHonor", target: 3, rewards: [{ type: "gold", amount: 18000 }] }
-  ];
-
-  var SHOP_CONTENT = [
-    { category: "资源补给", title: "每日免费补给", price: "免费 / 每日一次", reward: "体力 20 / 金币 1000", desc: "日常出击前的轻量补给，正式领取待接入。", status: "展示" },
-    { category: "资源补给", title: "金币包", price: "钻石 1", reward: "金币 200", desc: "现有云端商品 gold_200 的展示入口。", status: "云存档购买" },
-    { category: "资源补给", title: "小体力包", price: "钻石 3", reward: "体力 50", desc: "补足短线出击体力，当前不执行扣费。", status: "待接入" },
-    { category: "资源补给", title: "大体力包", price: "钻石 8", reward: "体力 150 / 金币 2000", desc: "适合连续挑战章节节点。", status: "待接入" },
-    { category: "强化补给", title: "火力校准包", price: "金币 6000", reward: "火力核心调试素材", desc: "面向攻击强化的素材补给展示。", status: "展示" },
-    { category: "强化补给", title: "装甲维护包", price: "金币 6000", reward: "装甲舱维护素材", desc: "面向生命强化的素材补给展示。", status: "展示" },
-    { category: "强化补给", title: "推进器调试包", price: "金币 6000", reward: "破甲 / 推进调试素材", desc: "面向破甲强化的素材补给展示。", status: "展示" },
-    { category: "战机补给", title: "银翼整备箱", price: "钻石 12", reward: "银翼 06 整备零件", desc: "主力均衡战机的整备补给。", status: "待接入" },
-    { category: "战机补给", title: "星链研究券", price: "活动代币", reward: "苍穹零式研究进度", desc: "星穹之翼抽取关联道具。", status: "预告" },
-    { category: "活动礼包", title: "星港支援礼包", price: "钻石 18", reward: "金币 18000 / 体力 120", desc: "章节推进期的综合支援礼包。", status: "待接入" }
-  ];
-
-  var FRIEND_CONTENT = [
-    { tag: "在线", title: "凌焰", role: "重火力助战", power: 16800, text: "最近在核心闸门压制 Boss，适合高压输出支援。", action: "申请助战" },
-    { tag: "在线", title: "洛绮", role: "精英压制", power: 16100, text: "试飞金羽航线，擅长短窗口击穿精英目标。", action: "查看档案" },
-    { tag: "忙碌", title: "夜岚", role: "高速突袭", power: 15400, text: "正在深空侦察队执行穿插训练。", action: "留言" },
-    { tag: "在线", title: "沈曜", role: "火控指挥", power: 14300, text: "提供火控校准建议，适合强化前查看。", action: "请求建议" },
-    { tag: "离线", title: "白凌", role: "精准训练", power: 9800, text: "保留了序章弹道训练记录，适合新手复盘。", action: "查看记录" },
-    { tag: "离线", title: "林知寒", role: "防御反击", power: 9200, text: "标记了护盾机与狙击机的规避路线。", action: "同步情报" },
-    { tag: "值班", title: "星港工程师", role: "机库维护", power: 7600, text: "建议优先把攻击、生命、破甲都提升到 Lv.3。", action: "查看建议" },
-    { tag: "小队", title: "银翼小队", role: "编队助战", power: 12800, text: "第一章巡航编队，适合章节推进时借位助战。", action: "邀请编队" }
-  ];
-
-  var RANKING_CONTENT = {
-    power: [
-      { title: "夜航指挥官", name: "深空十七", score: 28600, tag: "NPC" },
-      { title: "星港王牌", name: "凌焰", score: 26800, tag: "NPC" },
-      { title: "金羽试飞组", name: "洛绮", score: 25400, tag: "NPC" },
-      { title: "暗核突防队", name: "黑曜队长", score: 23100, tag: "NPC" },
-      { title: "银翼训练营", name: "白凌", score: 17600, tag: "NPC" },
-      { title: "星港后勤", name: "工程师 K", score: 13200, tag: "NPC" }
-    ],
-    clear: [
-      { title: "航线守备", name: "星港王牌", score: 42, tag: "NPC" },
-      { title: "碎星巡航", name: "银翼小队", score: 35, tag: "NPC" },
-      { title: "核心突防", name: "夜岚", score: 31, tag: "NPC" },
-      { title: "训练教官", name: "白凌", score: 24, tag: "NPC" },
-      { title: "新兵领航", name: "苏绛星", score: 18, tag: "NPC" }
-    ],
-    honor: [
-      { title: "无漏之翼", name: "洛绮", score: 8, tag: "NPC" },
-      { title: "王牌规避", name: "夜岚", score: 7, tag: "NPC" },
-      { title: "火力核心", name: "凌焰", score: 6, tag: "NPC" },
-      { title: "稳定推进", name: "沈曜", score: 5, tag: "NPC" },
-      { title: "冷月防线", name: "沈清歌", score: 4, tag: "NPC" }
-    ]
+  var content = scope.featurePanelContent || {};
+  var panelState = {
+    task: "每日",
+    event: "推荐",
+    achievement: "通关",
+    shop: "资源",
+    friend: "助战推荐",
+    ranking: "战力榜"
   };
-
-  var CHAT_CONTENT = {
-    system: [
-      "[系统] 今日出击补给已刷新，完成任意关卡可查看补给状态。",
-      "[系统] 任务面板已同步本地通关、强化与收集记录。",
-      "[系统] 商店当前为展示模式，真实购买仍需要云存档校验。",
-      "[系统] 星穹之翼抽取入口已独立开放预览。",
-      "[系统] 排行榜为本地模拟榜，不上传玩家数据。",
-      "[系统] 好友助战与聊天发送功能待接入。"
-    ],
-    world: [
-      "[世界] 银翼小队：1-3 核心闸门建议先把攻击强化到 Lv.3。",
-      "[世界] 夜岚：冲锋机出现前会有航道压力，别贴边硬躲。",
-      "[世界] 洛绮：金矢裁决适合打护甲高的精英目标。",
-      "[世界] 星港工程师：金币不够时先刷已通关节点。",
-      "[世界] 白凌：序章训练别急着追掉落，先熟悉弹道。",
-      "[世界] 凌焰：Boss 出场后保留主动技能更稳。"
-    ],
-    guild: [
-      "[公会] 银翼训练营开放新兵复盘席位。",
-      "[公会] 深空侦察队正在整理碎星航道路线。",
-      "[公会] 星港后勤提示：强化材料展示清单已更新。",
-      "[公会] 火控组建议优先提升主力战机三项基础等级。",
-      "[公会] 机库维护班预告：助战位后续接入。",
-      "[公会] 指挥频道当前为预览模式。"
-    ],
-    friend: [
-      "[好友] 凌焰：需要火力支援时先叫我。",
-      "[好友] 洛绮：等金羽试飞开放，一起看穿透表现。",
-      "[好友] 夜岚：深空航线不适合贪输出。",
-      "[好友] 沈曜：强化前先看成本，不要散点。",
-      "[好友] 星港工程师：设置里可以单独调音乐和音效。",
-      "[好友] 银翼小队：助战邀请功能待接入。"
-    ]
+  var panelTabs = {
+    task: ["每日", "成长", "强化", "作战", "收集"],
+    event: ["推荐", "每日", "试炼", "成长"],
+    achievement: ["通关", "技巧", "养成", "收集", "荣誉"],
+    shop: ["每日", "资源", "强化", "战机/抽取"],
+    friend: ["助战推荐", "好友名册", "申请", "最近协作"],
+    ranking: ["战力榜", "通关榜", "荣誉榜"]
   };
-
-  var CHAT_PREVIEW_MESSAGES = [
-    "[世界] 银翼小队：1-3 建议先把火力核心强化到 Lv.3。",
-    "[系统] 星穹之翼抽取入口已独立开放预览。",
-    "[好友] 凌焰：需要火力支援时先叫我。",
-    "[公会] 星港后勤：每日出击补给已刷新。",
-    "[世界] 夜岚：深空航线不适合贪输出。",
-    "[系统] 排行榜当前为本地模拟榜。",
-    "[好友] 星港工程师：音乐和音效可在设置里单独调整。",
-    "[世界] 洛绮：金矢裁决适合打高护甲目标。"
-  ];
-
-  var MAIL_CONTENT = [
-    { type: "公告", title: "星港大厅系统改修完成", time: "今日", text: "大厅入口与子面板已切换为战术终端样式。", reward: "金币 3000", status: "附件待接入" },
-    { type: "补给", title: "每日出击补给提醒", time: "05:00", text: "完成任意关卡后可在任务与活动面板查看补给说明。", reward: "体力 30", status: "展示" },
-    { type: "活动", title: "星穹之翼抽取预览", time: "本周", text: "苍穹零式与星链研究券已移至独立抽取入口展示。", reward: "研究券预览", status: "预告" },
-    { type: "维护", title: "音频设置升级", time: "今日", text: "音乐、音效开关和音量已拆分控制，并保存到本地。", reward: "无", status: "已读" },
-    { type: "情报", title: "黑曜突防侦察记录", time: "昨日", text: "暗核突防队建议优先准备导弹流与破甲强化。", reward: "情报档案", status: "展示" }
-  ];
-
-  var SIGNIN_CONTENT = [
-    { day: 1, title: "出击整备", reward: "金币 3000", status: "今日展示" },
-    { day: 2, title: "火力校准", reward: "火力素材包", status: "预告" },
-    { day: 3, title: "体力补给", reward: "体力 60", status: "预告" },
-    { day: 4, title: "装甲维护", reward: "装甲素材包", status: "预告" },
-    { day: 5, title: "银翼整备", reward: "银翼整备箱", status: "预告" },
-    { day: 6, title: "星链研究", reward: "星链研究券", status: "预告" },
-    { day: 7, title: "新兵大礼", reward: "钻石 30 / 金币 20000", status: "大奖展示" }
-  ];
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
     });
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value);
   }
 
   function clampNumber(value, min, max) {
@@ -187,12 +45,14 @@
     return clampNumber(Math.round((Math.max(0, current) / Math.max(1, target)) * 100), 0, 100);
   }
 
-  function renderRewardList(rewards) {
-    if (!rewards || !rewards.length) return "奖励待定";
-    var names = { gold: "金币", diamonds: "钻石", energy: "体力" };
-    return rewards.map(function (item) {
-      return (names[item.type] || item.type || "奖励") + " " + formatNumber(item.amount || 0);
-    }).join(" / ");
+  function localDateKey(date) {
+    date = date || new Date();
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+
+  function getConfig() {
+    content = scope.featurePanelContent || content || {};
+    return content;
   }
 
   function getProgressRoot(profile) {
@@ -232,12 +92,17 @@
   }
 
   function hasOwnedSRank(profile) {
+    var assets = scope.assets || {};
     var owned = (profile && profile.owned) || {};
-    var list = []
+    var ids = []
       .concat(Array.isArray(owned.pilots) ? owned.pilots : [])
       .concat(Array.isArray(owned.ships) ? owned.ships : []);
-    for (var i = 0; i < list.length; i++) {
-      if (String(list[i]).toUpperCase().indexOf("S") >= 0) return true;
+    var map = {};
+    (assets.PILOT_ASSETS || []).concat(assets.SHIP_ASSETS || []).forEach(function (item) {
+      if (item && item.id) map[item.id] = item.rank;
+    });
+    for (var i = 0; i < ids.length; i++) {
+      if (map[ids[i]] === "S" || String(ids[i]).toLowerCase().indexOf("-s-") >= 0) return true;
     }
     return false;
   }
@@ -251,12 +116,22 @@
     return best;
   }
 
+  function getUpgradeTotal(profile) {
+    var fighter = (profile && profile.fighterUpgrades) || {};
+    return Math.max(0,
+      Math.floor(Number(fighter.attack) || 1) +
+      Math.floor(Number(fighter.hp) || 1) +
+      Math.floor(Number(fighter.armorPenetration) || 1)
+    );
+  }
+
   function getTaskProgress(task, profile, levels) {
     var condition = task.condition || {};
     var owned = (profile && profile.owned) || {};
     var fighter = (profile && profile.fighterUpgrades) || {};
     var current = 0;
     var target = Math.max(1, Number(condition.target) || 1);
+    if (condition.type === "login") current = 1;
     if (condition.type === "clear_count") current = getClearCount(profile);
     if (condition.type === "clear_stage") current = isStageCleared(condition.stageId, profile, levels) ? 1 : 0;
     if (condition.type === "clear_chapter") {
@@ -264,9 +139,11 @@
       current = chapters.indexOf(condition.chapterIndex) >= 0 ? 1 : 0;
     }
     if (condition.type === "fighter_upgrade") current = Math.max(1, Math.floor(Number(fighter[condition.stat]) || 1));
-    if (condition.type === "fighter_upgrade_total") current = Math.max(0, Math.floor(Number(fighter.attack) || 1) + Math.floor(Number(fighter.hp) || 1) + Math.floor(Number(fighter.armorPenetration) || 1));
+    if (condition.type === "fighter_upgrade_total") current = getUpgradeTotal(profile);
+    if (condition.type === "fighter_upgrade_any") current = Math.max(0, getUpgradeTotal(profile) - 3);
     if (condition.type === "perfect_count") current = getPerfectCount(profile);
     if (condition.type === "no_damage_boss_count") current = Math.max(0, Math.floor(Number(getProgressRoot(profile).noDamageBossClearCount) || 0));
+    if (condition.type === "earned_gold") current = Math.max(0, Math.floor(Number(profile && profile.localEarned && profile.localEarned.gold) || 0));
     if (condition.type === "owned_pilots") current = Array.isArray(owned.pilots) ? owned.pilots.length : 0;
     if (condition.type === "owned_ships") current = Array.isArray(owned.ships) ? owned.ships.length : 0;
     if (condition.type === "selected_ship_rank") current = hasOwnedSRank(profile) ? 1 : 0;
@@ -282,7 +159,7 @@
     if (metric === "noDamageBossClearCount") return Math.max(0, Number(getProgressRoot(profile).noDamageBossClearCount) || 0);
     if (metric.indexOf("stage:") === 0) return isStageCleared(metric.slice(6), profile, levels) ? 1 : 0;
     if (metric.indexOf("upgrade:") === 0) return Math.max(1, Math.floor(Number(fighter[metric.slice(8)]) || 1));
-    if (metric === "upgradeTotal") return Math.max(0, Math.floor(Number(fighter.attack) || 1) + Math.floor(Number(fighter.hp) || 1) + Math.floor(Number(fighter.armorPenetration) || 1));
+    if (metric === "upgradeTotal") return getUpgradeTotal(profile);
     if (metric === "ownedPilots") return Array.isArray(owned.pilots) ? owned.pilots.length : 0;
     if (metric === "ownedShips") return Array.isArray(owned.ships) ? owned.ships.length : 0;
     if (metric === "ownedSRank") return hasOwnedSRank(profile) ? 1 : 0;
@@ -290,25 +167,16 @@
     return 0;
   }
 
-  function statusText(done, claimed) {
-    if (claimed) return "已完成";
-    return done ? "待接入领取" : "进行中";
+  function rewardName(type) {
+    return ({ gold: "金币", diamonds: "钻石", energy: "体力", item: "道具" })[type] || type || "奖励";
   }
 
-  function decorateItems(items, categories, getProgress, claimedIds) {
-    var doneCount = 0;
-    var decorated = items.map(function (item) {
-      var progress = getProgress(item);
-      var claimed = claimedIds && claimedIds.indexOf(item.id) >= 0;
-      if (progress.done) doneCount += 1;
-      return { item: item, progress: progress, claimed: claimed };
-    });
-    decorated.sort(function (a, b) {
-      var aw = a.claimed ? 0 : a.progress.done ? 2 : 1;
-      var bw = b.claimed ? 0 : b.progress.done ? 2 : 1;
-      return bw - aw;
-    });
-    return { rows: decorated, doneCount: doneCount, categories: categories };
+  function renderRewardList(rewards) {
+    if (!rewards || !rewards.length) return "奖励";
+    return rewards.map(function (item) {
+      if (item.type === "item") return (item.name || item.itemId || "道具") + " " + formatNumber(item.amount || 0);
+      return rewardName(item.type) + " " + formatNumber(item.amount || 0);
+    }).join(" / ");
   }
 
   function renderProgressBar(current, target) {
@@ -326,7 +194,7 @@
   function renderRail(categories, active, note) {
     var html = '<aside class="terminal-rail">';
     for (var i = 0; i < categories.length; i++) {
-      html += '<button type="button" class="' + (categories[i] === active ? "active" : "") + '" disabled data-terminal-tab="' + escapeHtml(categories[i]) + '">' + escapeHtml(categories[i]) + '</button>';
+      html += '<button type="button" class="' + (categories[i] === active ? "active" : "") + '" disabled>' + escapeHtml(categories[i]) + '</button>';
     }
     if (note) html += '<p>' + escapeHtml(note) + '</p>';
     return html + '</aside>';
@@ -334,9 +202,7 @@
 
   function renderRoute(progress) {
     if (!progress) return "";
-    var target = Math.max(1, Number(progress.target) || 1);
-    var current = Math.max(0, Number(progress.current) || 0);
-    var percent = progressPercent(current, target);
+    var percent = progressPercent(progress.current, progress.target);
     var labels = ["1-1", "1-2", "1-3", "1-4", "BOSS"];
     var html = '<div class="terminal-route" style="--route-progress:' + percent + '%">';
     for (var i = 0; i < labels.length; i++) {
@@ -361,40 +227,42 @@
     for (var i = 0; i < stats.length; i++) {
       html += '<article><em>' + escapeHtml(stats[i].label) + '</em><strong>' + escapeHtml(stats[i].value) + '</strong></article>';
     }
-    html += '</section></aside>';
-    return html;
+    return html + '</section></aside>';
   }
 
   function renderActionCard(data) {
     var progress = data.progress;
     var statusClass = data.statusClass || (progress && progress.done ? "is-ready" : "");
+    var action = data.action || "查看";
+    var disabled = data.disabled ? " disabled" : "";
+    var actionAttr = data.actionAttr || "";
     var html = '<article class="terminal-focus-card">' +
       '<div class="terminal-focus-top"><span>' + escapeHtml(data.tag || "重点目标") + '</span><em class="' + statusClass + '">' + escapeHtml(data.status || "") + '</em></div>' +
-      '<strong>' + escapeHtml(data.title) + '</strong>' +
+      '<strong>' + escapeHtml(data.title || "") + '</strong>' +
       '<p>' + escapeHtml(data.desc || "") + '</p>';
     if (data.meta) html += '<dl>' + data.meta.map(function (row) { return '<div><dt>' + escapeHtml(row[0]) + '</dt><dd>' + escapeHtml(row[1]) + '</dd></div>'; }).join("") + '</dl>';
     if (progress) {
-      html += '<div class="terminal-focus-progress"><span>' + escapeHtml(progress.label) + '</span><b>' + progress.current + '/' + progress.target + '</b></div>' +
+      html += '<div class="terminal-focus-progress"><span>' + escapeHtml(progress.label) + '</span><b>' + formatNumber(progress.current) + '/' + formatNumber(progress.target) + '</b></div>' +
         renderRoute(progress) +
         renderProgressBar(progress.current, progress.target);
     }
-    html += '<footer><em>' + escapeHtml(data.reward || "") + '</em><button type="button" disabled>' + escapeHtml(data.action || "查看详情") + '</button></footer></article>';
+    html += '<footer><em>' + escapeHtml(data.reward || "") + '</em><button type="button"' + actionAttr + disabled + '>' + escapeHtml(action) + '</button></footer></article>';
     return html;
   }
 
   function renderListRow(data) {
     var progress = data.progress;
     var statusClass = data.statusClass || (progress && progress.done ? "is-ready" : "");
+    var button = data.buttonHtml || '<em class="' + statusClass + '">' + escapeHtml(data.status || "") + '</em>';
     var html = '<article class="terminal-list-row">' +
       '<span class="terminal-row-icon" aria-hidden="true"></span>' +
       '<div><span class="terminal-row-tag">' + escapeHtml(data.tag || "") + '</span><strong>' + escapeHtml(data.title || "") + '</strong><p>' + escapeHtml(data.desc || "") + '</p>';
-    if (progress) html += '<small>' + escapeHtml(progress.label) + ' / ' + progress.current + '/' + progress.target + '</small>' + renderProgressBar(progress.current, progress.target);
-    html += '</div><span class="terminal-row-reward">' + escapeHtml(data.reward || "") + '</span><em class="' + statusClass + '">' + escapeHtml(data.status || "") + '</em></article>';
-    return html;
+    if (progress) html += '<small>' + escapeHtml(progress.label) + ' / ' + formatNumber(progress.current) + '/' + formatNumber(progress.target) + '</small>' + renderProgressBar(progress.current, progress.target);
+    return html + '</div><span class="terminal-row-reward">' + escapeHtml(data.reward || "") + '</span>' + button + '</article>';
   }
 
   function renderTerminalShell(config) {
-    var html = '<section class="terminal-panel terminal-panel-' + escapeHtml(config.key || "default") + '">' +
+    return '<section class="terminal-panel terminal-panel-' + escapeHtml(config.key || "default") + '">' +
       '<header class="terminal-header">' +
       '<div><span>' + escapeHtml(config.kicker || "STARPORT") + '</span><strong>' + escapeHtml(config.title || "") + '</strong></div>' +
       '<p>' + escapeHtml(config.desc || "") + '</p>' +
@@ -409,256 +277,363 @@
       '</section>' +
       (config.dock || "") +
       '</section></section>';
-    return html;
+  }
+
+  function getDailyClaimIds(profile) {
+    var daily = profile && profile.claimedDailyTasks;
+    var today = localDateKey();
+    if (Array.isArray(daily)) return daily;
+    if (daily && daily.date === today && Array.isArray(daily.ids)) return daily.ids;
+    return [];
+  }
+
+  function isTaskClaimed(task, profile) {
+    if (!task) return false;
+    if (task.bucket === "daily") return getDailyClaimIds(profile).indexOf(task.id) >= 0;
+    return Array.isArray(profile && profile.claimedTasks) && profile.claimedTasks.indexOf(task.id) >= 0;
+  }
+
+  function getTaskStatus(progress, claimed) {
+    if (claimed) return "已领取";
+    return progress.done ? "可领取" : "进行中";
+  }
+
+  function decorateTasks(items, profile, levels) {
+    var rows = (items || []).map(function (item) {
+      var progress = getTaskProgress(item, profile, levels);
+      var claimed = isTaskClaimed(item, profile);
+      return { item: item, progress: progress, claimed: claimed };
+    });
+    rows.sort(function (a, b) {
+      var aw = a.claimed ? 0 : a.progress.done ? 2 : 1;
+      var bw = b.claimed ? 0 : b.progress.done ? 2 : 1;
+      return bw - aw;
+    });
+    return rows;
+  }
+
+  function countDone(rows) {
+    return rows.reduce(function (sum, row) { return sum + (row.progress.done ? 1 : 0); }, 0);
+  }
+
+  function countReady(rows) {
+    return rows.reduce(function (sum, row) { return sum + (row.progress.done && !row.claimed ? 1 : 0); }, 0);
+  }
+
+  function getActivity(rows) {
+    return rows.reduce(function (sum, row) {
+      return sum + ((row.progress.done || row.claimed) ? Math.max(0, Number(row.item.activity) || 0) : 0);
+    }, 0);
+  }
+
+  function renderTaskButton(row) {
+    if (row.claimed) return '<em class="is-claimed">已领取</em>';
+    if (row.progress.done) return '<button type="button" class="terminal-row-button is-ready" data-task-claim="' + escapeAttr(row.item.id) + '">领取</button>';
+    return '<button type="button" class="terminal-row-button" disabled>前往</button>';
+  }
+
+  function renderTaskRows(title, rows) {
+    var html = '<section class="terminal-task-section"><h3>' + escapeHtml(title) + '</h3><div class="terminal-list">';
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      html += renderListRow({
+        tag: row.item.category,
+        title: row.item.title,
+        desc: row.item.desc,
+        progress: row.progress,
+        status: getTaskStatus(row.progress, row.claimed),
+        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "",
+        reward: renderRewardList(row.item.rewards),
+        buttonHtml: renderTaskButton(row)
+      });
+    }
+    return html + '</div></section>';
+  }
+
+  function getDailyActivityClaims(profile) {
+    var state = profile && profile.claimedDailyActivityRewards;
+    return state && state.date === localDateKey() && Array.isArray(state.points) ? state.points : [];
+  }
+
+  function isActivityRewardClaimed(profile, points) {
+    return getDailyActivityClaims(profile).indexOf(Number(points)) >= 0;
+  }
+
+  function renderV3Resources(profile, extra) {
+    var resources = profile && profile.resources || {};
+    var gold = resources.gold != null ? resources.gold : profile && profile.coins || 0;
+    var energy = resources.energy || 0;
+    var maxEnergy = resources.maxEnergy || 0;
+    return '<div class="fp-v3-resources">' +
+      '<span><i class="gold"></i>金币 <b>' + formatNumber(gold) + '</b></span>' +
+      '<span><i class="diamond"></i>钻石 <b>' + formatNumber(resources.diamonds || 0) + '</b></span>' +
+      '<span><i class="energy"></i>体力 <b>' + formatNumber(energy) + (maxEnergy ? '/' + formatNumber(maxEnergy) : '') + '</b></span>' +
+      (extra || '') +
+    '</div>';
+  }
+
+  function isActiveTab(panelKey, tab) {
+    return panelState[panelKey] === tab;
+  }
+
+  function ensureActiveTab(panelKey, tabs, fallback) {
+    var active = panelState[panelKey] || fallback || (tabs && tabs[0]);
+    if (tabs && tabs.indexOf(active) < 0) active = fallback || tabs[0];
+    panelState[panelKey] = active;
+    return active;
+  }
+
+  function renderFeatureTabs(panelKey, tabs, active) {
+    var html = '<nav class="feature-tabbar" aria-label="分类">';
+    for (var i = 0; i < tabs.length; i++) {
+      html += '<button type="button" class="' + (tabs[i] === active ? "active" : "") + '" data-feature-tab="' + escapeAttr(tabs[i]) + '" data-feature-tab-index="' + i + '" data-feature-panel="' + escapeAttr(panelKey) + '">' + escapeHtml(tabs[i]) + '</button>';
+    }
+    return html + '</nav>';
+  }
+
+  function renderChipList(value) {
+    if (!value) return "";
+    return String(value).split("/").map(function (part) {
+      return '<span>' + escapeHtml(part.trim()) + '</span>';
+    }).join("");
+  }
+
+  function renderTaskAction(row) {
+    if (row.claimed) return '<em class="board-state is-claimed">已领取</em>';
+    if (row.progress.done) return '<button type="button" class="board-action is-ready" data-task-claim="' + escapeAttr(row.item.id) + '">领取</button>';
+    return '<button type="button" class="board-action" disabled>前往</button>';
+  }
+
+  function renderTaskBoardRows(rows) {
+    if (!rows.length) return '<article class="board-empty">当前分类暂无任务。</article>';
+    var html = '<div class="task-list board-list">';
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var stateClass = row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "is-running";
+      html += '<article class="task-row ' + stateClass + '">' +
+        '<span class="task-row-mark" aria-hidden="true"></span>' +
+        '<div class="task-row-copy"><span>' + escapeHtml(row.item.category) + '</span><strong>' + escapeHtml(row.item.title) + '</strong><p>' + escapeHtml(row.item.desc) + '</p></div>' +
+        '<div class="task-row-progress"><b>' + escapeHtml(row.progress.label) + '</b><em>' + formatNumber(row.progress.current) + '/' + formatNumber(row.progress.target) + '</em>' + renderProgressBar(row.progress.current, row.progress.target) + '</div>' +
+        '<div class="board-reward">' + renderChipList(renderRewardList(row.item.rewards)) + '</div>' +
+        renderTaskAction(row) +
+      '</article>';
+    }
+    return html + '</div>';
+  }
+
+  function renderTaskActivityBoard(activity, profile) {
+    var cfg = getConfig();
+    var rewards = cfg.TASK_ACTIVITY_REWARDS || [];
+    var claimable = null;
+    for (var c = 0; c < rewards.length; c++) {
+      if (activity >= rewards[c].points && !isActivityRewardClaimed(profile, rewards[c].points)) claimable = rewards[c];
+    }
+    var html = '<section class="task-activity-card">' +
+      '<div class="task-activity-head"><span>今日活跃</span><strong>' + Math.min(100, activity) + '<small>/100</small></strong><p>' + (claimable ? '阶段补给已经就绪' : '完成每日任务提升活跃') + '</p></div>' +
+      '<div class="task-activity-route"><div class="task-activity-bar"><span style="width:' + progressPercent(activity, 100) + '%"></span></div>' +
+      '<div class="task-reward-nodes">';
+    for (var i = 0; i < rewards.length; i++) {
+      var row = rewards[i];
+      var claimed = isActivityRewardClaimed(profile, row.points);
+      html += '<article class="' + (activity >= row.points ? "active" : "") + (claimed ? ' claimed' : '') + '"><b>' + row.points + '</b><span>' + (claimed ? '✓' : row.points === 100 ? '⬡' : '◇') + '</span><em>' + escapeHtml(renderRewardList(row.rewards)) + '</em></article>';
+    }
+    html += '</div></div>';
+    if (claimable) html += '<button type="button" class="board-action is-ready activity-claim" data-activity-claim="' + claimable.points + '">领取</button>';
+    else html += '<em class="board-state activity-state">' + (activity >= 100 ? '今日完成' : '继续完成') + '</em>';
+    return html + '</section>';
+  }
+
+  function renderActivityRewards(activity) {
+    var cfg = getConfig();
+    var rewards = cfg.TASK_ACTIVITY_REWARDS || [];
+    var html = '<section class="terminal-activity-track"><span>阶段奖励</span><div>';
+    for (var i = 0; i < rewards.length; i++) {
+      var row = rewards[i];
+      html += '<article class="' + (activity >= row.points ? "active" : "") + '">' +
+        '<b>' + row.points + '</b><em>' + escapeHtml(renderRewardList(row.rewards)) + '</em></article>';
+    }
+    return html + '</div></section>';
   }
 
   function renderTaskPanel(profile, levels) {
-    var categories = ["成长", "强化", "作战", "收集"];
-    var claimed = Array.isArray(profile && profile.claimedTasks) ? profile.claimedTasks : [];
-    var model = decorateItems(TASK_CONTENT, categories, function (task) { return getTaskProgress(task, profile, levels); }, claimed);
-    var focus = model.rows[0];
-    var list = '<div class="terminal-list">';
-    for (var i = 1; i < model.rows.length; i++) {
-      var row = model.rows[i];
-      list += renderListRow({
-        tag: row.item.category,
-        title: row.item.title,
-        desc: row.item.desc,
-        progress: row.progress,
-        status: statusText(row.progress.done, row.claimed),
-        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "",
-        reward: renderRewardList(row.item.rewards)
-      });
-    }
-    list += '</div>';
-    return renderTerminalShell({
-      key: "task",
-      kicker: "TASK BOARD",
-      title: "今日战术目标",
-      desc: "优先显示可领取或最近目标，其他任务按分类压缩展示。",
-      rail: renderRail(categories, focus.item.category, "领取字段尚未接入，按钮只展示状态。"),
-      summary: renderStatusSummary([
-        { label: "任务总数", value: TASK_CONTENT.length },
-        { label: "已达成", value: model.doneCount },
-        { label: "累计通关", value: getClearCount(profile) }
-      ]),
-      focus: renderActionCard({
-        tag: focus.item.category,
-        title: focus.item.title,
-        desc: focus.item.desc,
-        progress: focus.progress,
-        status: statusText(focus.progress.done, focus.claimed),
-        statusClass: focus.claimed ? "is-claimed" : focus.progress.done ? "is-ready" : "",
-        reward: renderRewardList(focus.item.rewards),
-        action: focus.progress.done ? "领取待接入" : "继续推进"
-      }),
-      list: list,
-      dock: renderDock({
-        kicker: "REWARD",
-        reward: renderRewardList(focus.item.rewards),
-        note: focus.progress.label + " / " + focus.progress.current + "/" + focus.progress.target,
-        action: focus.progress.done ? "CLAIM" : "GO",
-        ready: focus.progress.done && !focus.claimed,
-        overviewTitle: "TODAY",
-        stats: [
-          { label: "TOTAL", value: TASK_CONTENT.length },
-          { label: "DONE", value: model.doneCount },
-          { label: "CLEAR", value: getClearCount(profile) }
-        ]
-      })
-    });
+    var cfg = getConfig();
+    var tabs = panelTabs.task;
+    var activeTab = ensureActiveTab("task", tabs, "每日");
+    var dailyRows = decorateTasks(cfg.DAILY_TASKS || [], profile, levels);
+    var growthRows = decorateTasks(cfg.GROWTH_TASKS || [], profile, levels);
+    var allRows = dailyRows.concat(growthRows);
+    var activity = getActivity(dailyRows);
+    var rows = activeTab === "每日"
+      ? dailyRows
+      : growthRows.filter(function (row) { return row.item.category === activeTab; });
+    if (activeTab === "成长") rows = growthRows.filter(function (row) { return row.item.category === "成长"; });
+    var list = '<section class="task-board board-page fp-v3">' +
+      renderV3Resources(profile) +
+      renderFeatureTabs("task", tabs, activeTab) +
+      renderTaskActivityBoard(activity, profile) +
+      '<section class="board-section-head"><div><strong>' + escapeHtml(activeTab) + '任务</strong><span>优先显示可领取与接近完成的目标</span></div><p>' + countReady(allRows) + ' 项可领取</p></section>' +
+      renderTaskBoardRows(rows) +
+      '</section>';
+    return list;
   }
 
   function renderAchievementPanel(profile, levels) {
-    var categories = ["通关", "技巧", "养成", "收集"];
+    var cfg = getConfig();
+    var tabs = panelTabs.achievement;
+    var activeTab = ensureActiveTab("achievement", tabs, "通关");
+    var items = cfg.ACHIEVEMENT_CONTENT || [];
     var claimed = Array.isArray(profile && profile.claimedAchievements) ? profile.claimedAchievements : [];
-    var model = decorateItems(ACHIEVEMENT_CONTENT, categories, function (item) {
+    var rows = items.map(function (item) {
       var current = getAchievementMetric(item, profile, levels);
-      return { current: Math.min(current, item.target), rawCurrent: current, target: item.target, label: "铭牌 " + item.badge, done: current >= item.target };
-    }, claimed);
-    var focus = model.rows[0];
-    var list = '<div class="terminal-list">';
-    for (var i = 1; i < model.rows.length; i++) {
-      var row = model.rows[i];
-      list += renderListRow({
-        tag: row.item.category,
-        title: row.item.title,
-        desc: row.item.desc,
-        progress: row.progress,
-        status: statusText(row.progress.done, row.claimed),
-        statusClass: row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "",
-        reward: renderRewardList(row.item.rewards)
-      });
-    }
-    list += '</div>';
-    return renderTerminalShell({
-      key: "achievement",
-      kicker: "HONOR ARCHIVE",
-      title: "星港荣誉档案",
-      desc: "成就根据本地通关、无伤、强化和收集记录计算。",
-      rail: renderRail(categories, focus.item.category, "铭牌奖励为展示态。"),
-      summary: renderStatusSummary([
-        { label: "成就总数", value: ACHIEVEMENT_CONTENT.length },
-        { label: "已达成", value: model.doneCount },
-        { label: "最高荣誉", value: getBestHonor(profile) ? "Tier " + getBestHonor(profile) : "未记录" }
-      ]),
-      focus: renderActionCard({
-        tag: focus.item.category,
-        title: focus.item.title,
-        desc: focus.item.desc,
-        progress: focus.progress,
-        status: statusText(focus.progress.done, focus.claimed),
-        statusClass: focus.claimed ? "is-claimed" : focus.progress.done ? "is-ready" : "",
-        reward: renderRewardList(focus.item.rewards),
-        action: "成就铭牌"
-      }),
-      list: list,
-      dock: renderDock({
-        kicker: "BADGE",
-        reward: renderRewardList(focus.item.rewards),
-        note: focus.progress.label + " / " + focus.progress.current + "/" + focus.progress.target,
-        action: focus.progress.done ? "READY" : "LOCKED",
-        ready: focus.progress.done && !focus.claimed,
-        overviewTitle: "HONOR",
-        stats: [
-          { label: "TOTAL", value: ACHIEVEMENT_CONTENT.length },
-          { label: "DONE", value: model.doneCount },
-          { label: "BEST", value: getBestHonor(profile) ? "Tier " + getBestHonor(profile) : "0" }
-        ]
-      })
+      var progress = { current: Math.min(current, item.target), rawCurrent: current, target: item.target, label: "徽章 " + item.badge, done: current >= item.target };
+      return { item: item, progress: progress, claimed: claimed.indexOf(item.id) >= 0 };
+    }).sort(function (a, b) {
+      var aw = a.claimed ? 0 : a.progress.done ? 2 : 1;
+      var bw = b.claimed ? 0 : b.progress.done ? 2 : 1;
+      return bw - aw;
     });
+    var filtered = activeTab === "通关" ? rows.slice(0, 8) : rows.filter(function (row) { return row.item.category === activeTab; });
+    var focus = filtered[0] || rows[0] || {};
+    var settlement = scope.assets && scope.assets.SETTLEMENT_ICON_ASSETS || {};
+    var focusState = focus.claimed ? "已领取" : focus.progress && focus.progress.done ? "可领取" : "进行中";
+    var list = '<section class="achievement-board board-page fp-v3">' +
+      renderV3Resources(profile) +
+      renderFeatureTabs("achievement", tabs, activeTab) +
+      '<div class="achievement-hero">' +
+        '<article class="achievement-detail ' + (focus.claimed ? "is-claimed" : focus.progress && focus.progress.done ? "is-ready" : "is-locked") + '">' +
+          '<div class="achievement-badge-large" aria-hidden="true">' + (settlement.crownGold ? '<img src="' + escapeAttr(settlement.crownGold) + '" alt="">' : '') + '<span>' + escapeHtml(focus.item && focus.item.badge ? focus.item.badge.slice(0, 1) : "章") + '</span></div>' +
+          '<div class="achievement-focus-copy"><span>' + escapeHtml(focusState + ' · ' + (focus.item && focus.item.category || activeTab)) + '</span><strong>' + escapeHtml(focus.item && focus.item.title || "暂无成就") + '</strong><p>' + escapeHtml(focus.item && focus.item.desc || "当前分类暂无可展示成就。") + '</p>' +
+          (focus.progress ? '<div class="achievement-progress"><b>' + escapeHtml(focus.progress.label) + '</b><em>' + formatNumber(focus.progress.current) + '/' + formatNumber(focus.progress.target) + '</em>' + renderProgressBar(focus.progress.current, focus.progress.target) + '</div>' : "") +
+          '</div><div class="achievement-focus-reward"><span>成就奖励</span><strong>' + escapeHtml(renderRewardList(focus.item && focus.item.rewards)) + '</strong>' +
+          (focus.claimed ? '<em class="board-state is-claimed">已领取</em>' : focus.progress && focus.progress.done ? '<button type="button" class="board-action is-ready" data-achievement-claim="' + escapeAttr(focus.item.id) + '">领取奖励</button>' : '<em class="board-state">进行中</em>') + '</div>' +
+          '<div class="achievement-summary"><span>已完成<b>' + countDone(rows) + '</b></span><span>档案总数<b>' + items.length + '</b></span><span>最高荣誉<b>' + escapeHtml(getBestHonor(profile) ? "Tier " + getBestHonor(profile) : "0") + '</b></span></div>' +
+        '</article>' +
+      '</div><section class="board-section-head"><div><strong>徽章档案墙</strong><span>可领取成就已置顶</span></div><p>' + countReady(rows) + ' 项可领取</p></section><div class="achievement-grid">';
+    for (var i = 0; i < filtered.length; i++) {
+      var row = rows[i];
+      row = filtered[i];
+      list += '<article class="achievement-badge-card ' + (row.claimed ? "is-claimed" : row.progress.done ? "is-ready" : "is-locked") + '">' +
+        '<div class="achievement-badge-icon" aria-hidden="true"><span>' + escapeHtml(row.item.badge ? row.item.badge.slice(0, 1) : "章") + '</span></div>' +
+        '<span>' + escapeHtml(row.item.category) + '</span><strong>' + escapeHtml(row.item.title) + '</strong>' +
+        '<p>' + escapeHtml(row.progress.label) + ' ' + formatNumber(row.progress.current) + '/' + formatNumber(row.progress.target) + '</p>' +
+        '<em>' + escapeHtml(row.claimed ? "已领取" : row.progress.done ? "可领取" : "进行中") + '</em>' +
+      '</article>';
+    }
+    list += '</div></section>';
+    return list;
   }
 
   function renderEventPanel(profile) {
-    var focus = EVENT_CONTENT[0];
-    var list = '<div class="terminal-list">';
-    for (var i = 1; i < EVENT_CONTENT.length; i++) {
-      list += renderListRow({ tag: EVENT_CONTENT[i].tag, title: EVENT_CONTENT[i].title, desc: EVENT_CONTENT[i].text, status: EVENT_CONTENT[i].status, reward: EVENT_CONTENT[i].reward });
-    }
-    list += '</div>';
-    return renderTerminalShell({
-      key: "event",
-      kicker: "EVENT OPS",
-      title: "星港活动排程",
-      desc: "突出当前活动，其余活动以航线条目展示。",
-      rail: renderRail(["推荐", "试炼", "日常", "成长"], "推荐", "活动结算与倒计时尚未接入。"),
-      summary: renderStatusSummary([
-        { label: "活动条目", value: EVENT_CONTENT.length },
-        { label: "当前通关", value: getClearCount(profile) },
-        { label: "结算状态", value: "展示" }
-      ]),
-      focus: renderActionCard({
-        tag: focus.tag,
-        title: focus.title,
-        desc: focus.text,
-        status: focus.status,
-        reward: focus.reward,
-        action: "查看活动",
-        meta: [["时间", focus.time], ["条件", focus.condition]]
-      }),
-      list: list,
-      dock: renderDock({
-        kicker: "EVENT",
-        reward: focus.reward,
-        note: focus.condition,
-        action: focus.status,
-        ready: false,
-        overviewTitle: "OPS",
-        stats: [
-          { label: "TOTAL", value: EVENT_CONTENT.length },
-          { label: "CLEAR", value: getClearCount(profile) },
-          { label: "STATE", value: focus.status }
-        ]
-      })
+    var cfg = getConfig();
+    var tabs = panelTabs.event;
+    var activeTab = ensureActiveTab("event", tabs, "推荐");
+    var events = cfg.EVENT_CONTENT || [];
+    var filtered = events.filter(function (item) {
+      if (activeTab === "推荐") return true;
+      if (activeTab === "每日") return item.id === "daily_supply";
+      if (activeTab === "试炼") return item.id === "obsidian_break" || item.id === "golden_judgement";
+      if (activeTab === "成长") return item.id === "chapter_push" || item.id === "rookie_7day";
+      return true;
+    }).sort(function (a, b) {
+      var weight = { "进行中": 3, "开放": 2, "预告": 1 };
+      return (weight[b.status] || 0) - (weight[a.status] || 0);
     });
+    var focus = filtered[0] || events[0] || {};
+    var eventHero = scope.assets && scope.assets.FEATURE_PANEL_ASSETS && scope.assets.FEATURE_PANEL_ASSETS.eventHero || "";
+    var chapterProgress = Math.min(5, getClearCount(profile));
+    var list = '<section class="event-board board-page fp-v3">' +
+      renderV3Resources(profile) +
+      renderFeatureTabs("event", tabs, activeTab) +
+      '<article class="event-hero">' +
+        (eventHero ? '<img class="event-hero-art" src="' + escapeAttr(eventHero) + '" alt="">' : '') +
+        '<div class="event-hero-copy"><span>' + escapeHtml((focus.tag || "活动") + ' · ' + (focus.status || '开放')) + '</span><strong>' + escapeHtml(focus.title || "暂无活动") + '</strong><p>' + escapeHtml(focus.text || "当前分类暂无活动。") + '</p>' +
+        '<dl><div><dt>时间</dt><dd>' + escapeHtml(focus.time || "-") + '</dd></div><div><dt>条件</dt><dd>' + escapeHtml(focus.condition || "-") + '</dd></div></dl>' +
+        '<div class="event-hero-rewards"><small>主奖励</small>' + renderChipList(focus.reward || "") + '</div></div>' +
+        '<div class="event-hero-progress"><span>章节推进</span><strong>' + chapterProgress + '/5</strong>' + renderProgressBar(chapterProgress, 5) + '<button type="button" disabled>' + escapeHtml(focus.status === "预告" ? "查看预告" : "进入活动") + '</button></div>' +
+      '</article><section class="board-section-head"><div><strong>活动入口</strong><span>按当前状态排序</span></div><p>' + filtered.length + ' 个活动</p></section><div class="event-card-grid">';
+    for (var i = 0; i < filtered.length; i++) {
+      var item = filtered[i];
+      list += '<article class="event-card ' + (item.status === "预告" ? "is-preview" : item.status === "进行中" ? "is-running" : "is-open") + '">' +
+        '<div class="event-card-top"><span>' + escapeHtml(item.tag) + '</span><em>' + escapeHtml(item.status) + '</em></div>' +
+        '<strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml(item.condition) + '</p>' +
+        '<footer><div class="board-reward">' + renderChipList(item.reward) + '</div><button type="button" disabled>' + escapeHtml(item.status === "预告" ? "预告" : "查看") + '</button></footer>' +
+      '</article>';
+    }
+    list += '</div></section>';
+    return list;
+  }
+
+  function getShopImage(item) {
+    var assets = scope.assets && scope.assets.SHOP_ITEM_ASSETS || {};
+    return assets[item.image] || "";
+  }
+
+  function renderShopCard(item) {
+    return '<article class="shop-item-card ' + (item.id === "energy_large" ? "is-featured" : "") + '">' +
+      (item.id === "energy_large" ? '<span class="shop-recommend">推荐</span>' : '') +
+      '<div class="shop-item-art">' + (getShopImage(item) ? '<img src="' + escapeAttr(getShopImage(item)) + '" alt="">' : '<span></span>') + '</div>' +
+      '<div class="shop-item-copy"><span>' + escapeHtml(item.category) + '</span><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml(item.reward) + '</p></div>' +
+      '<div class="shop-item-price"><em>' + escapeHtml(item.price) + '</em></div>' +
+      '<button type="button" disabled>' + (item.id === "daily_free_supply" ? "领取" : "查看") + '</button>' +
+    '</article>';
   }
 
   function renderShopPanel(profile) {
+    var cfg = getConfig();
+    var tabs = panelTabs.shop;
+    var activeTab = ensureActiveTab("shop", tabs, "每日");
+    var items = cfg.SHOP_CONTENT || [];
     var resources = (profile && profile.resources) || {};
-    var focus = SHOP_CONTENT[0];
-    var list = '<div class="terminal-list">';
-    for (var i = 1; i < SHOP_CONTENT.length; i++) {
-      list += renderListRow({ tag: SHOP_CONTENT[i].category, title: SHOP_CONTENT[i].title, desc: SHOP_CONTENT[i].desc + " / " + SHOP_CONTENT[i].price, status: SHOP_CONTENT[i].status, reward: SHOP_CONTENT[i].reward });
-    }
-    list += '</div>';
-    return renderTerminalShell({
-      key: "shop",
-      kicker: "SUPPLY DEPOT",
-      title: "星港补给仓",
-      desc: "商品先作为展示补给，不执行本地扣费。",
-      rail: renderRail(["推荐", "资源", "强化", "战机", "礼包"], "推荐", "真实购买仍由云存档校验。"),
-      summary: renderStatusSummary([
-        { label: "金币", value: formatNumber(resources.gold != null ? resources.gold : profile && profile.coins || 0) },
-        { label: "钻石", value: formatNumber(resources.diamonds || 0) },
-        { label: "补给条目", value: SHOP_CONTENT.length }
-      ]),
-      focus: renderActionCard({
-        tag: focus.category,
-        title: focus.title,
-        desc: focus.desc,
-        status: focus.status,
-        reward: focus.reward,
-        action: "购买待接入",
-        meta: [["价格", focus.price], ["规则", "展示态，不扣费"]]
-      }),
-      list: list,
-      dock: renderDock({
-        kicker: "SUPPLY",
-        reward: focus.reward,
-        note: focus.price,
-        action: focus.status,
-        ready: false,
-        overviewTitle: "WALLET",
-        stats: [
-          { label: "GOLD", value: formatNumber(resources.gold != null ? resources.gold : profile && profile.coins || 0) },
-          { label: "DIAMOND", value: formatNumber(resources.diamonds || 0) },
-          { label: "ITEMS", value: SHOP_CONTENT.length }
-        ]
-      })
+    var freeItem = items.filter(function (item) { return item.id === "daily_free_supply"; })[0] || {};
+    var filtered = items.filter(function (item) {
+      if (item.id === "daily_free_supply") return false;
+      return item.category === activeTab;
     });
+    if (activeTab === "每日") filtered = [];
+    if (activeTab === "资源") filtered = items.filter(function (item) { return item.id !== "daily_free_supply"; }).slice(0, 8);
+    var grid = '<section class="shop-board board-page fp-v3">' +
+      renderV3Resources(profile, '<span class="item-total">商品 <b>' + items.length + '</b></span>') +
+      renderFeatureTabs("shop", tabs, activeTab) +
+      '<article class="shop-free-strip">' +
+        '<div class="shop-free-art">' + (getShopImage(freeItem) ? '<img src="' + escapeAttr(getShopImage(freeItem)) + '" alt="">' : '<span></span>') + '</div>' +
+        '<div><span>每日限定 · 1/1</span><strong>' + escapeHtml(freeItem.title || "每日补给") + '</strong><p>' + escapeHtml(freeItem.desc || "每日基础补给。") + '</p></div>' +
+        '<div class="shop-free-reward"><span>补给内容</span><strong>' + escapeHtml(freeItem.reward || "") + '</strong></div>' +
+        '<button type="button" disabled>领取</button>' +
+      '</article><section class="board-section-head"><div><strong>' + escapeHtml(activeTab === "每日" ? "每日补给" : activeTab + "补给") + '</strong><span>当前显示：' + escapeHtml(activeTab) + '</span></div><p>' + filtered.length + ' 件商品</p></section>' +
+      '<div class="shop-item-grid">';
+    for (var i = 0; i < filtered.length; i++) grid += renderShopCard(filtered[i]);
+    if (!filtered.length && activeTab !== "每日") grid += '<article class="board-empty">当前分类暂无商品。</article>';
+    grid += '</div></section>';
+    return grid;
   }
 
   function renderFriendPanel() {
-    var focus = FRIEND_CONTENT[0];
-    var list = '<div class="terminal-list">';
-    for (var i = 1; i < FRIEND_CONTENT.length; i++) {
-      list += renderListRow({ tag: FRIEND_CONTENT[i].tag, title: FRIEND_CONTENT[i].title, desc: FRIEND_CONTENT[i].role + " / 战力 " + formatNumber(FRIEND_CONTENT[i].power) + " / " + FRIEND_CONTENT[i].text, status: FRIEND_CONTENT[i].action });
+    var cfg = getConfig();
+    var friends = cfg.FRIEND_CONTENT || [];
+    var focus = friends[0] || {};
+    var pilots = scope.assets && scope.assets.PILOT_ASSETS || [];
+    var focusImage = pilots[0] && pilots[0].src || "";
+    var tabs = panelTabs.friend;
+    var activeTab = ensureActiveTab("friend", tabs, "助战推荐");
+    var list = '<section class="friend-board board-page fp-v3">' +
+      renderFeatureTabs("friend", tabs, activeTab) +
+      '<section class="friend-layout"><article class="support-profile">' +
+        (focusImage ? '<img class="support-pilot" src="' + escapeAttr(focusImage) + '" alt="">' : '') +
+        '<div class="support-skill"><span>助战技能</span><strong>赤焰覆盖</strong><p>入场后展开 8 秒重火力压制，对 Boss 额外造成破甲效果。</p></div>' +
+        '<div class="support-copy"><span>' + escapeHtml(focus.tag + ' · 推荐助战') + '</span><strong>' + escapeHtml(focus.title) + '</strong><p>' + escapeHtml(focus.role) + ' / 核心闸门压制</p>' +
+        '<div class="support-stats"><span>助战战力<b>' + formatNumber(focus.power) + '</b></span><span>火力增幅<b>+18%</b></span><span>今日次数<b>2/3</b></span></div>' +
+        '<button type="button" disabled>编入助战</button></div>' +
+      '</article><section class="friend-roster"><section class="board-section-head"><div><strong>助战名册</strong><span>在线成员优先</span></div><p>在线 3/' + friends.length + '</p></section><div class="friend-grid">';
+    for (var i = 0; i < friends.length; i++) {
+      var friend = friends[i];
+      var pilot = pilots[i] || pilots[0] || {};
+      var statusClass = friend.tag === "在线" ? "is-online" : friend.tag === "离线" ? "is-offline" : "is-busy";
+      list += '<article class="friend-card ' + statusClass + (i === 0 ? ' is-selected' : '') + '">' +
+        (pilot.src ? '<img src="' + escapeAttr(pilot.src) + '" alt="">' : '') +
+        '<div><span>' + escapeHtml(friend.tag) + '</span><strong>' + escapeHtml(friend.title) + '</strong><p>' + escapeHtml(friend.role) + '</p><em>' + formatNumber(friend.power) + '</em></div>' +
+        '<button type="button" disabled>' + escapeHtml(i === 0 ? '已选中' : friend.action) + '</button></article>';
     }
-    list += '</div>';
-    return renderTerminalShell({
-      key: "friend",
-      kicker: "ALLY LINK",
-      title: "助战通讯录",
-      desc: "好友、邀请和助战为本地预告态，尚未接入真实社交服务。",
-      rail: renderRail(["在线", "助战", "小队", "情报"], "在线", "不会显示真实在线状态。"),
-      summary: renderStatusSummary([
-        { label: "模拟好友", value: FRIEND_CONTENT.length },
-        { label: "在线展示", value: "3" },
-        { label: "助战状态", value: "待接入" }
-      ]),
-      focus: renderActionCard({
-        tag: focus.tag,
-        title: focus.title,
-        desc: focus.text,
-        status: focus.action,
-        reward: focus.role + " / 战力 " + formatNumber(focus.power),
-        action: "助战待接入"
-      }),
-      list: list,
-      dock: renderDock({
-        kicker: "ALLY",
-        reward: focus.role,
-        note: "POWER " + formatNumber(focus.power),
-        action: focus.action,
-        ready: false,
-        overviewTitle: "LINK",
-        stats: [
-          { label: "TOTAL", value: FRIEND_CONTENT.length },
-          { label: "ONLINE", value: "3" },
-          { label: "STATE", value: focus.tag }
-        ]
-      })
-    });
+    return list + '</div></section></section></section>';
   }
 
   function buildRankingRows(rows, selfRow, formatter) {
@@ -675,66 +650,51 @@
   }
 
   function renderRankingPanel(profile, combatPower) {
+    var cfg = getConfig();
+    var rankings = cfg.RANKING_CONTENT || { power: [], clear: [], honor: [] };
     var playerName = profile && profile.player && profile.player.name || "本地指挥官";
     var clearCount = getClearCount(profile);
     var bestHonor = getBestHonor(profile);
-    var focusProgress = { label: "本地战力", current: combatPower, target: Math.max(combatPower, 30000), done: false };
-    var list = '<div class="terminal-rank-groups">' +
-      '<h3>战力榜</h3>' + buildRankingRows(RANKING_CONTENT.power, { title: "本地指挥官", name: playerName, score: combatPower, tag: "我的" }, formatNumber) +
-      '<h3>通关榜</h3>' + buildRankingRows(RANKING_CONTENT.clear, { title: "本地指挥官", name: playerName, score: clearCount, tag: "我的" }, function (value) { return formatNumber(value) + " 关"; }) +
-      '<h3>荣誉榜</h3>' + buildRankingRows(RANKING_CONTENT.honor, { title: "本地指挥官", name: playerName, score: bestHonor, tag: "我的" }, function (value) { return value ? "Tier " + value : "未记录"; }) +
-      '</div>';
-    return renderTerminalShell({
-      key: "ranking",
-      kicker: "LOCAL RANK",
-      title: "星港模拟榜",
-      desc: "榜单插入本地玩家数据，不上传分数，也不拉取云端排名。",
-      rail: renderRail(["战力榜", "通关榜", "荣誉榜"], "战力榜", "榜单为本地模拟数据。"),
-      summary: renderStatusSummary([
-        { label: "我的战力", value: formatNumber(combatPower) },
-        { label: "通关数", value: formatNumber(clearCount) },
-        { label: "最高荣誉", value: bestHonor ? "Tier " + bestHonor : "未记录" }
-      ]),
-      focus: renderActionCard({
-        tag: "我的排名",
-        title: playerName,
-        desc: "固定展示本地记录，方便和模拟星港榜单对照。",
-        progress: focusProgress,
-        status: "本地",
-        reward: "战力 " + formatNumber(combatPower) + " / 通关 " + clearCount,
-        action: "上传待接入"
-      }),
-      list: list,
-      dock: renderDock({
-        kicker: "RANK",
-        reward: formatNumber(combatPower),
-        note: playerName,
-        action: "LOCAL",
-        ready: false,
-        overviewTitle: "MY DATA",
-        stats: [
-          { label: "POWER", value: formatNumber(combatPower) },
-          { label: "CLEAR", value: formatNumber(clearCount) },
-          { label: "HONOR", value: bestHonor ? "Tier " + bestHonor : "0" }
-        ]
-      })
-    });
+    var tabs = panelTabs.ranking;
+    var activeTab = ensureActiveTab("ranking", tabs, "战力榜");
+    var key = activeTab === "通关榜" ? "clear" : activeTab === "荣誉榜" ? "honor" : "power";
+    var score = key === "clear" ? clearCount : key === "honor" ? bestHonor : combatPower;
+    var formatScore = key === "clear" ? function (value) { return formatNumber(value) + " 关"; } : key === "honor" ? function (value) { return value ? "Tier " + value : "未记录"; } : formatNumber;
+    var rows = (rankings[key] || []).slice();
+    rows.push({ title: "星港新锐", name: playerName, score: score, tag: "我的" });
+    rows.sort(function (a, b) { return b.score - a.score; });
+    var top = rows.slice(0, 3);
+    var rest = rows.slice(3);
+    var list = '<section class="ranking-board board-page fp-v3">' +
+      renderV3Resources(profile) + renderFeatureTabs("ranking", tabs, activeTab) +
+      '<section class="ranking-layout"><article class="ranking-podium"><div class="season-copy"><span>SEASON 01</span><strong>星港先锋赛季</strong><p>距离结算 12 天</p></div><div class="podium-grid">';
+    var order = [1, 0, 2];
+    for (var i = 0; i < order.length; i++) {
+      var rankIndex = order[i];
+      var item = top[rankIndex] || { name: "-", title: "暂无记录", score: 0 };
+      list += '<article class="podium-rank rank-' + (rankIndex + 1) + '"><span>' + (rankIndex + 1) + '</span>' + (rankIndex === 0 ? '<b class="podium-crown">♛</b>' : '') + '<i>' + escapeHtml((item.name || "-").slice(0, 2)) + '</i><strong>' + escapeHtml(item.name) + '</strong><p>' + escapeHtml(item.title) + '</p><em>' + escapeHtml(formatScore(item.score)) + '</em></article>';
+    }
+    list += '</div></article><section class="ranking-table"><section class="board-section-head"><div><strong>' + escapeHtml(activeTab) + '</strong><span>本地模拟榜单</span></div><p>每 10 分钟刷新</p></section><header><span>排名</span><span>玩家</span><span>称号</span><span>成绩</span></header><div class="ranking-rows">';
+    for (var j = 0; j < rest.length; j++) {
+      var row = rest[j];
+      var actualRank = j + 4;
+      list += '<article class="' + (row.tag === "我的" ? "is-self" : "") + '"><b>' + String(actualRank).padStart(2, "0") + '</b><i>' + escapeHtml((row.name || "-").slice(0, 1)) + '</i><strong>' + escapeHtml(row.name) + '</strong><span>' + escapeHtml(row.title) + '</span><em>' + escapeHtml(formatScore(row.score)) + '</em>' + (row.tag === "我的" ? '<u>你的位置</u>' : '') + '</article>';
+    }
+    list += '</div><footer><span>赛季奖励预览</span><strong>前 10 名：钻石 300 · 星链研究券 10</strong><button type="button" disabled>规则</button></footer></section></section></section>';
+    return list;
   }
 
   function getChannelLabel(key) {
-    if (key === "system") return "系统";
-    if (key === "world") return "世界";
-    if (key === "guild") return "公会";
-    if (key === "friend") return "好友";
-    return key;
+    return ({ system: "系统", world: "世界", guild: "公会", friend: "好友" })[key] || key;
   }
 
   function renderChatPanel() {
+    var cfg = getConfig();
+    var chat = cfg.CHAT_CONTENT || {};
     var keys = ["world", "system", "guild", "friend"];
-    var rail = renderRail(["世界", "系统", "公会", "好友"], "世界", "频道为本地预览，发送待接入。");
     var list = '<div class="terminal-chat-flow">';
     for (var i = 0; i < keys.length; i++) {
-      var channel = CHAT_CONTENT[keys[i]] || [];
+      var channel = chat[keys[i]] || [];
       list += '<section><h3>' + escapeHtml(getChannelLabel(keys[i])) + '频道</h3>';
       for (var j = 0; j < channel.length; j++) {
         var splitAt = channel[j].indexOf("]");
@@ -742,40 +702,26 @@
       }
       list += '</section>';
     }
-    list += '</div><footer class="terminal-chat-input"><input type="text" disabled value="频道预览，发送待接入" /><button type="button" disabled>发送</button></footer>';
+    list += '</div><footer class="terminal-chat-input"><input type="text" disabled value="频道预览，发送功能未开放" /><button type="button" disabled>发送</button></footer>';
     return renderTerminalShell({
       key: "chat",
       kicker: "CHANNEL PREVIEW",
       title: "星港通讯频道",
       desc: "频道消息围绕活动、关卡建议、战机讨论和助战预告。",
-      rail: rail,
-      summary: renderStatusSummary([
-        { label: "频道", value: keys.length },
-        { label: "消息", value: Object.keys(CHAT_CONTENT).reduce(function (sum, key) { return sum + CHAT_CONTENT[key].length; }, 0) },
-        { label: "发送", value: "待接入" }
-      ]),
+      rail: renderRail(["世界", "系统", "公会", "好友"], "世界", "频道为本地预览。"),
+      summary: renderStatusSummary([{ label: "频道", value: keys.length }, { label: "消息", value: keys.reduce(function (sum, key) { return sum + ((chat[key] || []).length); }, 0) }, { label: "发送", value: "未开放" }]),
       list: list,
-      dock: renderDock({
-        kicker: "CHANNEL",
-        reward: String(Object.keys(CHAT_CONTENT).reduce(function (sum, key) { return sum + CHAT_CONTENT[key].length; }, 0)),
-        note: "PREVIEW ONLY",
-        action: "SEND LOCKED",
-        ready: false,
-        overviewTitle: "COMMS",
-        stats: [
-          { label: "CHANNEL", value: keys.length },
-          { label: "MESSAGE", value: Object.keys(CHAT_CONTENT).reduce(function (sum, key) { return sum + CHAT_CONTENT[key].length; }, 0) },
-          { label: "STATE", value: "LOCAL" }
-        ]
-      })
+      dock: renderDock({ kicker: "CHANNEL", reward: String(keys.reduce(function (sum, key) { return sum + ((chat[key] || []).length); }, 0)), note: "PREVIEW", action: "LOCAL", overviewTitle: "COMMS", stats: [{ label: "CHANNEL", value: keys.length }, { label: "MESSAGE", value: keys.reduce(function (sum, key) { return sum + ((chat[key] || []).length); }, 0) }, { label: "STATE", value: "LOCAL" }] })
     });
   }
 
   function renderMailPanel() {
-    var focus = MAIL_CONTENT[0];
+    var cfg = getConfig();
+    var mails = cfg.MAIL_CONTENT || [];
+    var focus = mails[0] || {};
     var list = '<div class="terminal-list">';
-    for (var i = 1; i < MAIL_CONTENT.length; i++) {
-      list += renderListRow({ tag: MAIL_CONTENT[i].type, title: MAIL_CONTENT[i].title, desc: MAIL_CONTENT[i].text + " / " + MAIL_CONTENT[i].time, status: MAIL_CONTENT[i].status });
+    for (var i = 1; i < mails.length; i++) {
+      list += renderListRow({ tag: mails[i].type, title: mails[i].title, desc: mails[i].text + " / " + mails[i].time, status: mails[i].status, reward: mails[i].reward });
     }
     list += '</div>';
     return renderTerminalShell({
@@ -783,77 +729,33 @@
       kicker: "MAIL RELAY",
       title: "星港邮件",
       desc: "系统公告、补给通知、活动预告和维护说明集中展示。",
-      rail: renderRail(["公告", "补给", "活动", "维护"], focus.type, "邮件附件不发放真实奖励。"),
-      summary: renderStatusSummary([
-        { label: "邮件总数", value: MAIL_CONTENT.length },
-        { label: "附件邮件", value: "2" },
-        { label: "领取状态", value: "展示" }
-      ]),
-      focus: renderActionCard({
-        tag: focus.type,
-        title: focus.title,
-        desc: focus.text,
-        status: focus.status,
-        reward: focus.time + " / " + focus.reward,
-        action: "附件待接入"
-      }),
+      rail: renderRail(["公告", "补给", "活动", "维护"], focus.type, "邮件附件暂不发放真实奖励。"),
+      summary: renderStatusSummary([{ label: "邮件总数", value: mails.length }, { label: "附件邮件", value: "2" }, { label: "状态", value: "展示" }]),
+      focus: renderActionCard({ tag: focus.type, title: focus.title, desc: focus.text, status: focus.status, reward: focus.time + " / " + focus.reward, action: "查看", disabled: true }),
       list: list,
-      dock: renderDock({
-        kicker: "MAIL",
-        reward: focus.reward,
-        note: focus.time,
-        action: focus.status,
-        ready: false,
-        overviewTitle: "INBOX",
-        stats: [
-          { label: "TOTAL", value: MAIL_CONTENT.length },
-          { label: "ATTACH", value: "2" },
-          { label: "STATE", value: focus.status }
-        ]
-      })
+      dock: renderDock({ kicker: "MAIL", reward: focus.reward, note: focus.time, action: focus.status, overviewTitle: "INBOX", stats: [{ label: "TOTAL", value: mails.length }, { label: "ATTACH", value: "2" }, { label: "STATE", value: focus.status }] })
     });
   }
 
   function renderSigninPanel() {
-    var focus = SIGNIN_CONTENT[0];
+    var cfg = getConfig();
+    var signin = cfg.SIGNIN_CONTENT || [];
+    var focus = signin[0] || {};
     var list = '<div class="terminal-signin-grid">';
-    for (var i = 0; i < SIGNIN_CONTENT.length; i++) {
-      list += '<article class="' + (i === 0 ? "is-today" : "") + '"><span>DAY ' + SIGNIN_CONTENT[i].day + '</span><strong>' + escapeHtml(SIGNIN_CONTENT[i].title) + '</strong><p>' + escapeHtml(SIGNIN_CONTENT[i].reward) + '</p><em>' + escapeHtml(SIGNIN_CONTENT[i].status) + '</em></article>';
+    for (var i = 0; i < signin.length; i++) {
+      list += '<article class="' + (i === 0 ? "is-today" : "") + '"><span>DAY ' + signin[i].day + '</span><strong>' + escapeHtml(signin[i].title) + '</strong><p>' + escapeHtml(signin[i].reward) + '</p><em>' + escapeHtml(signin[i].status) + '</em></article>';
     }
     list += '</div>';
     return renderTerminalShell({
       key: "signin",
       kicker: "7-DAY ROUTE",
       title: "新兵七日航线",
-      desc: "签到当前为 7 日奖励展示，正式领取逻辑后续接入。",
-      rail: renderRail(["今日", "明日", "大奖"], "今日", "展示态，不写入存档。"),
-      summary: renderStatusSummary([
-        { label: "签到周期", value: "7 日" },
-        { label: "今日状态", value: "展示" },
-        { label: "大奖", value: "第 7 日" }
-      ]),
-      focus: renderActionCard({
-        tag: "DAY " + focus.day,
-        title: focus.title,
-        desc: "今日航线整备奖励用于提示签到系统结构。",
-        status: focus.status,
-        reward: focus.reward,
-        action: "签到待接入"
-      }),
+      desc: "签到前 7 日奖励展示，正式领取逻辑可复用任务奖励发放。",
+      rail: renderRail(["今日", "明日", "大奖"], "今日", "当前为展示态。"),
+      summary: renderStatusSummary([{ label: "签到周期", value: "7 日" }, { label: "今日", value: "DAY " + focus.day }, { label: "大奖", value: "DAY 7" }]),
+      focus: renderActionCard({ tag: "DAY " + focus.day, title: focus.title, desc: "今日航线整备奖励用于提示签到系统结构。", status: focus.status, reward: focus.reward, action: "查看", disabled: true }),
       list: list,
-      dock: renderDock({
-        kicker: "SIGN",
-        reward: focus.reward,
-        note: "DAY " + focus.day,
-        action: focus.status,
-        ready: false,
-        overviewTitle: "ROUTE",
-        stats: [
-          { label: "CYCLE", value: "7" },
-          { label: "TODAY", value: "DAY " + focus.day },
-          { label: "FINAL", value: "DAY 7" }
-        ]
-      })
+      dock: renderDock({ kicker: "SIGN", reward: focus.reward, note: "DAY " + focus.day, action: focus.status, overviewTitle: "ROUTE", stats: [{ label: "CYCLE", value: "7" }, { label: "TODAY", value: "DAY " + focus.day }, { label: "FINAL", value: "DAY 7" }] })
     });
   }
 
@@ -869,7 +771,7 @@
       '<section class="settings-control-row"><div><strong>战斗音效</strong><p>控制按钮、射击、拾取、技能和结算音效。</p></div><button type="button" class="' + (sfxOn ? "active" : "") + '" data-audio-toggle="sfx">' + (sfxOn ? "音效开" : "音效关") + '</button></section>' +
       '<section class="settings-control-row"><div><strong>音效音量</strong><p>当前 ' + sfxVolume + '%，影响所有 SFX。</p></div><input type="range" min="0" max="100" value="' + sfxVolume + '" data-audio-volume="sfx" /></section>' +
       '<section class="settings-control-row"><div><strong>BGM 试听</strong><p>重启大厅音乐，用于确认音量和循环。</p></div><button type="button" data-setting-action="restart-bgm">试听 / 重启</button></section>' +
-      '<section class="settings-control-row muted-row"><div><strong>画面表现</strong><p>星港玻璃 UI、扫描线、能量边框已启用；性能档位后续接入。</p></div><button type="button" disabled>展示态</button></section>' +
+      '<section class="settings-control-row muted-row"><div><strong>画面表现</strong><p>星港玻璃 UI、扫描线、能量边框已启用；性能档位未开放。</p></div><button type="button" disabled>展示态</button></section>' +
       '</div>';
     return renderTerminalShell({
       key: "setting",
@@ -877,25 +779,9 @@
       title: "系统设置",
       desc: "音乐和音效设置会立即生效，并保存到 localStorage。",
       rail: renderRail(["音频", "画面", "性能"], "音频", "音乐 / 音效为真实可操作。"),
-      summary: renderStatusSummary([
-        { label: "音乐", value: musicOn ? "开启" : "关闭" },
-        { label: "音效", value: sfxOn ? "开启" : "关闭" },
-        { label: "保存", value: "本地" }
-      ]),
+      summary: renderStatusSummary([{ label: "音乐", value: musicOn ? "开启" : "关闭" }, { label: "音效", value: sfxOn ? "开启" : "关闭" }, { label: "保存", value: "本地" }]),
       list: controls,
-      dock: renderDock({
-        kicker: "AUDIO",
-        reward: musicOn ? "MUSIC ON" : "MUSIC OFF",
-        note: "BGM " + musicVolume + "% / SFX " + sfxVolume + "%",
-        action: "SAVED",
-        ready: musicOn || sfxOn,
-        overviewTitle: "SYSTEM",
-        stats: [
-          { label: "MUSIC", value: musicOn ? "ON" : "OFF" },
-          { label: "SFX", value: sfxOn ? "ON" : "OFF" },
-          { label: "SAVE", value: "LOCAL" }
-        ]
-      })
+      dock: renderDock({ kicker: "AUDIO", reward: musicOn ? "MUSIC ON" : "MUSIC OFF", note: "BGM " + musicVolume + "% / SFX " + sfxVolume + "%", action: "SAVED", ready: musicOn || sfxOn, overviewTitle: "SYSTEM", stats: [{ label: "MUSIC", value: musicOn ? "ON" : "OFF" }, { label: "SFX", value: sfxOn ? "ON" : "OFF" }, { label: "SAVE", value: "LOCAL" }] })
     });
   }
 
@@ -914,16 +800,28 @@
     var combatPower = clampNumber(options.combatPower, 0, 9999999);
     var audioSettings = options.audioSettings || {};
     if (key === "mail") return setAndReport(dom, "MAIL", "邮件", "星港邮件中继，展示公告、补给、活动和维护信息。", "terminal-panel-content mail-panel-content", renderMailPanel());
-    if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "新兵七日航线奖励展示，正式领取后续接入。", "terminal-panel-content signin-panel-content", renderSigninPanel());
+    if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "新兵七日航线奖励展示。", "terminal-panel-content signin-panel-content", renderSigninPanel());
     if (key === "setting") return setAndReport(dom, "SETTING", "设置", "音乐和音效设置会立即生效并保存到本地。", "terminal-panel-content setting-panel-content", renderSettingPanel(audioSettings));
-    if (key === "task") return setAndReport(dom, "TASK", "任务", "成长、强化、作战和收集目标会读取本地存档进度。", "terminal-panel-content task-panel-content", renderTaskPanel(profile, levels));
-    if (key === "event") return setAndReport(dom, "EVENT", "活动", "活动以本地展示态呈现，不做真实倒计时结算。", "terminal-panel-content event-panel-content", renderEventPanel(profile));
-    if (key === "achievement") return setAndReport(dom, "ACHIEVEMENT", "成就", "成就会根据本地通关、无伤、强化和收集记录显示进度。", "terminal-panel-content achievement-panel-content", renderAchievementPanel(profile, levels));
-    if (key === "shop") return setAndReport(dom, "SHOP", "商店", "资源、强化、战机和活动礼包为展示补给列表，不执行本地扣费。", "terminal-panel-content shop-panel-content", renderShopPanel(profile));
-    if (key === "friend") return setAndReport(dom, "FRIEND", "好友", "模拟好友和助战角色已填充，真实社交服务后续接入。", "terminal-panel-content friend-panel-content", renderFriendPanel());
-    if (key === "ranking") return setAndReport(dom, "RANKING", "排行榜", "战力榜、通关榜和荣誉榜会插入本地玩家记录。", "terminal-panel-content ranking-panel-content", renderRankingPanel(profile, combatPower));
-    if (key === "chat") return setAndReport(dom, "CHAT", "世界频道", "系统、世界、公会和好友频道均为本地预览，真实发送待接入。", "terminal-panel-content chat-panel-content", renderChatPanel());
+    if (key === "task") return setAndReport(dom, "", "任务", "今日活跃正在累计", "terminal-panel-content task-panel-content feature-v3-content", renderTaskPanel(profile, levels));
+    if (key === "event") return setAndReport(dom, "", "活动", "推荐活动正在进行", "terminal-panel-content event-panel-content feature-v3-content", renderEventPanel(profile));
+    if (key === "achievement") return setAndReport(dom, "", "成就", countReady((getConfig().ACHIEVEMENT_CONTENT || []).map(function (item) { var current = getAchievementMetric(item, profile, levels); return { progress: { done: current >= item.target }, claimed: (profile.claimedAchievements || []).indexOf(item.id) >= 0 }; })) + " 项成就奖励可领取", "terminal-panel-content achievement-panel-content feature-v3-content", renderAchievementPanel(profile, levels));
+    if (key === "shop") return setAndReport(dom, "", "商店", "每日补给已刷新", "terminal-panel-content shop-panel-content feature-v3-content", renderShopPanel(profile));
+    if (key === "friend") return setAndReport(dom, "", "好友", "3 名助战成员在线", "terminal-panel-content friend-panel-content feature-v3-content", renderFriendPanel());
+    if (key === "ranking") return setAndReport(dom, "", "排行榜", "星港先锋赛季 · 12 天后结算", "terminal-panel-content ranking-panel-content feature-v3-content", renderRankingPanel(profile, combatPower));
+    if (key === "chat") return setAndReport(dom, "CHAT", "世界频道", "系统、世界、公会和好友频道均为本地预览。", "terminal-panel-content chat-panel-content", renderChatPanel());
     return false;
+  }
+
+  function handleEvent(event, dom, options) {
+    var tab = event.target && event.target.closest ? event.target.closest("[data-feature-tab]") : null;
+    if (!tab || !tab.dataset) return false;
+    var panel = tab.dataset.featurePanel || "";
+    var index = Math.floor(Number(tab.dataset.featureTabIndex));
+    var value = panelTabs[panel] && panelTabs[panel][index] || tab.dataset.featureTab || "";
+    if (!panel || !value || !Object.prototype.hasOwnProperty.call(panelState, panel)) return false;
+    if (isActiveTab(panel, value)) return true;
+    panelState[panel] = value;
+    return renderPanel(panel, dom, options || {});
   }
 
   function setAndReport(dom, kicker, title, body, className, html) {
@@ -931,8 +829,93 @@
     return true;
   }
 
+  function findTask(taskId) {
+    var cfg = getConfig();
+    var tasks = [].concat(cfg.DAILY_TASKS || [], cfg.GROWTH_TASKS || []);
+    for (var i = 0; i < tasks.length; i++) {
+      if (tasks[i].id === taskId) return tasks[i];
+    }
+    return null;
+  }
+
+  function addUnique(list, id) {
+    list = Array.isArray(list) ? list : [];
+    if (list.indexOf(id) < 0) list.push(id);
+    return list;
+  }
+
+  function applyRewards(profile, rewards) {
+    profile.resources = profile.resources || {};
+    profile.resources.inventory = profile.resources.inventory || {};
+    for (var i = 0; i < (rewards || []).length; i++) {
+      var reward = rewards[i];
+      var amount = Math.max(0, Math.floor(Number(reward.amount) || 0));
+      if (reward.type === "gold") {
+        profile.resources.gold = Math.max(0, Math.floor(Number(profile.resources.gold || profile.coins || 0) + amount));
+        profile.coins = profile.resources.gold;
+      } else if (reward.type === "diamonds") {
+        profile.resources.diamonds = Math.max(0, Math.floor(Number(profile.resources.diamonds || 0) + amount));
+      } else if (reward.type === "energy") {
+        var maxEnergy = Math.max(0, Math.floor(Number(profile.resources.maxEnergy) || 0));
+        profile.resources.energy = Math.min(maxEnergy || Infinity, Math.max(0, Math.floor(Number(profile.resources.energy || 0) + amount)));
+      } else if (reward.type === "item") {
+        var id = reward.itemId || "item";
+        profile.resources.inventory[id] = Math.max(0, Math.floor(Number(profile.resources.inventory[id]) || 0) + amount);
+      }
+    }
+  }
+
+  function claimTask(profile, taskId, options) {
+    options = options || {};
+    var task = findTask(taskId);
+    if (!task) return { ok: false, reason: "TASK_NOT_FOUND" };
+    var progress = getTaskProgress(task, profile, options.levels || []);
+    if (!progress.done) return { ok: false, reason: "TASK_NOT_COMPLETE" };
+    if (isTaskClaimed(task, profile)) return { ok: false, reason: "TASK_ALREADY_CLAIMED" };
+    applyRewards(profile, task.rewards || []);
+    if (task.bucket === "daily") {
+      var today = localDateKey();
+      var current = profile.claimedDailyTasks;
+      var ids = current && current.date === today && Array.isArray(current.ids) ? current.ids : [];
+      profile.claimedDailyTasks = { date: today, ids: addUnique(ids, task.id) };
+    } else {
+      profile.claimedTasks = addUnique(profile.claimedTasks, task.id);
+    }
+    return { ok: true, task: task, rewards: task.rewards || [] };
+  }
+
+  function claimActivityReward(profile, points, options) {
+    options = options || {};
+    points = Number(points);
+    var rewards = getConfig().TASK_ACTIVITY_REWARDS || [];
+    var reward = rewards.filter(function (item) { return Number(item.points) === points; })[0];
+    if (!reward) return { ok: false, reason: "ACTIVITY_REWARD_NOT_FOUND" };
+    var dailyRows = decorateTasks(getConfig().DAILY_TASKS || [], profile, options.levels || []);
+    if (getActivity(dailyRows) < points) return { ok: false, reason: "ACTIVITY_REWARD_LOCKED" };
+    if (isActivityRewardClaimed(profile, points)) return { ok: false, reason: "ACTIVITY_REWARD_CLAIMED" };
+    applyRewards(profile, reward.rewards || []);
+    profile.claimedDailyActivityRewards = { date: localDateKey(), points: getDailyActivityClaims(profile).concat([points]) };
+    return { ok: true, rewards: reward.rewards || [] };
+  }
+
+  function claimAchievement(profile, achievementId, options) {
+    options = options || {};
+    var items = getConfig().ACHIEVEMENT_CONTENT || [];
+    var item = items.filter(function (entry) { return entry.id === achievementId; })[0];
+    if (!item) return { ok: false, reason: "ACHIEVEMENT_NOT_FOUND" };
+    profile.claimedAchievements = Array.isArray(profile.claimedAchievements) ? profile.claimedAchievements : [];
+    if (profile.claimedAchievements.indexOf(item.id) >= 0) return { ok: false, reason: "ACHIEVEMENT_CLAIMED" };
+    if (getAchievementMetric(item, profile, options.levels || []) < item.target) return { ok: false, reason: "ACHIEVEMENT_LOCKED" };
+    applyRewards(profile, item.rewards || []);
+    profile.claimedAchievements.push(item.id);
+    return { ok: true, rewards: item.rewards || [] };
+  }
+
   scope.mainFeaturePanelsView = {
-    CHAT_PREVIEW_MESSAGES: CHAT_PREVIEW_MESSAGES,
-    renderPanel: renderPanel
+    renderPanel: renderPanel,
+    handleEvent: handleEvent,
+    claimTask: claimTask,
+    claimActivityReward: claimActivityReward,
+    claimAchievement: claimAchievement
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -322,6 +322,9 @@
     if (runtime.charges < runtime.maxCharges && runtime.rechargeTimer <= 0) {
       runtime.rechargeTimer = runtime.rechargeSeconds || 18;
     }
+    if (scope.collisionSystem && scope.collisionSystem.clearForActiveSkill) {
+      scope.collisionSystem.clearForActiveSkill(state, loadout);
+    }
     castActiveSkillPattern(state, loadout, skill);
     state.shake = Math.max(state.shake || 0, 0.4);
     if (state.notices) state.notices.push({ text: skill.name || runtime.name || "主动技能", color: "#ffd166", x: 960 / 2, y: 86, life: 1.2 });
@@ -448,7 +451,7 @@
     var count = 6;
     for (var i = 0; i < count; i++) {
       var angle = Math.PI + (i - (count - 1) / 2) * 0.18;
-      state.enemyBullets.push(createBullet(
+      var bullet = createBullet(
         source.x,
         source.y,
         angle,
@@ -458,7 +461,10 @@
         Math.max(4.5, (source.radius || 5) * 0.84),
         "#ff7c93",
         { owner: "enemy", shape: "circle", pierceRemaining: 0 }
-      ));
+      );
+      bullet.sourceEnemyType = source.sourceEnemyType || "small";
+      bullet.sourceEnemyClass = source.sourceEnemyClass || "normal";
+      state.enemyBullets.push(bullet);
     }
   }
 

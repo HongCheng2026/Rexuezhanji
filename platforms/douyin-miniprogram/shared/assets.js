@@ -5,6 +5,7 @@
   const DEFAULT_PILOT_ID = "pilot-s-lingyan";
   const DEFAULT_SHIP_ID = "ship-a-06";
   const DEFAULT_BACKGROUND_ID = "bg-hangar-01";
+  const LOBBY_REFERENCE = Object.freeze({ width: 1600, height: 900 });
   const pagePath = root.location?.pathname ? decodeURIComponent(root.location.pathname).replace(/\\/g, "/") : "";
   const runtimeBase = /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) ? "../../assets/runtime/" : "assets/runtime/";
   const runtimeAsset = (group, file) => runtimeBase + group + "/" + file;
@@ -15,6 +16,7 @@
   const enemyBulletAsset = (file) => runtimeAsset("enemies/bullets", file);
   const uiHudAsset = (file) => runtimeAsset("ui/a-hud", file);
   const uiHudV5Asset = (file) => runtimeAsset("ui/a-hud-v5", file);
+  const uiLobbyIconAsset = (file) => runtimeAsset("ui/lobby-icons", file);
 
   const RANK_DAMAGE = {
     pilot: { SS: 60, S: 55, A: 50, B: 45 },
@@ -28,39 +30,50 @@
 
   const DEFAULT_LOBBY_POSES = {
     pilot: {
-      left: "50.5%",
-      bottom: "-3%",
-      width: "26%",
-      height: "70%",
-      maxHeight: "74%",
-      anchorOffsetX: "0%",
-      buttonWidthRatio: 0.74,
-      buttonOverlapRatio: 0.2,
+      left: "300px",
+      width: "560px",
       opacity: "1",
       translateX: "-50%",
       translateY: "0",
       rotate: "0deg",
-      scale: "1",
-      filter: "drop-shadow(0 26px 42px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 18px rgba(67, 200, 255, 0.16)) brightness(1.08) contrast(1.08) saturate(1.08)"
+      scale: "1"
     },
     ship: {
-      left: "58%",
-      top: "47%",
-      width: "66%",
-      height: "43%",
-      opacity: "0.72",
+      left: "820px",
+      top: "430px",
+      width: "900px",
+      height: "390px",
+      opacity: "0.82",
       translateX: "-50%",
       translateY: "-50%",
-      rotate: "-1deg",
-      scale: "1",
-      filter: "drop-shadow(0 24px 36px rgba(0, 0, 0, 0.58)) drop-shadow(0 0 20px rgba(67, 200, 255, 0.2)) brightness(0.86) contrast(1.05) saturate(0.92)",
-      shadowLeft: "58%",
-      shadowTop: "70%",
-      shadowWidth: "52%",
-      shadowHeight: "12%",
-      shadowRotate: "-2deg",
-      shadowOpacity: "0.6"
+      rotate: "0deg",
+      scale: "1"
     }
+  };
+
+  const PILOT_LOBBY_POSES = {
+    "pilot-s-lingyan": { left: "300px", width: "560px" },
+    "pilot-s-luoqi": { left: "298px", width: "560px" },
+    "pilot-a-yelan": { left: "298px", width: "560px" },
+    "pilot-a-luofeiyin": { left: "300px", width: "560px" },
+    "pilot-a-shenyao": { left: "300px", width: "560px" },
+    "pilot-b-shenqingyao": { left: "306px", width: "580px" },
+    "pilot-b-bailing": { left: "300px", width: "560px" },
+    "pilot-b-linzhihan": { left: "292px", width: "590px" },
+    "pilot-b-sumianxing": { left: "302px", width: "560px" },
+    "pilot-b-xingtao": { left: "300px", width: "560px" }
+  };
+
+  const SHIP_LOBBY_POSES = {
+    "ship-s-09": { left: "820px", top: "430px", width: "940px", height: "370px", opacity: "0.84" },
+    "ship-s-08": { left: "820px", top: "430px", width: "930px", height: "370px", opacity: "0.84" },
+    "ship-b-04": { left: "820px", top: "430px", width: "920px", height: "380px", opacity: "0.84" },
+    "ship-a-07": { left: "820px", top: "435px", width: "890px", height: "400px", opacity: "0.84" },
+    "ship-a-06": { left: "820px", top: "430px", width: "900px", height: "390px", opacity: "0.84" },
+    "ship-b-02": { left: "820px", top: "435px", width: "850px", height: "420px", opacity: "0.84" },
+    "ship-b-01": { left: "820px", top: "430px", width: "900px", height: "390px", opacity: "0.84" },
+    "ship-b-03": { left: "820px", top: "430px", width: "900px", height: "390px", opacity: "0.84" },
+    "ship-b-05": { left: "820px", top: "430px", width: "930px", height: "370px", opacity: "0.84" }
   };
 
   const PILOT_ASSETS = [
@@ -78,7 +91,7 @@
     ...item,
     damage: RANK_DAMAGE.pilot[item.rank],
     hp: RANK_HP.pilot[item.rank],
-    lobbyPose: { ...DEFAULT_LOBBY_POSES.pilot, ...(item.lobbyPose || {}) }
+    lobbyPose: { ...DEFAULT_LOBBY_POSES.pilot, ...(PILOT_LOBBY_POSES[item.id] || {}), ...(item.lobbyPose || {}) }
   }));
 
   const SHIP_ASSETS = [
@@ -103,7 +116,7 @@
     battleRotation: item.battleRotation || 0,
     damage: RANK_DAMAGE.ship[item.rank],
     hp: RANK_HP.ship[item.rank],
-    lobbyPose: { ...DEFAULT_LOBBY_POSES.ship, ...(item.lobbyPose || {}) }
+    lobbyPose: { ...DEFAULT_LOBBY_POSES.ship, ...(SHIP_LOBBY_POSES[item.id] || {}), ...(item.lobbyPose || {}) }
   }));
 
   const BACKGROUND_ASSETS = [
@@ -128,34 +141,94 @@
     gachaAircraftCard: uiHudAsset("gacha-aircraft-card.png"),
     gachaBurst: uiHudAsset("gacha-burst.png"),
     gachaProbability: uiHudAsset("gacha-probability.png"),
-    contactPanel: uiHudAsset("contact-panel.png"),
     qrPlaceholder: uiHudAsset("qr-placeholder.png"),
     resourceCapsule: uiHudAsset("resource-capsule.png"),
     starWingsButton: uiHudAsset("star-wings-button.png"),
     contactButton: uiHudAsset("contact-button.png"),
     quickIcons: uiHudAsset("quick-icons.png"),
     chatStrip: uiHudAsset("chat-strip.png"),
-    v5PilotCard: uiHudV5Asset("v5-pilot-card.png"),
-    v5ResourceLeft: uiHudV5Asset("v5-resource-left.png"),
-    v5ResourceRight: uiHudV5Asset("v5-resource-right.png"),
+    contactPanel: uiHudAsset("contact-panel.png"),
     v5TopCrest: uiHudV5Asset("v5-top-crest.png"),
-    v5QuickNav: uiHudV5Asset("v5-quick-nav.png"),
-    v5LeftTile: uiHudV5Asset("v5-left-tile.png"),
-    v5LeftTileShip: uiHudV5Asset("v5-left-tile-ship.png"),
-    v5LeftTileCodex: uiHudV5Asset("v5-left-tile-codex.png"),
-    v5MenuTile: uiHudV5Asset("v5-menu-tile.png"),
-    v5MenuTileAlt: uiHudV5Asset("v5-menu-tile-alt.png"),
-    v5PromoCard: uiHudV5Asset("v5-promo-card.png"),
-    v5ContactCard: uiHudV5Asset("v5-contact-card.png"),
-    v5StartButton: uiHudV5Asset("v5-start-button.png"),
-    v5UtilityButton: uiHudV5Asset("v5-utility-button.png"),
-    v5ChatStrip: uiHudV5Asset("v5-chat-strip.png")
+    lobbyFrameWide: uiHudV5Asset("v5-menu-tile-clean-alpha.png"),
+    lobbyFrameEntry: uiHudV5Asset("v5-left-tile-alpha.png"),
+    lobbyFrameTile: uiHudV5Asset("v5-menu-tile-clean-alpha.png"),
+    lobbyFrameContact: uiHudV5Asset("v6-contact-card-alpha.png"),
+    lobbyFrameBattle: uiHudV5Asset("v6-start-button-alpha.png"),
+    lobbyFrameChat: uiHudV5Asset("v5-chat-strip.png"),
+    lobbyPromoArt: uiHudAsset("star-wings-promo-v2.png"),
+    featurePilotIcon: uiLobbyIconAsset("feature-pilot.png"),
+    featureFighterIcon: uiLobbyIconAsset("feature-fighter.png"),
+    featureUpgradeIcon: uiLobbyIconAsset("feature-upgrade.png"),
+    featureCodexIcon: uiLobbyIconAsset("feature-codex.png"),
+    menuTaskIcon: uiLobbyIconAsset("menu-task.png"),
+    menuEventIcon: uiLobbyIconAsset("menu-event.png"),
+    menuAchievementIcon: uiLobbyIconAsset("menu-achievement.png"),
+    menuShopIcon: uiLobbyIconAsset("menu-shop.png"),
+    menuRankingIcon: uiLobbyIconAsset("menu-ranking.png"),
+    menuChatIcon: uiLobbyIconAsset("menu-chat.png"),
+    quickMailIcon: uiLobbyIconAsset("quick-mail.png"),
+    quickSigninIcon: uiLobbyIconAsset("quick-signin.png"),
+    quickFriendIcon: uiLobbyIconAsset("quick-friend.png"),
+    quickSettingIcon: uiLobbyIconAsset("quick-setting.png"),
+    pilotHonorIcon: uiLobbyIconAsset("contact-emblem.png"),
+    contactEmblemIcon: uiLobbyIconAsset("contact-emblem.png"),
+    resourceEnergyIcon: uiLobbyIconAsset("resource-energy.png"),
+    resourceGoldIcon: uiLobbyIconAsset("resource-gold.png")
+  };
+
+  const shopItemAsset = (file) => runtimeAsset("ui/shop-items", file);
+  const SHOP_ITEM_ASSETS = {
+    daily_free_supply: shopItemAsset("daily-free-supply.png"),
+    energy_small: shopItemAsset("energy-small.png"),
+    energy_large: shopItemAsset("energy-large.png"),
+    gold_small: shopItemAsset("gold-small.png"),
+    gold_medium: shopItemAsset("gold-medium.png"),
+    gold_large: shopItemAsset("gold-large.png"),
+    attack_pack: shopItemAsset("attack-pack.png"),
+    armor_pack: shopItemAsset("armor-pack.png"),
+    pierce_pack: shopItemAsset("pierce-pack.png"),
+    upgrade_bundle: shopItemAsset("upgrade-bundle.png"),
+    starlink_ticket: shopItemAsset("starlink-ticket.png"),
+    starlink_ten: shopItemAsset("starlink-ten.png"),
+    silver_wing_box: shopItemAsset("silver-wing-box.png"),
+    s_pilot_token: shopItemAsset("s-pilot-token.png"),
+    s_fighter_token: shopItemAsset("s-fighter-token.png")
+  };
+
+  const FEATURE_PANEL_ASSETS = {
+    eventHero: runtimeAsset("ui/feature-panels", "event-starport-breakthrough.png")
   };
 
   const CHAPTER_COVER_ASSETS = Array.from({ length: 10 }, (_, index) => ({
     chapterIndex: index,
     src: runtimeAsset("chapter-covers", "chapter-" + String(index).padStart(2, "0") + ".png")
   }));
+
+  const chapterSelectAsset = (file) => runtimeAsset("ui/chapter-select-v2", file);
+  const CHAPTER_SELECT_ASSETS = {
+    screenShell: chapterSelectAsset("screen-shell.png"),
+    headerFrame: chapterSelectAsset("chapter-header-frame.png"),
+    detailFrame: chapterSelectAsset("chapter-detail-frame.png"),
+    crest: chapterSelectAsset("chapter-crest-gold.png"),
+    icons: chapterSelectAsset("chapter-select-icons.svg"),
+    tabs: {
+      normal: chapterSelectAsset("tab-normal.png"),
+      active: chapterSelectAsset("tab-active.png"),
+      locked: chapterSelectAsset("tab-locked.png")
+    },
+    nodes: {
+      normal: chapterSelectAsset("node-normal.png"),
+      active: chapterSelectAsset("node-active.png"),
+      locked: chapterSelectAsset("node-locked.png"),
+      boss: chapterSelectAsset("node-boss.png")
+    },
+    buttons: {
+      secondary: chapterSelectAsset("button-secondary.png"),
+      primary: chapterSelectAsset("button-primary.png"),
+      disabled: chapterSelectAsset("button-disabled.png")
+    },
+    routes: Array.from({ length: 10 }, (_, index) => chapterSelectAsset("routes/route-" + String(index).padStart(2, "0") + ".webp"))
+  };
 
   const ASSET_PATHS = {
     player: runtimeAsset("characters", "player.png"),
@@ -251,6 +324,7 @@
     DEFAULT_PILOT_ID,
     DEFAULT_SHIP_ID,
     DEFAULT_BACKGROUND_ID,
+    LOBBY_REFERENCE,
     DEFAULT_LOBBY_POSES,
     RANK_DAMAGE,
     RANK_HP,
@@ -262,6 +336,9 @@
     ENEMY_CODEX,
     ENEMY_BULLET_CODEX,
     UI_A_HUD_ASSETS,
+    SHOP_ITEM_ASSETS,
+    FEATURE_PANEL_ASSETS,
+    CHAPTER_SELECT_ASSETS,
     SETTLEMENT_ICON_ASSETS,
     AUDIO_ASSETS
   };

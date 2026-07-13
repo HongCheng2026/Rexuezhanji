@@ -3,6 +3,7 @@
 
   var assetsConfig = scope.assets || {};
   var balanceConfig = scope.balance || {};
+  var combatStats = scope.combatStats || {};
   var SHIP_ASSETS = assetsConfig.SHIP_ASSETS || [];
   var DEFAULT_SHIP_ID = assetsConfig.DEFAULT_SHIP_ID || "ship-a-06";
   var LOCAL_TEST_UNLOCK_ALL_SHIPS = true;
@@ -165,6 +166,7 @@
     appendStat(stats, "攻击", ship.damage);
     appendStat(stats, "生命", ship.hp || 0);
     appendStat(stats, "破甲", formatPercent(armorPenetration));
+    appendStat(stats, "战力", formatPower(combatStats.calculateUnitPower ? combatStats.calculateUnitPower(ship, "ship") : 0));
     info.appendChild(stats);
 
     if (ship.exclusiveSkill) {
@@ -230,6 +232,10 @@
     item.appendChild(value);
 
     container.appendChild(item);
+  }
+
+  function formatPower(value) {
+    return Math.max(0, Math.round(Number(value) || 0)).toLocaleString("zh-CN");
   }
 
   function renderThumbs(container, selectedIndex, activeShipId, onSelect) {

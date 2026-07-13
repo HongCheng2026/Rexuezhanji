@@ -20,13 +20,14 @@
 src/
   h5/                  H5 游戏入口、Canvas 逻辑、样式、UI 视图
     index.html         入口 HTML
-    game.js            主控制器，大文件，按需分段读取
+    game.js            启动器，只调用 app/gameApp.js
+    app/               页面协调与统一 GameGateway
     style.css          全局样式，大文件，按需分段读取
     shared-loader.js   按顺序注入 shared 模块和 H5 模块
     cloud-save.js      Supabase 云存档适配器
     supabase-config.js Supabase 公开 publishableKey
-    battle/            战斗运行时：敌机、碰撞、武器、掉落、Boss、结算
-    ui/                大厅、选关、战斗 HUD、机库画廊等视图
+    battle/            战斗控制与 Canvas 渲染：敌机、碰撞、武器、掉落、Boss
+    ui/                大厅、选关、战斗 HUD、机库画廊、结算控制器
     meta/              战力计算、存档运行时、进阶系统
   shared/              跨平台共享层：配置、数值、规则、剧情、任务等
   miniprogram-common/  小程序公共层：轻量 profile 和图片
@@ -65,7 +66,8 @@ scripts/               发布同步脚本
 - 运行时图片放入 `assets/runtime/` 对应子目录，并更新 `src/shared/assets.js`。
 - 修改 shared 后，发布或小程序验证前运行 `scripts/sync-release.ps1`。
 - Supabase 前端只能使用公开 publishable key；高价值操作由 Edge Function 服务端计算。
-- 新增数据库表时新增 `supabase/migrations/` SQL 文件，正式部署步骤暂不执行。
+- 正式域名必须通过 `GameGateway` 走 Supabase；云端失败时禁止回退本地发奖励。
+- 新增数据库表或 RPC 时只新增 `supabase/migrations/` 文件，不修改已经存在的迁移历史。
 
 ## 启动与预览
 
@@ -82,11 +84,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\sync-release.ps1"
 start release/netlify-h5/index.html
 ```
 
-正式发布流程目前暂不执行 Netlify 和 Supabase 部署步骤。需要发布时再根据交接文档确认。
+正式发布先执行 `supabase db push` 与 `supabase functions deploy game-api`，验证云端开战和结算后，再发布 Netlify 正式站。旧 `001_cloud_save.sql` 只作为迁移历史，禁止手工复制执行。
 
 ## 验证方式
 
-项目目前没有完整自动化测试套件，以浏览器手动功能测试为主：
+项目有轻量架构与云端契约测试，浏览器冒烟仍是发布必检项：
+
+- `node --test tests/*.test.js`
 
 - 打开 `src/h5/index.html`，检查控制台无新增报错。
 - 测试关卡通关、Boss 战、结算流程。

@@ -72,6 +72,11 @@
     return api("bootstrap");
   }
 
+  async function identity() {
+    await ensureSession();
+    return api("identity");
+  }
+
   async function sendEmailCode(email) {
     const normalized = String(email || "").trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalized)) throw new Error("请输入有效的邮箱地址。");
@@ -102,11 +107,13 @@
   root.RXCloud = {
     configured,
     bootstrap,
+    identity,
     startBattle: (levelId) => api("start-battle", { levelId }),
     finishBattle: (ticket, levelId, rating) => api("finish-battle", { ticket, levelId, rating }),
     abandonBattle: (ticket) => api("abandon-battle", { ticket }),
     sweep: (levelId) => api("sweep", { levelId }),
     upgrade: (key) => api("upgrade", { key }),
+    upgradeFighter: (statType) => api("upgrade-fighter", { statType }),
     redeem: (code) => api("redeem", { code }),
     buyShopItem: (itemId) => api("shop-buy", { itemId }),
     saveCosmetics: (profile) => api("save-cosmetics", { profile }),

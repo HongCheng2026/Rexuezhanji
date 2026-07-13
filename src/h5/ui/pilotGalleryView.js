@@ -3,6 +3,7 @@
 
   var assetsConfig = scope.assets || {};
   var balanceConfig = scope.balance || {};
+  var combatStats = scope.combatStats || {};
   var PILOT_ASSETS = assetsConfig.PILOT_ASSETS || [];
   var DEFAULT_PILOT_ID = assetsConfig.DEFAULT_PILOT_ID || "pilot-s-lingyan";
   var LOCAL_TEST_UNLOCK_ALL_PILOTS = true;
@@ -167,6 +168,7 @@
     appendStat(stats, "攻击", pilot.damage);
     appendStat(stats, "生命", pilot.hp || 0);
     appendStat(stats, "破甲", formatPercent(armorPenetration));
+    appendStat(stats, "战力", formatPower(combatStats.calculateUnitPower ? combatStats.calculateUnitPower(pilot, "pilot") : 0));
     info.appendChild(stats);
 
     var status = document.createElement("div");
@@ -217,6 +219,10 @@
     item.appendChild(value);
 
     container.appendChild(item);
+  }
+
+  function formatPower(value) {
+    return Math.max(0, Math.round(Number(value) || 0)).toLocaleString("zh-CN");
   }
 
   function renderThumbs(container, selectedIndex, activePilotId, onSelect) {

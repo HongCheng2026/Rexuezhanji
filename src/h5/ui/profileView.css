@@ -1,0 +1,477 @@
+/* Player profile panel. */
+
+.feature-panel.profile-dossier-panel .feature-panel-box {
+  max-height: calc(100dvh - 32px);
+  max-width: 1120px;
+  overflow: auto;
+  padding: 20px;
+  width: min(calc(100% - 24px), 1120px);
+}
+
+.feature-panel.profile-dossier-panel h2 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.feature-panel.profile-dossier-panel p {
+  color: #a9c8dd;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page button,
+.feature-panel.profile-dossier-panel .player-profile-page input {
+  font: inherit;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page button {
+  background: rgba(23, 76, 106, 0.48);
+  border: 1px solid rgba(103, 214, 255, 0.48);
+  border-radius: 6px;
+  color: #e8f8ff;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page button:hover:not(:disabled) {
+  border-color: rgba(255, 211, 98, 0.82);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .is-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #abc8d9;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-identity-card {
+  background: linear-gradient(110deg, rgba(7, 27, 46, 0.94), rgba(3, 12, 22, 0.94));
+  border: 1px solid rgba(84, 199, 240, 0.42);
+  border-radius: 8px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 132px minmax(300px, 1fr) minmax(190px, 230px);
+  padding: 16px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-avatar-column {
+  display: grid;
+  gap: 8px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-avatar {
+  aspect-ratio: 1;
+  border: 2px solid rgba(128, 222, 255, 0.9);
+  border-radius: 7px;
+  object-fit: cover;
+  object-position: top center;
+  width: 100%;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-avatar-actions {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-avatar-actions button {
+  font-size: 12px;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-identity {
+  align-content: center;
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-name-row,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-meta-row,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-progress-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-name-input,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-signature-input {
+  background: rgba(1, 10, 19, 0.78);
+  border: 1px solid rgba(100, 203, 241, 0.34);
+  border-radius: 6px;
+  color: #f6fbff;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-name-input {
+  font-size: 25px;
+  font-weight: 900;
+  height: 44px;
+  width: min(100%, 330px);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-signature-label {
+  color: #79cce9;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-signature-input {
+  height: 38px;
+  width: 100%;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-title {
+  background: rgba(255, 195, 63, 0.12);
+  border: 1px solid rgba(255, 203, 76, 0.58);
+  border-radius: 5px;
+  color: #ffd166;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-meta-row {
+  color: #8ebbd0;
+  font-size: 12px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-meta-row strong {
+  color: #dff7ff;
+  letter-spacing: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-meta-row button {
+  font-size: 12px;
+  min-height: 28px;
+  padding: 0 9px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state {
+  margin-left: auto;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-synced {
+  color: #70e3ad;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-offline {
+  color: #7996a5;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-progress-row > span {
+  color: #d8f3ff;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-progress-row > strong {
+  color: #f7fbff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-exp {
+  background: #020b14;
+  border: 1px solid rgba(85, 199, 240, 0.32);
+  border-radius: 999px;
+  flex: 1;
+  height: 8px;
+  min-width: 70px;
+  overflow: hidden;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-exp i {
+  background: linear-gradient(90deg, #37c9f2, #bcefff);
+  display: block;
+  height: 100%;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card {
+  align-content: center;
+  border-left: 1px solid rgba(255, 205, 86, 0.34);
+  display: grid;
+  gap: 8px;
+  padding-left: 18px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card > span {
+  color: #9ecce0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card > strong {
+  color: #ffd166;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card em {
+  color: #84b3ca;
+  font-style: normal;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card b {
+  color: #eefaff;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-public-metrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-metric,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail {
+  background: rgba(3, 14, 25, 0.72);
+  border: 1px solid rgba(100, 203, 241, 0.22);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  min-height: 66px;
+  padding: 11px 13px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-metric span,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail span,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-summary > span,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-career-summary > span,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power > span {
+  color: #8dbfd6;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-metric strong,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail strong {
+  color: #f2f9fd;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-tabs {
+  border-bottom: 1px solid rgba(84, 199, 240, 0.24);
+  display: flex;
+  gap: 4px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-tabs button {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  color: #8fb9cd;
+  min-width: 96px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-tabs button.is-active {
+  border-bottom-color: #ffd166;
+  color: #ffd166;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-tab-body {
+  min-height: 170px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-overview {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-summary,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-career-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-summary > div {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-unit {
+  align-items: center;
+  background: linear-gradient(100deg, rgba(7, 29, 48, 0.86), rgba(2, 12, 22, 0.92));
+  border: 1px solid rgba(91, 201, 242, 0.28);
+  border-radius: 6px;
+  display: grid;
+  gap: 3px 10px;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  min-height: 104px;
+  padding: 10px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-unit img {
+  align-self: stretch;
+  border: 1px solid rgba(112, 214, 250, 0.34);
+  grid-row: 1 / 4;
+  height: 82px;
+  object-fit: contain;
+  width: 64px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-unit span,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-unit em {
+  color: #86bad1;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-unit strong {
+  color: #f4fbff;
+  font-size: 18px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail-grid.is-record {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-detail {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power {
+  align-content: center;
+  background: rgba(255, 193, 52, 0.08);
+  border: 1px solid rgba(255, 204, 78, 0.34);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power strong {
+  color: #ffd166;
+  font-size: 30px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power p {
+  color: #96bbcd;
+  font-size: 12px;
+  margin: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-actions button:first-child {
+  background: linear-gradient(180deg, rgba(255, 209, 94, 0.96), rgba(171, 99, 13, 0.96));
+  border-color: rgba(255, 228, 139, 0.86);
+  color: #fff8dc;
+}
+
+@media (max-width: 720px) {
+  .feature-panel.profile-dossier-panel {
+    padding: 10px;
+  }
+
+  .feature-panel.profile-dossier-panel .feature-panel-box {
+    max-height: calc(100vh - 20px);
+    padding: 16px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-identity-card {
+    grid-template-columns: 104px minmax(0, 1fr);
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 205, 86, 0.34);
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr repeat(3, minmax(0, 1fr));
+    padding: 12px 0 0;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card > strong {
+    font-size: 28px;
+    grid-row: 2;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-public-metrics,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-overview,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-detail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-identity-card,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-public-metrics,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-overview,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail-grid,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-detail-grid.is-record,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-lineup-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-avatar-column {
+    justify-self: center;
+    width: 120px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power {
+    grid-column: auto;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card > span,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-power-card > strong {
+    grid-column: 1 / -1;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-tabs button {
+    min-width: 0;
+    padding: 0 8px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-actions button {
+    flex: 1;
+  }
+}

@@ -27,6 +27,12 @@ const upgrades: Record<string, { max: number; baseCost: number }> = {
   engine: { max: 6, baseCost: 110 },
   bounty: { max: 8, baseCost: 100 }
 };
+const FIGHTER_MAX_UPGRADE_LEVEL = 60;
+const fighterUpgradeCosts: Record<string, number[]> = {
+  attack: [0, 0, 390, 570, 672, 738, 798, 846, 894, 930, 966, 1002, 1032, 1062, 1086, 1110, 1134, 1158, 1182, 1200, 1230, 3000, 3300, 3600, 3900, 4200, 3000, 3300, 3600, 3900, 4200, 8208, 10644, 11814, 12642, 13296, 13842, 14316, 14730, 15102, 15444, 15756, 16044, 16314, 16572, 16806, 17034, 17250, 17454, 17646, 17832, 18012, 18186, 18354, 18516, 18666, 18816, 18966, 19110, 19248, 19380],
+  armorPenetration: [0, 0, 585, 855, 1008, 1107, 1197, 1269, 1341, 1395, 1449, 1503, 1548, 1593, 1629, 1665, 1701, 1737, 1773, 1800, 1845, 4500, 4950, 5400, 5850, 6300, 4500, 4950, 5400, 5850, 6300, 12312, 15966, 17721, 18963, 19944, 20763, 21474, 22095, 22653, 23166, 23634, 24066, 24471, 24858, 25209, 25551, 25875, 26181, 26469, 26748, 27018, 27279, 27531, 27774, 27999, 28224, 28449, 28665, 28872, 29070],
+  hp: [0, 0, 325, 475, 560, 615, 665, 705, 745, 775, 805, 835, 860, 885, 905, 925, 945, 965, 985, 1000, 1025, 2500, 2750, 3000, 3250, 3500, 2500, 2750, 3000, 3250, 3500, 6840, 8870, 9845, 10535, 11080, 11535, 11930, 12275, 12585, 12870, 13130, 13370, 13595, 13810, 14005, 14195, 14375, 14545, 14705, 14860, 15010, 15155, 15295, 15430, 15555, 15680, 15805, 15925, 16040, 16150]
+};
 const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "gold" | "stamina" | "item"; amount: number; itemId?: string }> }> = {
   RXZJ666: { minLevel: 1, rewards: [{ type: "gold", amount: 30000 }, { type: "stamina", amount: 50 }] },
   SKY2026: { minLevel: 1, rewards: [{ type: "gold", amount: 50000 }] },
@@ -45,7 +51,7 @@ function baseProfile() {
     completed: [] as number[],
     upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
     fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1 },
-    player: { name: "王牌飞行员", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
+    player: { uid: "", name: "王牌飞行员", signature: "保持航线，火力覆盖。", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
     resources: { energy: ENERGY_MAX, maxEnergy: ENERGY_MAX, gold: 0, diamonds: 0, lastEnergyAt: now },
     scene: { pilotId: "pilot-s-lingyan", shipId: "ship-a-06", backgroundId: "bg-hangar-01" },
     owned: { pilots: ["pilot-s-lingyan"], ships: ["ship-a-06"], backgrounds: ["bg-hangar-01"] },
@@ -73,6 +79,8 @@ function normalizeProfile(input: any = {}) {
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
   profile.completed = Array.from(new Set((Array.isArray(input.completed) ? input.completed : []).map(Number).filter((id) => levels.some((level) => level.id === id))));
   profile.player.level = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(profile.player.level) || 1)));
+  profile.player.uid = String(profile.player.uid || "").replace(/\D/g, "").slice(0, 18);
+  profile.player.signature = String(profile.player.signature || base.player.signature).trim().slice(0, 36) || base.player.signature;
   const legacyExp = Math.max(0, Math.floor(Number(profile.player.exp) || 0));
   const suppliedTotalExp = Number(profile.player.totalExp);
   profile.player.totalExp = Math.max(0, Math.floor(Number.isFinite(suppliedTotalExp) ? suppliedTotalExp : COMMANDER_TOTAL_EXP_BY_LEVEL[profile.player.level] + legacyExp));
@@ -134,14 +142,27 @@ const game = {
     }
   }
 };
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://www.rexuezhanji.top",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rexuezhanji-source-token",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+const allowedOrigins = new Set(["https://rexuezhanji.top", "https://www.rexuezhanji.top"]);
+
+function corsHeaders(request: Request) {
+  const origin = request.headers.get("origin") || "";
+  const isLocal = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i.test(origin);
+  return {
+    "Access-Control-Allow-Origin": allowedOrigins.has(origin) || isLocal ? origin : "https://rexuezhanji.top",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rexuezhanji-source-token",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin"
+  };
+}
+
+function withCors(response: Response, request: Request) {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders(request))) headers.set(key, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
 
 function reply(body: Json, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
 function error(message: string, status = 400) {
@@ -197,13 +218,21 @@ async function context(request: Request): Promise<Context | Response> {
 }
 
 async function loadProfile(ctx: Context) {
-  const { data, error: readError } = await ctx.admin.from("player_profiles").select("profile, revision").eq("user_id", ctx.userId).maybeSingle();
+  const { data, error: readError } = await ctx.admin.from("player_profiles").select("profile, revision, public_uid").eq("user_id", ctx.userId).maybeSingle();
   if (readError) throw readError;
-  if (data) return { profile: recover(normalize(data.profile)), revision: Number(data.revision) || 0 };
+  if (data) {
+    const profile = recover(normalize(data.profile));
+    profile.player.uid = String(data.public_uid || "");
+    return { profile, revision: Number(data.revision) || 0, uid: String(data.public_uid || "") };
+  }
   const profile = recover(createProfile());
-  const { error: insertError } = await ctx.admin.from("player_profiles").insert({ user_id: ctx.userId, save_version: profile.saveVersion, profile, revision: 0 });
+  const { data: inserted, error: insertError } = await ctx.admin.from("player_profiles")
+    .insert({ user_id: ctx.userId, save_version: profile.saveVersion, profile, revision: 0 })
+    .select("public_uid")
+    .single();
   if (insertError) throw insertError;
-  return { profile, revision: 0 };
+  profile.player.uid = String(inserted.public_uid || "");
+  return { profile, revision: 0, uid: profile.player.uid };
 }
 
 async function saveProfile(ctx: Context, profile: any, revision: number) {
@@ -237,9 +266,15 @@ function publicProfile(profile: any) {
 }
 
 async function bootstrap(ctx: Context) {
-  const { profile, revision } = await loadProfile(ctx);
+  const { profile, revision, uid } = await loadProfile(ctx);
   const saved = await saveProfile(ctx, profile, revision);
-  return reply({ profile: publicProfile(saved) });
+  saved.player.uid = uid;
+  return reply({ profile: publicProfile(saved), uid });
+}
+
+async function identity(ctx: Context) {
+  const { uid } = await loadProfile(ctx);
+  return reply({ uid });
 }
 
 async function startBattle(ctx: Context, body: Json) {
@@ -250,26 +285,33 @@ async function startBattle(ctx: Context, body: Json) {
   profile.resources.energy -= ENERGY_COST;
   const ticket = `${crypto.randomUUID()}${crypto.randomUUID()}`;
   const ticketHash = await sha256(ticket);
-  const saved = await saveProfile(ctx, profile, revision);
-  const { error: insertError } = await ctx.admin.from("battle_sessions").insert({
-    player_id: ctx.userId,
-    level_id: String(level.id),
-    ticket_hash: ticketHash,
-    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  profile.resources.lastEnergyAt = Date.now();
+  const committedProfile = normalizeProfile(profile);
+  const { error: commitError } = await ctx.admin.rpc("commit_battle_start", {
+    p_user_id: ctx.userId,
+    p_expected_revision: revision,
+    p_profile: committedProfile,
+    p_save_version: committedProfile.saveVersion,
+    p_ticket_hash: ticketHash,
+    p_level_id: String(level.id),
+    p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    p_operation_id: crypto.randomUUID(),
+    p_delta_energy: -ENERGY_COST,
+    p_payload: { levelId: level.id }
   });
-  if (insertError) throw insertError;
-  await ledger(ctx, "start-battle", 0, -ENERGY_COST, { levelId: level.id });
-  return reply({ profile: publicProfile(saved), ticket });
+  if (commitError) throw commitError;
+  return reply({ profile: publicProfile(committedProfile), ticket });
 }
 
 async function finishBattle(ctx: Context, body: Json) {
   const level = getLevel(body.levelId);
   const ticketHash = await sha256(String(body.ticket || ""));
   const { data: battle, error: battleError } = await ctx.admin.from("battle_sessions")
-    .select("id, state, started_at, expires_at")
+    .select("id, level_id, state, started_at, expires_at")
     .eq("player_id", ctx.userId).eq("ticket_hash", ticketHash).maybeSingle();
   if (battleError) throw battleError;
   if (!battle || battle.state !== "started") return error("战斗票据无效或已经结算。", 409);
+  if (Number(battle.level_id) !== level.id) return error("战斗票据与关卡不匹配。", 409);
   const elapsed = Date.now() - new Date(battle.started_at).getTime();
   if (Date.now() > new Date(battle.expires_at).getTime() || elapsed < 60_000) return error("战斗时长校验未通过。", 409);
   const { profile, revision } = await loadProfile(ctx);
@@ -281,13 +323,19 @@ async function finishBattle(ctx: Context, body: Json) {
   game.profile.setGold(profile, game.profile.getGold(profile) + gold);
   game.battleRules.applyExperience(profile.player, experience);
   game.battleRules.completeLevel(profile, level, rating);
-  const saved = await saveProfile(ctx, profile, revision);
+  const saved = normalizeProfile(profile);
   const settlement = { gold, experience, rating };
-  const { error: settledError } = await ctx.admin.from("battle_sessions")
-    .update({ state: "settled", settled_at: new Date().toISOString(), settlement })
-    .eq("id", battle.id).eq("state", "started");
+  const { error: settledError } = await ctx.admin.rpc("commit_battle_settlement", {
+    p_user_id: ctx.userId,
+    p_battle_id: battle.id,
+    p_expected_revision: revision,
+    p_profile: saved,
+    p_save_version: saved.saveVersion,
+    p_settlement: settlement,
+    p_delta_gold: gold,
+    p_payload: { levelId: level.id, rating }
+  });
   if (settledError) throw settledError;
-  await ledger(ctx, "finish-battle", gold, 0, { levelId: level.id, rating });
   return reply({ profile: publicProfile(saved), settlement });
 }
 
@@ -329,13 +377,44 @@ async function upgrade(ctx: Context, body: Json) {
   return reply({ profile: publicProfile(saved), cost, key, level: current + 1 });
 }
 
+async function upgradeFighter(ctx: Context, body: Json) {
+  const statType = String(body.statType || "");
+  const costs = fighterUpgradeCosts[statType];
+  if (!costs) return error("战机强化项目不存在。", 404);
+  const { profile, revision } = await loadProfile(ctx);
+  const current = Math.max(1, Math.floor(Number(profile.fighterUpgrades?.[statType]) || 1));
+  const targetLevel = current + 1;
+  if (targetLevel > FIGHTER_MAX_UPGRADE_LEVEL) return error("该强化已满级。", 409);
+  if (targetLevel > Number(profile.player?.level || 1)) return error("指挥官等级不足。", 409);
+  const cost = Math.max(0, Math.floor(Number(costs[targetLevel]) || 0));
+  if (!cost) return error("强化费用配置不存在。", 409);
+  if (game.profile.getGold(profile) < cost) return error("金币不足。", 409);
+  game.profile.setGold(profile, game.profile.getGold(profile) - cost);
+  profile.fighterUpgrades = profile.fighterUpgrades || {};
+  profile.fighterUpgrades[statType] = targetLevel;
+  const saved = await saveProfile(ctx, profile, revision);
+  await ledger(ctx, "upgrade-fighter", -cost, 0, { statType, level: targetLevel });
+  return reply({ profile: publicProfile(saved), cost, statType, level: targetLevel });
+}
+
 async function saveCosmetics(ctx: Context, body: Json) {
   const { profile, revision } = await loadProfile(ctx);
   const incoming = (body.profile || {}) as any;
   if (typeof incoming.player?.name === "string") profile.player.name = incoming.player.name.trim().slice(0, 20) || profile.player.name;
+  if (typeof incoming.player?.signature === "string") profile.player.signature = incoming.player.signature.trim().slice(0, 36) || profile.player.signature;
   if (typeof incoming.player?.avatar === "string" && incoming.player.avatar.length <= 400_000) profile.player.avatar = incoming.player.avatar;
+  const ownershipFields: Record<string, string> = { pilotId: "pilots", shipId: "ships", backgroundId: "backgrounds" };
   for (const field of ["pilotId", "shipId", "backgroundId"]) {
-    if (typeof incoming.scene?.[field] === "string") profile.scene[field] = incoming.scene[field];
+    if (typeof incoming.scene?.[field] !== "string") continue;
+    const ownedIds = Array.isArray(profile.owned?.[ownershipFields[field]]) ? profile.owned[ownershipFields[field]] : [];
+    if (!ownedIds.includes(incoming.scene[field])) return error("不能使用尚未拥有的外观。", 403);
+    profile.scene[field] = incoming.scene[field];
+  }
+  if (Array.isArray(incoming.progress?.storySeenSceneIds)) {
+    profile.progress = profile.progress || {};
+    profile.progress.storySeenSceneIds = Array.from(new Set(
+      incoming.progress.storySeenSceneIds.map(String).map((value: string) => value.slice(0, 80)).filter(Boolean)
+    )).slice(0, 500);
   }
   const saved = await saveProfile(ctx, profile, revision);
   return reply({ profile: publicProfile(saved) });
@@ -381,36 +460,46 @@ async function migrateAnonymous(ctx: Context, request: Request) {
   if (sourceError || !sourceData.user || sourceData.user.id === ctx.userId) return error("游客账号迁移校验失败。", 401);
   const { data: destination } = await ctx.admin.from("player_profiles").select("user_id").eq("user_id", ctx.userId).maybeSingle();
   if (destination) return bootstrap(ctx);
-  const { data: source, error: readError } = await ctx.admin.from("player_profiles").select("profile").eq("user_id", sourceData.user.id).maybeSingle();
+  const { data: source, error: readError } = await ctx.admin.from("player_profiles").select("user_id").eq("user_id", sourceData.user.id).maybeSingle();
   if (readError) throw readError;
   if (source) {
-    const { error: insertError } = await ctx.admin.from("player_profiles").insert({ user_id: ctx.userId, save_version: source.profile.saveVersion || 4, profile: normalize(source.profile), revision: 0 });
-    if (insertError) throw insertError;
+    const { error: migrateError } = await ctx.admin.from("player_profiles").update({ user_id: ctx.userId }).eq("user_id", sourceData.user.id);
+    if (migrateError) throw migrateError;
   }
   return bootstrap(ctx);
 }
 
 Deno.serve(async (request) => {
-  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (request.method !== "POST") return error("仅支持 POST 请求。", 405);
+  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
+  let response: Response;
   try {
-    const ctx = await context(request);
-    if (ctx instanceof Response) return ctx;
-    const body = await request.json().catch(() => ({}));
-    const action = new URL(request.url).searchParams.get("action");
-    if (action === "bootstrap") return await bootstrap(ctx);
-    if (action === "start-battle") return await startBattle(ctx, body);
-    if (action === "finish-battle") return await finishBattle(ctx, body);
-    if (action === "abandon-battle") return await abandonBattle(ctx, body);
-    if (action === "sweep") return await sweep(ctx, body);
-    if (action === "upgrade") return await upgrade(ctx, body);
-    if (action === "save-cosmetics") return await saveCosmetics(ctx, body);
-    if (action === "redeem") return await redeem(ctx, body);
-    if (action === "shop-buy") return await buyShopItem(ctx, body);
-    if (action === "migrate-anonymous") return await migrateAnonymous(ctx, request);
-    return error("未知操作。", 404);
+    if (request.method !== "POST") {
+      response = error("仅支持 POST 请求。", 405);
+    } else {
+      const ctx = await context(request);
+      if (ctx instanceof Response) {
+        response = ctx;
+      } else {
+        const body = await request.json().catch(() => ({}));
+        const action = new URL(request.url).searchParams.get("action");
+        if (action === "bootstrap") response = await bootstrap(ctx);
+        else if (action === "identity") response = await identity(ctx);
+        else if (action === "start-battle") response = await startBattle(ctx, body);
+        else if (action === "finish-battle") response = await finishBattle(ctx, body);
+        else if (action === "abandon-battle") response = await abandonBattle(ctx, body);
+        else if (action === "sweep") response = await sweep(ctx, body);
+        else if (action === "upgrade") response = await upgrade(ctx, body);
+        else if (action === "upgrade-fighter") response = await upgradeFighter(ctx, body);
+        else if (action === "save-cosmetics") response = await saveCosmetics(ctx, body);
+        else if (action === "redeem") response = await redeem(ctx, body);
+        else if (action === "shop-buy") response = await buyShopItem(ctx, body);
+        else if (action === "migrate-anonymous") response = await migrateAnonymous(ctx, request);
+        else response = error("未知操作。", 404);
+      }
+    }
   } catch (caught) {
     console.error(caught);
-    return error(caught instanceof Error ? caught.message : "服务器处理失败。", 500);
+    response = error(caught instanceof Error ? caught.message : "服务器处理失败。", 500);
   }
+  return withCors(response, request);
 });

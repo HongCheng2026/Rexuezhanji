@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="crest-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17334a"/>
+      <stop offset="1" stop-color="#06111e"/>
+    </linearGradient>
+    <linearGradient id="crest-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff2a8"/>
+      <stop offset="0.48" stop-color="#e7b94e"/>
+      <stop offset="1" stop-color="#8e5e18"/>
+    </linearGradient>
+  </defs>
+  <path d="M48 8 L88 42 L82 72 L48 88 L14 72 L8 42 Z" fill="url(#crest-fill)" stroke="#315e7b" stroke-width="2"/>
+  <path d="M48 12 L84 43 L76 66 L48 82 L20 66 L12 43 Z" fill="none" stroke="url(#crest-gold)" stroke-width="4"/>
+  <path d="M48 23 L72 45 L48 69 L24 45 Z" fill="#071522" stroke="url(#crest-gold)" stroke-width="4"/>
+  <path d="M48 32 L53 41 L64 45 L53 50 L48 60 L43 50 L32 45 L43 41 Z" fill="#fff4b5" stroke="#d7a43b" stroke-width="2"/>
+  <path d="M22 73 L37 82 M74 73 L59 82" fill="none" stroke="#42cbe0" stroke-width="3" opacity="0.8"/>
+</svg>

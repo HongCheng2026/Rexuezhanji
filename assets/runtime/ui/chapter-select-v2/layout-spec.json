@@ -1,0 +1,41 @@
+{
+  "version": "20260713-clean-assets-v1",
+  "canvas": {
+    "width": 1600,
+    "height": 900
+  },
+  "content": {
+    "x": 28,
+    "y": 47,
+    "width": 1544,
+    "height": 806,
+    "gap": 10
+  },
+  "rows": [84, 146, 300, 158, 78],
+  "tabs": {
+    "count": 10,
+    "width": 145,
+    "height": 84,
+    "gap": 10,
+    "paddingX": 2
+  },
+  "header": {
+    "width": 1544,
+    "height": 146
+  },
+  "detail": {
+    "width": 1544,
+    "height": 158,
+    "columns": [387, 134, 185, 173, 184, 182, 190, 109]
+  },
+  "actions": {
+    "height": 78,
+    "columns": [450, 604, 450],
+    "gap": 20
+  },
+  "crest": {
+    "width": 96,
+    "height": 96,
+    "safeInset": 8
+  }
+}
