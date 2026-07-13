@@ -325,11 +325,14 @@
     shared.campaignStoryPlayerView.openStoryScene(scene, {
       finishLabel: options.finishLabel || "继续",
       onFinish: function onStoryFinish() {
+        var storyPersistence = Promise.resolve();
         if (options.markSeen && shared.campaignStoryFramework && shared.campaignStoryFramework.markStorySceneSeen) {
           profile = assignProfile(shared.campaignStoryFramework.markStorySceneSeen(profile, scene.onceKey || scene.sceneId) || profile);
-          persistProfileMetadata().catch(function keepLocalStoryProgress() {});
+          storyPersistence = Promise.resolve(persistProfileMetadata()).catch(function keepLocalStoryProgress() {});
         }
-        if (options.onDone) options.onDone();
+        storyPersistence.then(function continueAfterStoryPersistence() {
+          if (options.onDone) options.onDone();
+        });
       }
     });
     return true;

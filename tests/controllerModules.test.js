@@ -65,3 +65,9 @@ test("云端写操作继续共用同一把锁", () => {
     assert.doesNotMatch(source, /gatewayActionBusy/);
   }
 });
+
+test("剧情进度写入完成后才继续开战", () => {
+  const source = fs.readFileSync(path.join(root, "src/h5/app/battleFlowController.js"), "utf8");
+  assert.match(source, /storyPersistence = Promise\.resolve\(persistProfileMetadata\(\)\)/);
+  assert.match(source, /storyPersistence\.then\(function continueAfterStoryPersistence/);
+});
