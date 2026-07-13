@@ -3,6 +3,10 @@
 
   var scope = root.RXGame || (root.RXGame = {});
 
+  function mergeSettlementRating(localRating, serverRating) {
+    return Object.assign({}, localRating || {}, serverRating || {});
+  }
+
   function create(options) {
     options = options || {};
     var shared = options.shared || scope;
@@ -71,6 +75,9 @@
     }
     gatewayActionLock.busy = true;
     if (dom.startButton) dom.startButton.disabled = true;
+    if (lobby.showBusyOverlay) {
+      lobby.showBusyOverlay("正在进入战斗", "正在同步云端战斗凭证，请稍候…");
+    }
     ensureGameGateway().then(function startThroughGateway() {
       return options.getGameGateway().startBattle(level.id);
     }).then(function onBattleAuthorized(result) {
@@ -99,6 +106,7 @@
     playSfx("start");
     if (audioSystem && audioSystem.playBgm) audioSystem.playBgm("battle");
     dom.battleScreen.classList.remove("select-mode", "overlay-active", "settlement-active");
+    dom.overlay.classList.remove("busy-overlay");
     dom.overlay.classList.add("hidden");
     currentLoadout = assignCurrentLoadout(shared.combatStats && shared.combatStats.generateBattleLoadout
       ? shared.combatStats.generateBattleLoadout(profile)
@@ -173,6 +181,9 @@
       ticket: battleSession && battleSession.ticket || "",
       progressBefore: createLevelProgressSnapshot(profile.player)
     });
+    if (lobby.showBusyOverlay) {
+      lobby.showBusyOverlay("正在生成战报", formatSettlementBusyMessage(result));
+    }
     settlePendingBattle();
   }
 
@@ -212,7 +223,7 @@
     if (options.getGameGateway() && options.getGameGateway().isCloud) {
       pending.result.coinsEarned = Math.max(0, Math.floor(server.gold || 0));
       pending.result.expEarned = Math.max(0, Math.floor(server.experience || 0));
-      if (server.rating) pending.result.rating = server.rating;
+      if (server.rating) pending.result.rating = mergeSettlementRating(pending.result.rating, server.rating);
       pending.result.levelProgress = {
         before: pending.progressBefore,
         after: createLevelProgressSnapshot(profile.player)
@@ -244,8 +255,6 @@
   function presentSettlement(isWin, level, result) {
     syncContext();
     var finishSettlement = function finishSettlement() {
-      lobby.renderLobby();
-      lobby.renderChapterSelect();
       if (isWin) renderVictoryIntro(result);
       else renderSettlement(result);
       if (audioSystem && audioSystem.stopBgm) audioSystem.stopBgm();
@@ -264,6 +273,16 @@
       return;
     }
     finishSettlement();
+  }
+
+  function formatSettlementBusyMessage(result) {
+    result = result || {};
+    var rating = result.rating || {};
+    var killedEnemies = Math.max(0, Math.floor(Number(rating.killedEnemies != null ? rating.killedEnemies : result.killedEnemies) || 0));
+    var damageTaken = Math.max(0, Math.floor(Number(rating.damageTaken != null ? rating.damageTaken : result.damageTaken) || 0));
+    var bossTime = Number(rating.bossClearTime != null ? rating.bossClearTime : result.bossClearTime);
+    var bossTimeText = bossTime >= 999 || !isFinite(bossTime) ? "--" : Math.ceil(bossTime) + " 秒";
+    return "击落 " + killedEnemies + " 架 · 受击 " + damageTaken + " 次 · BOSS " + bossTimeText + "。奖励正在云端结算…";
   }
 
   function updateStageHonorRecord(level, result) {
@@ -451,7 +470,7 @@
     };
   }
 
-  var api = { create: create };
+  var api = { create: create, mergeSettlementRating: mergeSettlementRating };
   scope.battleFlowController = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : window);

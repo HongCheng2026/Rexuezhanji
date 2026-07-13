@@ -1667,7 +1667,6 @@
 
 .battle-screen .shop-screen.settlement-ceremony-mode {
   background: rgba(1, 6, 12, 0.94);
-  backdrop-filter: blur(2px);
 }
 
 .battle-screen .settlement-ceremony-mode .battle-report-result {

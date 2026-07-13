@@ -151,16 +151,24 @@
 
   function showOverlay(title, message, buttonText) {
     syncContext();
-    dom.overlay.classList.remove("pause-overlay");
+    dom.overlay.classList.remove("pause-overlay", "busy-overlay");
     dom.overlay.querySelector("h1").textContent = title;
     dom.messageEl.textContent = message;
     dom.startButton.textContent = buttonText;
+    dom.startButton.disabled = false;
     dom.overlay.classList.remove("hidden");
     dom.battleScreen.classList.add("overlay-active");
   }
 
+  function showBusyOverlay(title, message) {
+    showOverlay(title, message, "");
+    dom.overlay.classList.add("busy-overlay");
+    dom.startButton.disabled = true;
+  }
+
   function showShop() {
     syncContext();
+    dom.overlay.classList.remove("busy-overlay");
     dom.overlay.classList.add("hidden");
     dom.battleScreen.classList.remove("select-mode", "overlay-active");
     dom.battleScreen.classList.add("settlement-active");
@@ -337,6 +345,7 @@
       pauseGame: pauseGame,
       resumeGame: resumeGame,
       showOverlay: showOverlay,
+      showBusyOverlay: showBusyOverlay,
       showShop: showShop,
       hideShop: hideShop,
       renderChapterSelect: renderChapterSelect,

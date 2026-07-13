@@ -71,3 +71,23 @@ test("剧情进度写入完成后才继续开战", () => {
   assert.match(source, /storyPersistence = Promise\.resolve\(persistProfileMetadata\(\)\)/);
   assert.match(source, /storyPersistence\.then\(function continueAfterStoryPersistence/);
 });
+
+test("云端星级不会覆盖本地完整战斗统计", () => {
+  const merged = battleFlowController.mergeSettlementRating({
+    stars: 2,
+    killedEnemies: 454,
+    damageTaken: 3,
+    bossClearTime: 27.4
+  }, {
+    stars: 3,
+    label: "3星"
+  });
+
+  assert.deepEqual(merged, {
+    stars: 3,
+    killedEnemies: 454,
+    damageTaken: 3,
+    bossClearTime: 27.4,
+    label: "3星"
+  });
+});

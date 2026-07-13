@@ -221,6 +221,21 @@
   max-width: 720px;
 }
 
+.battle-screen .overlay.busy-overlay {
+  cursor: wait;
+}
+
+.battle-screen .overlay.busy-overlay #chapterSelect,
+.battle-screen .overlay.busy-overlay #startButton {
+  display: none;
+}
+
+.battle-screen .overlay.busy-overlay p {
+  color: #e5f6ff;
+  font-size: clamp(15px, 1.8vw, 20px);
+  max-width: 760px;
+}
+
 .battle-screen .overlay:not(.hidden) {
   background:
   radial-gradient(circle at 50% 19%, rgba(66, 214, 181, 0.18), transparent 18%),
