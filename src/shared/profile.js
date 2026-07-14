@@ -5,9 +5,10 @@
   const balanceConfig = scope.balance || {};
 
   const SAVE_VERSION = 6;
-  const ENERGY_MAX = levelConfig.ENERGY_MAX || 305;
+  const ENERGY_MAX = levelConfig.ENERGY_MAX || 120;
   const ENERGY_COST = levelConfig.ENERGY_COST || 5;
   const ENERGY_RECOVER_MS = levelConfig.ENERGY_RECOVER_MS || 5 * 60 * 1000;
+  const STAMINA_RULE_VERSION = levelConfig.STAMINA_RULE_VERSION || 2;
 
   const LOBBY_DEFAULTS = {
     player: {
@@ -88,6 +89,7 @@
 
   function normalizeProfile(nextProfile = {}) {
     const incomingVersion = Number(nextProfile.saveVersion) || 0;
+    const incomingStaminaRuleVersion = Math.max(0, Math.floor(Number(nextProfile.staminaRuleVersion) || 0));
     let player = { ...LOBBY_DEFAULTS.player, ...(nextProfile.player || {}) };
     if (incomingVersion < 5 && (player.avatar === "guide.png" || (Number(player.level) === 56 && Number(player.exp) === 12080))) {
       player = { ...LOBBY_DEFAULTS.player };
@@ -111,7 +113,6 @@
     const resources = { ...LOBBY_DEFAULTS.resources, ...(nextProfile.resources || {}) };
     const energyMaxForLevel = levelConfig.getMaxEnergyByLevel ? levelConfig.getMaxEnergyByLevel(player.level) : ENERGY_MAX;
     resources.maxEnergy = energyMaxForLevel;
-    if (incomingVersion < 5) resources.energy = Math.max(Math.floor(Number(resources.energy) || 0), energyMaxForLevel);
     resources.energy = clamp(Math.floor(Number(resources.energy) || 0), 0, resources.maxEnergy);
     resources.diamonds = Math.max(0, Math.floor(Number(resources.diamonds) || 0));
     resources.gold = Math.max(0, Math.floor(Number(resources.gold ?? nextProfile.coins) || 0));
@@ -151,6 +152,7 @@
     const normalized = {
       ...nextProfile,
       saveVersion: SAVE_VERSION,
+      staminaRuleVersion: Math.max(STAMINA_RULE_VERSION, incomingStaminaRuleVersion),
       starterRosterVersion: 2,
       coins: resources.gold,
       completed: Array.isArray(nextProfile.completed) ? nextProfile.completed : [],

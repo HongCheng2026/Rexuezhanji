@@ -177,16 +177,18 @@
       fireWeapon(state, loadout, bullets, activeWeapons[w][0], activeWeapons[w][1], x, y);
     }
     fireFusionWeapons(state, loadout, bullets, x, y);
-    if (scope.abilitySystem && scope.abilitySystem.onVolleyFired) {
-      scope.abilitySystem.onVolleyFired(state, loadout, bullets, { x: x, y: y });
-    }
   }
 
   function fireWeapon(state, loadout, bullets, weapon, level, x, y) {
     level = Math.max(1, Math.min(balanceConfig.MAX_WEAPON_LEVEL || 5, Math.floor(Number(level) || 1)));
     var stats = getWeaponLevelStats(weapon, level);
     var effects = getModuleEffects(loadout, weapon);
-    var damageMultiplier = Math.max(0, Number(effects.damageMultiplier) || 1);
+    var activeModifiers = scope.abilitySystem && scope.abilitySystem.getWeaponModifiers
+      ? scope.abilitySystem.getWeaponModifiers(state, loadout, weapon)
+      : { damageMultiplier: 1, armorPierceBonus: 0 };
+    var damageMultiplier = Math.max(0, Number(effects.damageMultiplier) || 1)
+      * Math.max(0, Number(activeModifiers.damageMultiplier) || 1);
+    var activeArmorPierce = Math.max(0, Math.min(1, Number(activeModifiers.armorPierceBonus) || 0));
     var baseDamage = Math.round(getPlayerDamage(loadout, weapon, level) * damageMultiplier);
     if (weapon === "spread") {
       var count = Math.max(1, Math.floor(Number(stats.projectileCount) || 1));
@@ -199,7 +201,7 @@
           x + 32, y, start + step * i, "spread",
           baseDamage,
           610 + level * 5, 4, WEAPON_VISUALS.spread.color,
-          { owner: "player", shape: "bolt", width: WEAPON_VISUALS.spread.width, height: WEAPON_VISUALS.spread.height, pierceRemaining: getWeaponPierce(loadout, state, "spread"), trailColor: WEAPON_VISUALS.spread.trailColor }
+          { owner: "player", shape: "bolt", width: WEAPON_VISUALS.spread.width, height: WEAPON_VISUALS.spread.height, pierceRemaining: getWeaponPierce(loadout, state, "spread"), trailColor: WEAPON_VISUALS.spread.trailColor, armorPierceRatio: activeArmorPierce }
         ));
       }
       return;
@@ -213,7 +215,7 @@
           x + 38, y + offsets[j], 0, "laser",
           baseDamage,
           920 + level * 6, 5, WEAPON_VISUALS.laser.color,
-          { owner: "player", shape: "beam", width: 38 + Math.floor(level / 2), height: 5 + (level >= 8 ? 1 : 0), pierceRemaining: laserPierce, trailColor: WEAPON_VISUALS.laser.trailColor }
+          { owner: "player", shape: "beam", width: 38 + Math.floor(level / 2), height: 5 + (level >= 8 ? 1 : 0), pierceRemaining: laserPierce, trailColor: WEAPON_VISUALS.laser.trailColor, armorPierceRatio: activeArmorPierce }
         ));
       }
       if (Number(effects.triggerEvery) > 0) {
@@ -223,9 +225,9 @@
         if (laserVolley % Math.floor(Number(effects.triggerEvery)) === 0) {
           bullets.push(createBullet(
             x + 42, y, 0, "laser",
-            Math.round(getPlayerDamage(loadout, "laser", level) * Math.max(1, Number(effects.bonusBeamDamageMultiplier) || 2)),
+            Math.round(getPlayerDamage(loadout, "laser", level) * Math.max(1, Number(effects.bonusBeamDamageMultiplier) || 2) * Math.max(0, Number(activeModifiers.damageMultiplier) || 1)),
             980 + level * 6, 7, "#bff8ff",
-            { owner: "player", shape: "beam", width: 62, height: 9, pierceRemaining: laserPierce + 1, trailColor: "rgba(191,248,255,0.34)" }
+            { owner: "player", shape: "beam", width: 62, height: 9, pierceRemaining: laserPierce + 1, trailColor: "rgba(191,248,255,0.34)", armorPierceRatio: activeArmorPierce }
           ));
         }
       }
@@ -246,7 +248,7 @@
           x + 28, y + mOffsets[k], angle, "missile",
           baseDamage,
           launchSpeed, 7, WEAPON_VISUALS.missile.color,
-          { owner: "player", shape: "lance", width: 20, height: 10, pierceRemaining: getWeaponPierce(loadout, state, "missile"), trailColor: WEAPON_VISUALS.missile.trailColor, splashRadius: Math.max(0, Number(effects.splashRadius) || 0), splashExcludesDirect: Number(effects.splashRadius) > 0 }
+          { owner: "player", shape: "lance", width: 20, height: 10, pierceRemaining: getWeaponPierce(loadout, state, "missile"), trailColor: WEAPON_VISUALS.missile.trailColor, splashRadius: Math.max(0, Number(effects.splashRadius) || 0), splashExcludesDirect: Number(effects.splashRadius) > 0, armorPierceRatio: activeArmorPierce }
         );
         missile.homingStartAge = 0.08;
         missile.homingTurnRate = 6 * Math.max(0.1, Number(effects.turnMultiplier) || 1);
@@ -453,9 +455,7 @@
   }
 
   function getField(state) {
-    return scope.battleGeometry && scope.battleGeometry.getField
-      ? scope.battleGeometry.getField(state)
-      : (state && state.field) || { width: 960, height: 473, cullPadding: 40 };
+    return scope.battleGeometry.getField(state);
   }
 
   var api = {

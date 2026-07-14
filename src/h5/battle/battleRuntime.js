@@ -276,9 +276,7 @@
   }
 
   function getField(state) {
-    return scope.battleGeometry && scope.battleGeometry.getField
-      ? scope.battleGeometry.getField(state)
-      : (state && state.field) || { width: 960, height: 473 };
+    return scope.battleGeometry.getField(state);
   }
 
   var api = {

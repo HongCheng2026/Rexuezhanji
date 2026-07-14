@@ -5,9 +5,16 @@ type Context = { userId: string; admin: ReturnType<typeof createClient> };
 
 const ENERGY_COST = 5;
 const COMMANDER_MAX_LEVEL = 60;
+const STAMINA_LEVEL_ONE_MAX = 120;
+const STAMINA_PER_LEVEL = 5;
+const STAMINA_MAX_LEVEL_BONUS = 5;
+const STAMINA_RULE_VERSION = 2;
 const COMMANDER_EXP_TO_NEXT_LEVEL = [0, 130, 190, 224, 246, 266, 282, 298, 310, 322, 334, 344, 354, 362, 370, 378, 386, 394, 400, 410, 1000, 1100, 1200, 1300, 1400, 1000, 1100, 1200, 1300, 1400, 2736, 3548, 3938, 4214, 4432, 4614, 4772, 4910, 5034, 5148, 5252, 5348, 5438, 5524, 5602, 5678, 5750, 5818, 5882, 5944, 6004, 6062, 6118, 6172, 6222, 6272, 6322, 6370, 6416, 6460, 0];
 const COMMANDER_TOTAL_EXP_BY_LEVEL = [0, 0, 130, 320, 544, 790, 1056, 1338, 1636, 1946, 2268, 2602, 2946, 3300, 3662, 4032, 4410, 4796, 5190, 5590, 6000, 7000, 8100, 9300, 10600, 12000, 13000, 14100, 15300, 16600, 18000, 20736, 24284, 28222, 32436, 36868, 41482, 46254, 51164, 56198, 61346, 66598, 71946, 77384, 82908, 88510, 94188, 99938, 105756, 111638, 117582, 123586, 129648, 135766, 141938, 148160, 154432, 160754, 167124, 173540, 180000];
-const getMaxEnergyByLevel = (level: number) => 300 + Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(level || 1))) * 5;
+const getMaxEnergyByLevel = (level: number) => {
+  const safeLevel = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(level || 1)));
+  return STAMINA_LEVEL_ONE_MAX + (safeLevel - 1) * STAMINA_PER_LEVEL + (safeLevel >= COMMANDER_MAX_LEVEL ? STAMINA_MAX_LEVEL_BONUS : 0);
+};
 const ENERGY_MAX = getMaxEnergyByLevel(1);
 const ENERGY_RECOVER_MS = 5 * 60 * 1000;
 const legacyLevels = [
@@ -80,6 +87,7 @@ function baseProfile() {
   const now = Date.now();
   return {
     saveVersion: 6,
+    staminaRuleVersion: STAMINA_RULE_VERSION,
     starterRosterVersion: 2,
     coins: 0,
     unlockedLevel: 1,
@@ -115,6 +123,7 @@ function normalizeProfile(input: any = {}) {
     ,progress: { ...base.progress, ...(input.progress || {}) }
   };
   profile.saveVersion = 6;
+  profile.staminaRuleVersion = STAMINA_RULE_VERSION;
   profile.starterRosterVersion = 2;
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
   profile.completed = Array.from(new Set((Array.isArray(input.completed) ? input.completed : []).map(Number).filter((id) => levels.some((level) => level.id === id))));
@@ -189,6 +198,18 @@ function applyExperience(player: any, amount: number) {
   player.badge = player.level >= 30 ? "V" : player.level >= 20 ? "IV" : player.level >= 12 ? "III" : player.level >= 6 ? "II" : "I";
 }
 
+function applyProfileExperience(profile: any, amount: number) {
+  const oldLevel = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(profile.player?.level) || 1)));
+  const oldMaxEnergy = getMaxEnergyByLevel(oldLevel);
+  const oldEnergy = Math.max(0, Math.min(oldMaxEnergy, Math.floor(Number(profile.resources?.energy) || 0)));
+  applyExperience(profile.player, amount);
+  const newMaxEnergy = getMaxEnergyByLevel(profile.player.level);
+  const energyGained = Math.max(0, newMaxEnergy - oldMaxEnergy);
+  profile.resources.maxEnergy = newMaxEnergy;
+  profile.resources.energy = Math.min(newMaxEnergy, oldEnergy + energyGained);
+  return { leveled: profile.player.level - oldLevel, energyGained, energyBefore: oldEnergy, energyAfter: profile.resources.energy, maxEnergyBefore: oldMaxEnergy, maxEnergyAfter: newMaxEnergy };
+}
+
 const game = {
   profile: {
     createProfile: baseProfile,
@@ -199,6 +220,7 @@ const game = {
   battleRules: {
     getBattleExperience: ({ levelId, levelCoins = 0, baseReward = 0 }: any) => Math.max(5, Math.round(Number(levelCoins) * 0.28) + Math.round(Number(baseReward) * 0.18) + Number(levelId) * 12),
     applyExperience,
+    applyProfileExperience,
     getSweepReward: (level: any) => Math.round(level.reward * 0.72),
     getSweepExperience: (reward: number, levelId: number) => Math.round((Math.max(5, Math.round(reward * 0.18) + levelId * 12)) * 0.55),
     getUpgradeCost: (upgrade: { baseCost: number }, currentLevel: number) => upgrade.baseCost * (currentLevel + 1),
@@ -399,10 +421,10 @@ async function finishBattle(ctx: Context, body: Json) {
   const gold = Math.floor(Number(level.reward) || 0);
   const experience = game.battleRules.getBattleExperience({ levelId: level.id, levelCoins: 0, baseReward: gold });
   game.profile.setGold(profile, game.profile.getGold(profile) + gold);
-  game.battleRules.applyExperience(profile.player, experience);
+  const levelProgress = game.battleRules.applyProfileExperience(profile, experience);
   game.battleRules.completeLevel(profile, level, rating);
   const saved = normalizeProfile(profile);
-  const settlement = { gold, experience, rating };
+  const settlement = { gold, experience, rating, energyGained: levelProgress.energyGained };
   const { error: settledError } = await ctx.admin.rpc("commit_battle_settlement", {
     p_user_id: ctx.userId,
     p_battle_id: battle.id,
@@ -411,7 +433,8 @@ async function finishBattle(ctx: Context, body: Json) {
     p_save_version: saved.saveVersion,
     p_settlement: settlement,
     p_delta_gold: gold,
-    p_payload: { levelId: level.id, rating }
+    p_delta_energy: levelProgress.energyGained,
+    p_payload: { levelId: level.id, rating, energyGained: levelProgress.energyGained }
   });
   if (settledError) throw settledError;
   return reply({ profile: publicProfile(saved), settlement });
@@ -433,10 +456,10 @@ async function sweep(ctx: Context, body: Json) {
   const experience = game.battleRules.getSweepExperience(gold, level.id);
   profile.resources.energy -= ENERGY_COST;
   game.profile.setGold(profile, game.profile.getGold(profile) + gold);
-  game.battleRules.applyExperience(profile.player, experience);
+  const levelProgress = game.battleRules.applyProfileExperience(profile, experience);
   const saved = await saveProfile(ctx, profile, revision);
-  await ledger(ctx, "sweep", gold, -ENERGY_COST, { levelId: level.id });
-  return reply({ profile: publicProfile(saved), settlement: { gold, experience } });
+  await ledger(ctx, "sweep", gold, levelProgress.energyGained - ENERGY_COST, { levelId: level.id, energyGained: levelProgress.energyGained });
+  return reply({ profile: publicProfile(saved), settlement: { gold, experience, energyGained: levelProgress.energyGained } });
 }
 
 async function upgrade(ctx: Context, body: Json) {

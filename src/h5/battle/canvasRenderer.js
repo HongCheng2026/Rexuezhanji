@@ -219,6 +219,8 @@
       var progress = 1 - Math.max(0, Math.min(1, effect.life / Math.max(0.01, effect.duration || 1)));
       var alpha = Math.max(0, Math.min(1, effect.life / Math.max(0.01, effect.duration || 1)));
       var color = effect.color || "#82f7ff";
+      if (scope.activeSkillSystem && scope.activeSkillSystem.drawEffect
+        && scope.activeSkillSystem.drawEffect(ctx, effect, alpha, progress)) continue;
       if (effect.type === "stellar-beam") {
         var beamHeight = (effect.height || 80) * (0.38 + Math.sin(progress * Math.PI) * 0.62);
         var grad = ctx.createLinearGradient(effect.x, effect.y - beamHeight / 2, effect.x, effect.y + beamHeight / 2);
@@ -237,16 +239,7 @@
         ctx.moveTo(effect.x - 6, effect.y);
         ctx.lineTo(effect.x + (effect.width || 820), effect.y);
         ctx.stroke();
-      } else if (effect.type === "sky-lock-beam") {
-        ctx.strokeStyle = "rgba(218, 255, 255, " + (0.9 * alpha).toFixed(3) + ")";
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 16 * alpha;
-        ctx.lineWidth = 2 + Math.sin(progress * Math.PI) * 3;
-        ctx.beginPath();
-        ctx.moveTo(effect.x, effect.y);
-        ctx.lineTo(effect.targetX, effect.targetY);
-        ctx.stroke();
-      } else if (effect.type === "dark-core" || effect.type === "obsidian-gravity-well") {
+      } else if (effect.type === "dark-core") {
         var radius = (effect.radius || 120) * (0.42 + progress * 0.58);
         var darkGrad = ctx.createRadialGradient(effect.x, effect.y, radius * 0.1, effect.x, effect.y, radius);
         darkGrad.addColorStop(0, "rgba(255, 255, 255, " + (0.74 * alpha).toFixed(3) + ")");
@@ -261,15 +254,6 @@
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(effect.x, effect.y, radius * (1.04 - progress * 0.34), 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (effect.type === "gold-judgement-spear") {
-        ctx.strokeStyle = "rgba(255, 238, 160, " + (0.92 * alpha).toFixed(3) + ")";
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 22 * alpha;
-        ctx.lineWidth = 5 + Math.sin(progress * Math.PI) * 5;
-        ctx.beginPath();
-        ctx.moveTo(effect.x, effect.y);
-        ctx.lineTo(effect.targetX, effect.targetY);
         ctx.stroke();
       } else if (effect.type === "golden-lances") {
         ctx.strokeStyle = "rgba(255, 209, 102, " + (0.78 * alpha).toFixed(3) + ")";
@@ -291,6 +275,15 @@
           ctx.closePath();
           ctx.fill();
         }
+      } else if (effect.type === "decisive-command-pulse") {
+        var pulseRadius = (effect.radius || 180) * (0.35 + progress * 0.8);
+        ctx.strokeStyle = "rgba(255, 225, 132, " + (0.9 * alpha).toFixed(3) + ")";
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 20 * alpha;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, pulseRadius, 0, Math.PI * 2);
+        ctx.stroke();
       }
     }
     ctx.restore();
@@ -608,12 +601,6 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(label.charAt(0), item.x, item.y);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = "rgba(3, 10, 18, 0.78)";
-      ctx.fillRect(item.x - 30, item.y + 24, 60, 18);
-      ctx.fillStyle = "#f4f7fb";
-      ctx.font = "bold 11px Microsoft YaHei, Arial";
-      ctx.fillText(label, item.x, item.y + 33);
       ctx.restore();
     }
   }
@@ -860,7 +847,7 @@
     if (!src) return new Image();
     if (!imageCache[src]) {
       imageCache[src] = new Image();
-      imageCache[src].src = src.indexOf("data:") === 0 ? src : encodeURI(src);
+      imageCache[src].src = String(src);
     }
     return imageCache[src];
   }

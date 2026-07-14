@@ -10,14 +10,14 @@
     perfectGold: 1000
   };
 
-  const INSURANCE_RULES = Object.freeze({
+  const DECISIVE_COMMAND_RULES = Object.freeze({
     B: Object.freeze({ maxCharges: 2, initialCharges: 1, rechargeSeconds: 18 }),
     A: Object.freeze({ maxCharges: 3, initialCharges: 1, rechargeSeconds: 18 }),
     S: Object.freeze({ maxCharges: 4, initialCharges: 1, rechargeSeconds: 18 })
   });
 
-  function getInsuranceRule(rank) {
-    return INSURANCE_RULES[String(rank || "B").toUpperCase()] || INSURANCE_RULES.B;
+  function getDecisiveCommandRule(rank) {
+    return DECISIVE_COMMAND_RULES[String(rank || "B").toUpperCase()] || DECISIVE_COMMAND_RULES.B;
   }
 
   function getUpgradeCost(upgrade, currentLevel) {
@@ -47,6 +47,28 @@
     player.honorLevel = getHonorLevelByCommanderLevel(player.level);
     player.badge = honorLevelToText(player.honorLevel);
     return { gained, leveled: player.level - oldLevel, before, after: createLevelProgressSnapshot(player) };
+  }
+
+  function applyProfileExperience(profile, amount) {
+    profile = profile || {};
+    profile.player = profile.player || {};
+    profile.resources = profile.resources || {};
+    const oldLevel = Math.max(1, Math.floor(Number(profile.player.level) || 1));
+    const oldMaxEnergy = levelsConfig.getMaxEnergyByLevel ? levelsConfig.getMaxEnergyByLevel(oldLevel) : Math.max(0, Math.floor(Number(profile.resources.maxEnergy) || 0));
+    const oldEnergy = Math.max(0, Math.min(oldMaxEnergy, Math.floor(Number(profile.resources.energy) || 0)));
+    const progress = applyExperience(profile.player, amount);
+    const newMaxEnergy = levelsConfig.getMaxEnergyByLevel ? levelsConfig.getMaxEnergyByLevel(profile.player.level) : oldMaxEnergy;
+    const energyGained = Math.max(0, newMaxEnergy - oldMaxEnergy);
+    profile.resources.maxEnergy = newMaxEnergy;
+    profile.resources.energy = Math.min(newMaxEnergy, oldEnergy + energyGained);
+    return {
+      ...progress,
+      energyGained,
+      energyBefore: oldEnergy,
+      energyAfter: profile.resources.energy,
+      maxEnergyBefore: oldMaxEnergy,
+      maxEnergyAfter: newMaxEnergy
+    };
   }
 
   function createLevelProgressSnapshot(player) {
@@ -147,13 +169,14 @@
   const api = {
     getUpgradeCost,
     BATTLE_REWARD_CONFIG,
-    INSURANCE_RULES,
-    getInsuranceRule,
+    DECISIVE_COMMAND_RULES,
+    getDecisiveCommandRule,
     getPerfectBattleReward,
     getBattleRewardByKillCount,
     getFighterUpgradeResult,
     getBattleExperience,
     applyExperience,
+    applyProfileExperience,
     createLevelProgressSnapshot,
     getHonorLevelByCommanderLevel,
     honorLevelToText,

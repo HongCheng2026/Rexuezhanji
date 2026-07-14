@@ -1,5 +1,6 @@
 (function registerEnemyStageBalance(root) {
   const scope = root.RXGame || (root.RXGame = {});
+  const codex = scope.combatCodexConfig || null;
 
   const STAGE_STRUCTURE_CONFIG = {
     prologueChapterIndex: 0,
@@ -561,7 +562,32 @@
     if (chapterIndex === 0) return normalizeComposition(PROLOGUE_STAGE_CONFIG[stageInChapter]?.composition || { small: 1 });
     if (chapterIndex === 2 && CHAPTER_2_COMPOSITION_OVERRIDE[stageInChapter]) return normalizeComposition(CHAPTER_2_COMPOSITION_OVERRIDE[stageInChapter]);
     if (chapterIndex === 7 && CHAPTER_7_COMPOSITION_OVERRIDE[stageInChapter]) return normalizeComposition(CHAPTER_7_COMPOSITION_OVERRIDE[stageInChapter]);
-    return normalizeComposition(STAGE_COMPOSITION_TEMPLATE[getStageTemplateType(stageInChapter)]);
+
+    var base = normalizeComposition(STAGE_COMPOSITION_TEMPLATE[getStageTemplateType(stageInChapter)]);
+
+    // Merge roster-based weights when available
+    if (codex) {
+      var roster = codex.getStageEnemyRoster(chapterIndex, stageInChapter);
+      if (roster && roster.weights) {
+        // Roster weights are keyed by unitId, but we also want to inform type composition.
+        // Existing type-based composition takes priority; roster weights are additive hints.
+        // We store roster weight info for downstream consumers.
+        base._rosterWeights = roster.weights;
+      }
+    }
+
+    return base;
+  }
+
+  function getStageRosterUnitIds(chapterIndex, stageInChapter) {
+    if (!codex) return null;
+    var roster = codex.getStageEnemyRoster(chapterIndex, stageInChapter);
+    if (!roster) return null;
+    var unitIds = [];
+    if (roster.mobs) unitIds = unitIds.concat(roster.mobs);
+    if (roster.fighters) unitIds = unitIds.concat(roster.fighters);
+    if (roster.elites) unitIds = unitIds.concat(roster.elites);
+    return unitIds;
   }
 
   function getChapterActiveCap(chapterIndex) {
@@ -698,6 +724,10 @@
 
   function getStageEnemySpawnPlan(chapterIndex, stageInChapter) {
     const composition = getStageEnemyComposition(chapterIndex, stageInChapter);
+    var roster = null;
+    if (codex) {
+      roster = codex.getStageEnemyRoster(chapterIndex, stageInChapter);
+    }
     return {
       composition,
       phases: getSpawnDirectorPhases(chapterIndex),
@@ -705,16 +735,18 @@
       entryMode: "rightOnly",
       simultaneousCap: getChapterActiveCap(chapterIndex),
       bossGuardCap: getChapterBossGuardCap(chapterIndex),
-      threatBudget: chapterIndex <= 2 ? 0.58 : chapterIndex === 3 ? 0.86 : chapterIndex >= 7 ? 1.18 : chapterIndex >= 5 ? 1.08 : 1
+      threatBudget: chapterIndex <= 2 ? 0.58 : chapterIndex === 3 ? 0.86 : chapterIndex >= 7 ? 1.18 : chapterIndex >= 5 ? 1.08 : 1,
+      roster: roster
     };
   }
 
-  function getEnemyFinalStats({ chapterIndex, stageInChapter, enemyType }) {
+  function getEnemyFinalStats({ chapterIndex, stageInChapter, enemyType, unitId }) {
     const config = ENEMY_TYPE_CONFIG[enemyType];
     if (!config) throw new Error(`Unknown enemy type: ${enemyType}`);
     const hpMultiplier = enemyType === "boss" ? getBossHpMultiplier(chapterIndex, stageInChapter) : getStageEnemyHpMultiplier(chapterIndex, stageInChapter);
     const damageReductionRate = clamp(getStageDamageReductionRate(chapterIndex, stageInChapter) + (config.extraDamageReductionRate || 0), 0, 0.9);
-    return {
+
+    var result = {
       ...config,
       hp: Math.ceil(config.baseHp * hpMultiplier),
       attackDamage: config.baseDamage,
@@ -729,6 +761,26 @@
       damageTakenMultiplier: 1 - damageReductionRate,
       waveConfig: getEnemyWaveConfig(chapterIndex, enemyType)
     };
+
+    if (unitId && codex) {
+      var unit = codex.getEnemyUnit(unitId);
+      if (unit && unit.statScale) {
+        var ss = unit.statScale;
+        if (typeof ss.hp === "number") result.hp = Math.ceil(result.hp * ss.hp);
+        if (typeof ss.damage === "number") result.attackDamage = Math.ceil(result.attackDamage * ss.damage);
+        if (typeof ss.speed === "number") result.bulletSpeedMultiplier = Number((result.bulletSpeedMultiplier * ss.speed).toFixed(2));
+        // fireInterval gets faster with higher speed
+        if (typeof ss.speed === "number" && result.fireInterval != null) result.fireInterval = Number((result.fireInterval / ss.speed).toFixed(2));
+        // extra damageReduction from statScale if present
+        if (typeof ss.damageReduction === "number" && ss.damageReduction > 0) {
+          var dr = clamp(damageReductionRate + ss.damageReduction, 0, 0.9);
+          result.damageReductionRate = dr;
+          result.damageTakenMultiplier = 1 - dr;
+        }
+      }
+    }
+
+    return result;
   }
 
   function getStageConfig(chapterIndex, stageInChapter) {
@@ -756,6 +808,13 @@
       for (let stage = 1; stage <= 10; stage += 1) stages.push(getStageConfig(chapter, stage));
     }
     return stages;
+  }
+
+  function getStageUnitWeights(chapterIndex, stageInChapter) {
+    if (!codex) return null;
+    var roster = codex.getStageEnemyRoster(chapterIndex, stageInChapter);
+    if (!roster || !roster.weights) return null;
+    return Object.assign({}, roster.weights);
   }
 
   const api = {
@@ -805,7 +864,9 @@
     getStageEnemySpawnPlan,
     getEnemyFinalStats,
     getStageConfig,
-    generateAllStageConfigs
+    generateAllStageConfigs,
+    getStageRosterUnitIds,
+    getStageUnitWeights
   };
 
   scope.enemyStageBalance = api;

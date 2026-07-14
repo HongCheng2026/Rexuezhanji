@@ -136,7 +136,7 @@
     return dx * dx + dy * dy < radius * radius;
   }
 
-  function clearForActiveSkill(state, rewardSource) {
+  function clearForDecisiveCommand(state, rewardSource) {
     var result = { enemyBulletsCleared: 0, normalEnemiesCleared: 0 };
     if (!state) return result;
 
@@ -328,7 +328,7 @@
     if (state.player.shield > 0) {
       state.player.shield = 0;
       state.player.invincible = 0.8;
-      state.notices.push({ text: "\u62a4\u76fe\u62b5\u6d88\u4f24\u5bb3", color: "#9bffcb", x: 960 / 2, y: 86, life: 1.5 });
+      addNotice(state, "\u62a4\u76fe\u62b5\u6d88\u4f24\u5bb3", "#9bffcb", 1.5);
       return;
     }
     var hitDamage = Math.max(1, Math.floor(Number(damage) || 10));
@@ -354,20 +354,22 @@
       var maxHp = state.player.maxHp || ((state.player.lives || 1) * 100);
       state.player.hp = Math.min(maxHp, (state.player.hp || maxHp) + Math.ceil(maxHp * 0.25));
       state.player.lives = Math.max(1, Math.ceil(state.player.hp / 100));
-      if (pw && pw.life) state.notices.push({ text: "\u751f\u547d +1", color: pw.life.color, x: 960 / 2, y: 86, life: 1.5 });
+      if (pw && pw.life) addNotice(state, "\u751f\u547d +1", pw.life.color, 1.5);
       return;
     }
     if (type === "shield") {
       state.player.shield = 15;
-      if (pw && pw.shield) state.notices.push({ text: "\u62a4\u76fe\u542f\u52a8", color: pw.shield.color, x: 960 / 2, y: 86, life: 1.5 });
+      if (pw && pw.shield) addNotice(state, "\u62a4\u76fe\u542f\u52a8", pw.shield.color, 1.5);
       return;
     }
     var maxWpn = (scope.balance && scope.balance.MAX_WEAPON_LEVEL) || 10;
     state.player.weapons[type] = Math.min(maxWpn, (state.player.weapons[type] || 0) + 1);
-    if (pw && pw[type]) state.notices.push({
-      text: pw[type].name + " Lv." + state.player.weapons[type],
-      color: pw[type].color, x: 960 / 2, y: 86, life: 1.5
-    });
+    if (pw && pw[type]) addNotice(state, pw[type].name + " Lv." + state.player.weapons[type], pw[type].color, 1.5);
+  }
+
+  function addNotice(state, text, color, life) {
+    var field = scope.battleGeometry.getField(state);
+    state.notices.push({ text: text, color: color, x: field.width / 2, y: field.noticeY, life: life });
   }
 
   /**
@@ -453,7 +455,7 @@
     damageArea: damageArea,
     damagePlayer: damagePlayer,
     applyPowerup: applyPowerup,
-    clearForActiveSkill: clearForActiveSkill,
+    clearForDecisiveCommand: clearForDecisiveCommand,
     maybeDropPowerup: maybeDropPowerup,
     dropCoins: dropCoins,
     recordKill: recordKill,

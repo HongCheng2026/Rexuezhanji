@@ -1,6 +1,5 @@
 /* Chapter select V2: fixed 1600x900 artboard. Individual art assets are never stretched. */
-.battle-screen.select-mode,
-.battle-screen.select-mode .stage-wrap {
+.battle-screen.select-mode {
   aspect-ratio: auto;
   height: 100%;
   max-height: none;
@@ -8,10 +7,7 @@
   width: 100%;
 }
 
-.battle-screen.select-mode .battle-cockpit-hud,
-.battle-screen.select-mode .hud,
-.battle-screen.select-mode .battle-side-panel,
-.battle-screen.select-mode canvas {
+.battle-screen.select-mode .battle-ui-root {
   display: none;
 }
 

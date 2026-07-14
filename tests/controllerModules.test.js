@@ -9,6 +9,7 @@ const fighterUpgradeController = require(path.join(root, "src/h5/app/fighterUpgr
 const gameEventRouter = require(path.join(root, "src/h5/app/gameEventRouter.js"));
 const lobbyController = require(path.join(root, "src/h5/app/lobbyController.js"));
 const featurePanelController = require(path.join(root, "src/h5/app/featurePanelController.js"));
+const battleUiController = require(path.join(root, "src/h5/app/battleUiController.js"));
 const battleFlowController = require(path.join(root, "src/h5/app/battleFlowController.js"));
 
 test("拆分后的控制器都提供统一工厂入口", () => {
@@ -17,6 +18,7 @@ test("拆分后的控制器都提供统一工厂入口", () => {
   assert.equal(typeof gameEventRouter.create, "function");
   assert.equal(typeof lobbyController.create, "function");
   assert.equal(typeof featurePanelController.create, "function");
+  assert.equal(typeof battleUiController.create, "function");
   assert.equal(typeof battleFlowController.create, "function");
 });
 
@@ -42,11 +44,120 @@ test("控制器在 gameApp 之前按依赖顺序加载", () => {
     '"app/gameEventRouter.js"',
     '"app/lobbyController.js"',
     '"app/featurePanelController.js"',
-    '"app/battleFlowController.js"'
+    '"app/battleUiController.js"',
+    '"app/battleFlowController.js"',
+    '"battle/activeSkillPreferences.js"',
+    '"battle/activeSkillSystem.js"',
+    '"battle/activeSkills/skyLockBeam.js"',
+    '"battle/activeSkills/obsidianGravityWell.js"',
+    '"battle/activeSkills/goldJudgementBuff.js"'
   ]) {
     const moduleIndex = loader.indexOf(modulePath);
     assert.ok(moduleIndex >= 0, `${modulePath} 应注册到加载器`);
     assert.ok(moduleIndex < appIndex, `${modulePath} 应先于 gameApp 加载`);
+  }
+});
+
+test("gameApp 只桥接战斗 UI，不再拼装 HUD 或技能规则", () => {
+  const source = fs.readFileSync(path.join(root, "src/h5/app/gameApp.js"), "utf8");
+  assert.match(source, /battleUiView\.mount/);
+  assert.match(source, /battleUiController\.create/);
+  assert.doesNotMatch(source, /function (?:updateSelectHud|setHudLabels)\s*\(/);
+  assert.doesNotMatch(source, /battleHudView|activeSkillButton|tryCastActiveSkill/);
+});
+
+test("输入和暂停只走新命令接口", () => {
+  const router = fs.readFileSync(path.join(root, "src/h5/app/gameEventRouter.js"), "utf8");
+  const lobby = fs.readFileSync(path.join(root, "src/h5/app/lobbyController.js"), "utf8");
+  assert.match(router, /Digit1:\s*0[\s\S]*Digit4:\s*3/);
+  assert.match(router, /Numpad1:\s*0[\s\S]*Numpad4:\s*3/);
+  assert.match(router, /event\.code === "Space"[\s\S]*tryUseDecisiveCommand\(\)/);
+  assert.match(router, /action === "active-auto-toggle"[\s\S]*toggleActiveSlotAuto/);
+  assert.doesNotMatch(router, /weaponSystem\.shoot|tryCastActiveSkill|data\.pauseAction/);
+  assert.doesNotMatch(lobby, /chapterSelect\.innerHTML|showPauseOverlay|pause-actions/);
+});
+
+test("战斗 HUD 普通更新会被限制在 100ms 一次，强制更新不受影响", () => {
+  let renders = 0;
+  const controller = battleUiController.create({
+    view: { render() { renders += 1; } },
+    getState: () => ({ mode: "fight", player: { hp: 100, maxHp: 100, abilities: {} } }),
+    getProfile: () => ({}),
+    getLoadout: () => ({ abilities: {} }),
+    renderInterval: 100
+  });
+  for (let i = 0; i < 20; i += 1) controller.render(false);
+  assert.equal(renders, 1);
+  controller.forceRender();
+  assert.equal(renders, 2);
+});
+
+test("战斗 HUD 模型区分主动技能状态并显示三种实时武器等级", () => {
+  const model = battleUiController.createModel({
+    state: {
+      mode: "fight",
+      player: {
+        hp: 100,
+        maxHp: 100,
+        weapons: { spread: 3, laser: 4, missile: 5 },
+        abilities: {
+          activeSlots: [{ id: "skill", autoEnabled: true, activeRemaining: 2.4, cooldownTimer: 8 }],
+          decisiveCommand: { id: "decisive-command", charges: 1, maxCharges: 4, rechargeTimer: 0 }
+        }
+      }
+    },
+    loadout: {
+      abilities: {
+        activeSlots: [{ id: "skill", name: "测试技能", iconText: "测" }],
+        decisiveCommand: { id: "decisive-command", name: "决胜指令", iconText: "令" }
+      }
+    }
+  });
+  assert.equal(model.activeSlots[0].status, "active");
+  assert.equal(model.activeSlots[0].autoEnabled, true);
+  assert.deepEqual(model.inBattleSkills.slice(0, 3).map((item) => item.level), [3, 4, 5]);
+  assert.equal(model.inBattleSkills[3], null);
+  assert.equal(model.decisiveCommand.maxCharges, 4);
+});
+
+test("暂停和恢复重复触发时只恢复一个战斗循环", () => {
+  const previousCancel = global.cancelAnimationFrame;
+  let cancelCount = 0;
+  let resumeCount = 0;
+  let hudCount = 0;
+  const state = { mode: "fight" };
+  const context = { animationId: 77, lastTime: 0 };
+  global.cancelAnimationFrame = () => { cancelCount += 1; };
+  try {
+    const controller = lobbyController.create({
+      shared: { battleRuntime: { resumeBattle() { resumeCount += 1; } } },
+      dom: { battleScreen: { classList: { remove() {} } } },
+      getProfile: () => ({}),
+      getState: () => state,
+      setState() {},
+      getBattleContext: () => context,
+      setBattleContext() {},
+      getBattleSession: () => null,
+      setBattleSession() {},
+      getSelectedLevel: () => 1,
+      setSelectedLevel() {},
+      getSelectedChapter: () => 0,
+      setSelectedChapter() {},
+      updateHud() { hudCount += 1; },
+      drawScene() {}
+    });
+    controller.pauseGame();
+    controller.pauseGame();
+    assert.equal(state.mode, "paused");
+    assert.equal(cancelCount, 1);
+    assert.equal(context.animationId, 0);
+    controller.resumeGame();
+    controller.resumeGame();
+    assert.equal(state.mode, "fight");
+    assert.equal(resumeCount, 1);
+    assert.equal(hudCount, 2);
+  } finally {
+    global.cancelAnimationFrame = previousCancel;
   }
 });
 

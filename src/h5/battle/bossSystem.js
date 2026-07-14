@@ -4,6 +4,7 @@
   var levelsConfig = scope.levels || {};
   var balanceConfig = scope.balance || {};
   var enemyBalance = scope.enemyStageBalance || {};
+  var combatCodexConfig = scope.combatCodexConfig || null;
   var weaponSys = scope.weaponSystem || {};
   var assetsConfig = scope.assets || {};
 
@@ -24,10 +25,23 @@
     var drawHeight = visual ? visual.drawHeight : 156;
     var hitRadiusX = visual ? visual.hitRadiusX : 78;
     var hitRadiusY = visual ? visual.hitRadiusY : 78;
+    var bossDef = null;
+    if (combatCodexConfig && combatCodexConfig.getStageBoss) {
+      bossDef = combatCodexConfig.getStageBoss(level.chapterIndex || 0, level.stageInChapter || 1);
+    }
+    if (bossDef && bossDef.cyclePatterns) {
+      waveConfig.cyclePatterns = bossDef.cyclePatterns;
+    }
+    if (bossDef && bossDef.art) {
+      if (!visual || !visual.drawWidth) { drawWidth = bossDef.art.drawWidth || drawWidth; }
+      if (!visual || !visual.drawHeight) { drawHeight = bossDef.art.drawHeight || drawHeight; }
+      if (!visual || !visual.hitRadiusX) { hitRadiusX = bossDef.art.hitRadiusX || hitRadiusX; }
+      if (!visual || !visual.hitRadiusY) { hitRadiusY = bossDef.art.hitRadiusY || hitRadiusY; }
+    }
     var minY = Math.max(96, drawHeight / 2 + 12);
     var maxY = field.height - minY;
     state.boss = {
-      id: "boss-" + (level.id || level.code || "1"),
+      id: bossDef ? bossDef.bossId : "boss-" + (level.id || level.code || "1"),
       x: field.width + drawWidth / 2 + 24,
       y: field.height / 2,
       targetX: field.width - drawWidth / 2 - 18,
@@ -47,7 +61,7 @@
       bulletPattern: bossStats.bulletPattern || "boss_cycle",
       waveConfig: waveConfig,
       theme: bossStats.bossTheme || waveConfig.theme || "fan",
-      title: (visual && Number(level.stageInChapter) === 10 && visual.title) || bossStats.title || waveConfig.title || "BOSS 接敌",
+      title: (bossDef && bossDef.name) || (visual && visual.title) || bossStats.title || waveConfig.title || "BOSS 接敌",
       spawnedAt: state.elapsed,
       fireTimer: 0,
       minFireInterval: waveConfig.minFireInterval || 0.32,
@@ -60,7 +74,9 @@
       burstTriggered: {},
       pendingPattern: null,
       patternIndex: 0,
-      direction: 1
+      direction: 1,
+      guardUnitIds: bossDef ? bossDef.guardUnitIds : null,
+      phaseProfile: bossDef ? bossDef.phaseProfile : null
     };
 
     state.boss.fireTimer = 0.8;

@@ -123,7 +123,7 @@
     frame.className = "pilot-dossier-art";
 
     var img = document.createElement("img");
-    img.src = encodeAssetSrc(pilot.src);
+    img.src = assetSrc(pilot.src);
     img.alt = pilot.name;
     img.loading = "lazy";
     frame.appendChild(img);
@@ -253,7 +253,7 @@
       button.setAttribute("aria-current", i === selectedIndex ? "true" : "false");
 
       var img = document.createElement("img");
-      img.src = encodeAssetSrc(pilot.src);
+      img.src = assetSrc(pilot.src);
       img.alt = "";
       img.loading = "lazy";
       button.appendChild(img);
@@ -305,8 +305,8 @@
     return Math.round((Number(value) || 0) * 100) + "%";
   }
 
-  function encodeAssetSrc(source) {
-    return String(source || "").indexOf("data:") === 0 ? source : encodeURI(String(source || ""));
+  function assetSrc(source) {
+    return String(source || "");
   }
 
   var api = {

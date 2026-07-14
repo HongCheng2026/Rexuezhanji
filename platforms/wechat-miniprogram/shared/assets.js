@@ -96,31 +96,34 @@
   }));
 
   const SHIP_ASSETS = [
-    { id: "ship-s-09", rank: "S", name: "苍穹零式", codeName: "星链", primaryWeapon: "laser", description: "旗舰原型机，蓝白能量导流覆盖全机，适合高压清场与 BOSS 输出。", passiveSkill: { id: "sky-lock-beam", name: "锁敌贯星炮", description: "自动锁定最高威胁目标，发射细型贯穿光束。", cooldown: 0.8, referenceLevel: 8, damageBudget: 1 }, insuranceSkill: { id: "stellar-beam", name: "星链贯星炮", description: "释放贯穿光束，清直线敌机并压制 BOSS。", damageMultiplier: 4.8 }, src: shipLobbyAsset("ship-lobby-09.png"), battleSrc: shipBattleAsset("ship-battle-tech-09.png") },
-    { id: "ship-s-08", rank: "S", name: "黑曜幽影", codeName: "暗核", primaryWeapon: "missile", description: "重型隐袭轰击机，黑色装甲与宽翼结构适合深空突防。", passiveSkill: { id: "obsidian-gravity-well", name: "暗域引力井", description: "在敌群中心生成小型引力井，持续聚怪并造成伤害。", cooldown: 1.6, duration: 0.8, ticks: 4, referenceLevel: 8, damageBudget: 2 }, insuranceSkill: { id: "dark-core", name: "暗核坍缩弹", description: "投放暗核爆点，吸附附近目标后爆炸清场。", damageMultiplier: 3.6 }, src: shipLobbyAsset("ship-lobby-08.png"), battleSrc: shipBattleAsset("ship-battle-tech-08.png") },
-    { id: "ship-b-04", rank: "S", name: "金矢裁决", codeName: "金矢", primaryWeapon: "spread", description: "金色精密截击机，短爆发窗口强，适合压制高护甲目标。", passiveSkill: { id: "gold-judgement-spear", name: "破甲裁决枪", description: "自动锁定最高血量目标，发射贯穿金矛并施加破甲。", cooldown: 1, referenceLevel: 8, damageBudget: 1.25, armorBreakRatio: 0.15, armorBreakDuration: 1.5 }, insuranceSkill: { id: "golden-lances", name: "金矢裁决阵", description: "释放多枚贯穿金矛，短时间破甲并穿透多目标。", damageMultiplier: 3.8 }, src: shipLobbyAsset("ship-lobby-05.png"), battleSrc: shipBattleAsset("ship-battle-tech-05.png") },
+    { id: "ship-s-09", rank: "S", name: "苍穹零式", codeName: "星链", primaryWeapon: "laser", description: "旗舰原型机，蓝白能量导流覆盖全机，适合高压清场与 BOSS 输出。", activeSkillId: "sky-lock-beam", decisiveCommandEffect: { id: "stellar-beam", name: "星链贯星炮", description: "释放贯穿光束，清直线敌机并压制 BOSS。", damageMultiplier: 4.8 }, src: shipLobbyAsset("ship-lobby-09.png"), battleSrc: shipBattleAsset("ship-battle-tech-09.png") },
+    { id: "ship-s-08", rank: "S", name: "黑曜幽影", codeName: "暗核", primaryWeapon: "missile", description: "重型隐袭轰击机，黑色装甲与宽翼结构适合深空突防。", activeSkillId: "obsidian-gravity-well", decisiveCommandEffect: { id: "dark-core", name: "暗核坍缩弹", description: "投放暗核爆点，吸附附近目标后爆炸清场。", damageMultiplier: 3.6 }, src: shipLobbyAsset("ship-lobby-08.png"), battleSrc: shipBattleAsset("ship-battle-tech-08.png") },
+    { id: "ship-b-04", rank: "S", name: "金矢裁决", codeName: "金矢", primaryWeapon: "spread", description: "金色精密截击机，短爆发窗口强，适合压制高护甲目标。", activeSkillId: "gold-judgement-buff", decisiveCommandEffect: { id: "golden-lances", name: "金矢裁决阵", description: "释放多枚贯穿金矛，短时间破甲并穿透多目标。", damageMultiplier: 3.8 }, src: shipLobbyAsset("ship-lobby-05.png"), battleSrc: shipBattleAsset("ship-battle-tech-05.png") },
     { id: "ship-a-07", rank: "A", name: "白昼指挥", codeName: "白昼", primaryWeapon: "laser", description: "指挥级白色战机，传感器与装甲层级更高，适合稳定推进。", src: shipLobbyAsset("ship-lobby-07.png"), battleSrc: shipBattleAsset("ship-battle-tech-07.png") },
     { id: "ship-a-06", rank: "A", name: "银翼06", codeName: "银翼", primaryWeapon: "spread", description: "均衡型主力战机，火力、破甲和操控稳定，是长期出战基准。", src: shipLobbyAsset("ship-lobby-01.png"), battleSrc: shipBattleAsset("ship-battle-tech-01.png") },
     { id: "ship-b-02", rank: "A", name: "赤枪03", codeName: "赤枪", primaryWeapon: "missile", description: "红色突击战机，挂点强化明显，适合中距离持续压制。", src: shipLobbyAsset("ship-lobby-03.png"), battleSrc: shipBattleAsset("ship-battle-tech-03.png") },
     { id: "ship-b-01", rank: "B", name: "蓝隼01", codeName: "蓝隼", primaryWeapon: "laser", description: "轻型高速截击机，适合快速入场和干净规避。", src: shipLobbyAsset("ship-lobby-02.png"), battleSrc: shipBattleAsset("ship-battle-tech-02.png") },
     { id: "ship-b-03", rank: "B", name: "绿堡04", codeName: "绿堡", primaryWeapon: "spread", description: "装甲支援战机，机体稳定，适合稳扎稳打的推进节奏。", src: shipLobbyAsset("ship-lobby-04.png"), battleSrc: shipBattleAsset("ship-battle-tech-04.png") },
     { id: "ship-b-05", rank: "B", name: "紫影05", codeName: "紫影", primaryWeapon: "missile", description: "低轮廓隐身战机，速度感强，适合练习穿插和补给回收。", src: shipLobbyAsset("ship-lobby-06.png"), battleSrc: shipBattleAsset("ship-battle-tech-06.png") }
-  ].map((item) => ({
-    ...item,
-    lobbySrc: item.lobbySrc || item.src,
-    primaryWeapon: item.primaryWeapon || "spread",
-    activeSkills: Array.isArray(item.activeSkills) ? item.activeSkills.slice(0, 4) : [],
-    passiveSkills: Array.isArray(item.passiveSkills) ? item.passiveSkills.slice(0, 4) : (item.passiveSkill ? [item.passiveSkill] : []),
-    passiveSkill: item.passiveSkill || null,
-    insuranceSkill: item.insuranceSkill || null,
-    battleScale: item.battleScale || 1,
-    battleWidth: item.battleWidth || 110,
-    battleHeight: item.battleHeight || 86,
-    battleRotation: item.battleRotation || 0,
-    damage: RANK_DAMAGE.ship[item.rank],
-    hp: RANK_HP.ship[item.rank],
-    lobbyPose: { ...DEFAULT_LOBBY_POSES.ship, ...(SHIP_LOBBY_POSES[item.id] || {}), ...(item.lobbyPose || {}) }
-  }));
+  ].map((item) => {
+    const exclusiveSkill = item.activeSkillId && scope.shipSkills && scope.shipSkills.getActiveSkill
+      ? scope.shipSkills.getActiveSkill(item.activeSkillId)
+      : null;
+    return {
+      ...item,
+      lobbySrc: item.lobbySrc || item.src,
+      primaryWeapon: item.primaryWeapon || "spread",
+      activeSkills: exclusiveSkill ? [exclusiveSkill] : [],
+      decisiveCommandEffect: item.decisiveCommandEffect || null,
+      battleScale: item.battleScale || 1,
+      battleWidth: item.battleWidth || 110,
+      battleHeight: item.battleHeight || 86,
+      battleRotation: item.battleRotation || 0,
+      damage: RANK_DAMAGE.ship[item.rank],
+      hp: RANK_HP.ship[item.rank],
+      lobbyPose: { ...DEFAULT_LOBBY_POSES.ship, ...(SHIP_LOBBY_POSES[item.id] || {}), ...(item.lobbyPose || {}) }
+    };
+  });
 
   const BACKGROUND_ASSETS = [
     { id: DEFAULT_BACKGROUND_ID, rank: "BASE", name: "\u661f\u6e2f\u5927\u5385", src: runtimeAsset("backgrounds", "lobby-command-cockpit-a.png") }

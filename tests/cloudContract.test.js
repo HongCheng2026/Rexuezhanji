@@ -9,6 +9,7 @@ const root = path.resolve(__dirname, "..");
 const apiSource = fs.readFileSync(path.join(root, "supabase/functions/game-api/index.ts"), "utf8");
 const cleanupSql = fs.readFileSync(path.join(root, "supabase/migrations/202607130002_remove_legacy_cloud_schema.sql"), "utf8");
 const atomicSql = fs.readFileSync(path.join(root, "supabase/migrations/202607130003_atomic_battle_commits.sql"), "utf8");
+const staminaSql = fs.readFileSync(path.join(root, "supabase/migrations/202607140001_stamina_level_up_ledger.sql"), "utf8");
 const loaderSource = fs.readFileSync(path.join(root, "src/h5/shared-loader.js"), "utf8");
 const settingSource = fs.readFileSync(path.join(root, "src/h5/ui/mainFeaturePanelsView.js"), "utf8");
 const sharedRedeemSource = fs.readFileSync(path.join(root, "src/shared/redeemCodeSystem.js"), "utf8");
@@ -22,6 +23,15 @@ test("新手阵容与兑换码由本地和服务端共同约束", () => {
   assert.match(sharedRedeemSource, /5000000/);
   assert.match(settingSource, /data-redeem-form/);
   assert.match(settingSource, /data-redeem-code/);
+});
+
+test("云端体力规则与本地保持一致并记录升级返还", () => {
+  assert.match(apiSource, /STAMINA_LEVEL_ONE_MAX\s*=\s*120/);
+  assert.match(apiSource, /STAMINA_MAX_LEVEL_BONUS\s*=\s*5/);
+  assert.match(apiSource, /applyProfileExperience/);
+  assert.match(apiSource, /p_delta_energy:\s*levelProgress\.energyGained/);
+  assert.match(staminaSql, /p_delta_energy integer/);
+  assert.match(staminaSql, /'finish-battle', p_delta_gold, p_delta_energy/);
 });
 
 test("服务端提供正式游戏所需的全部写操作", () => {
@@ -84,4 +94,13 @@ test("云端不允许选择未拥有的战姬、战机或背景", () => {
   assert.match(apiSource, /ownershipFields/);
   assert.match(apiSource, /ownedIds\.includes\(incoming\.scene\[field\]\)/);
   assert.match(apiSource, /不能使用尚未拥有的外观/);
+});
+
+test("新手阵容和500万兑换码由服务端控制", () => {
+  assert.match(apiSource, /pilotId:\s*"pilot-b-linzhihan"/);
+  assert.match(apiSource, /shipId:\s*"ship-b-01"/);
+  assert.match(apiSource, /SVIP0903:\s*\{\s*minLevel:\s*1,\s*rewards:\s*\[\{\s*type:\s*"gold",\s*amount:\s*5000000/);
+  assert.match(sharedRedeemSource, /SVIP0903:[\s\S]*amount:\s*5000000/);
+  assert.match(settingSource, /data-redeem-form/);
+  assert.match(settingSource, /data-redeem-code/);
 });

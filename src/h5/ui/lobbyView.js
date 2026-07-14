@@ -100,7 +100,7 @@
 
   function setImageSource(image, source) {
     if (!image) return;
-    image.src = String(source).indexOf("data:") === 0 ? source : encodeURI(String(source));
+    image.src = String(source || "");
   }
 
   function formatResource(value) {

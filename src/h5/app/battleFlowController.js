@@ -15,9 +15,10 @@
     var settlementController = options.settlementController;
     var audioSystem = options.audioSystem || null;
     var demoConfig = options.demoConfig || {};
-    var width = options.width || 960;
-    var height = options.height || 540;
-    var safeLeft = options.safeLeft || 176;
+    var field = shared.battleGeometry.getField();
+    var width = options.width || field.width;
+    var height = options.height || field.height;
+    var safeLeft = options.safeLeft || field.playerLeft;
     var energyCost = options.energyCost || 5;
     var profile;
     var state;
@@ -124,7 +125,9 @@
       },
       onUpdateHud: function onUpdateHud(nextState) {
         state = assignState(nextState);
-        updateHud();
+        var forceHud = Boolean(state.hudDirty);
+        state.hudDirty = false;
+        updateHud(forceHud);
         checkBattleEnd();
       }
     }));
@@ -135,12 +138,11 @@
       state.powerTimer = 2;
       state.demoMode = "influencer";
       state.notices = state.notices || [];
-      state.notices.push({ text: "三武器启动", color: "#5ee7ff", x: 960 / 2, y: 86, life: 2.2 });
+      state.notices.push({ text: "三武器启动", color: "#5ee7ff", x: width / 2, y: shared.battleGeometry.getField(state).noticeY, life: 2.2 });
     }
     currentLoadout = assignCurrentLoadout(battleContext.loadout || currentLoadout);
     if (battleSession) battleSession.loadout = currentLoadout;
-    updateHud();
-    dom.pauseButton.textContent = "暂停";
+    updateHud(true);
     battleContext.lastTime = performance.now();
     battleContext.animationId = requestAnimationFrame(function run(t) {
       shared.battleRuntime.loop(battleContext, t);
@@ -260,7 +262,7 @@
       if (audioSystem && audioSystem.stopBgm) audioSystem.stopBgm();
       playSfx(isWin ? "victory" : "defeat");
       lobby.showShop();
-      updateHud();
+      updateHud(true);
       drawScene();
     };
 
@@ -438,7 +440,6 @@
       finished = assignFinished(true);
       state = assignState(createMenuState(selectedLevel));
       state.mode = "menu";
-      dom.pauseButton.textContent = "暂停";
       dom.overlay.classList.add("hidden");
       dom.battleScreen.classList.remove("overlay-active", "settlement-active");
       lobby.hideShop();

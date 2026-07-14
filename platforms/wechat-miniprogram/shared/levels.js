@@ -18,9 +18,11 @@
     99938, 105756, 111638, 117582, 123586, 129648, 135766, 141938, 148160, 154432, 160754, 167124, 173540,
     180000
   ];
-  const STAMINA_BASE_MAX = 300;
+  const STAMINA_LEVEL_ONE_MAX = 120;
   const STAMINA_PER_LEVEL = 5;
-  const ENERGY_MAX = STAMINA_BASE_MAX + STAMINA_PER_LEVEL;
+  const STAMINA_MAX_LEVEL_BONUS = 5;
+  const STAMINA_RULE_VERSION = 2;
+  const ENERGY_MAX = STAMINA_LEVEL_ONE_MAX;
   const ENERGY_COST = 5;
   const ENERGY_RECOVER_MS = 5 * 60 * 1000;
 
@@ -39,7 +41,9 @@
 
   function getMaxEnergyByLevel(level) {
     const safeLevel = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(level) || 1)));
-    return STAMINA_BASE_MAX + safeLevel * STAMINA_PER_LEVEL;
+    return STAMINA_LEVEL_ONE_MAX
+      + (safeLevel - 1) * STAMINA_PER_LEVEL
+      + (safeLevel >= COMMANDER_MAX_LEVEL ? STAMINA_MAX_LEVEL_BONUS : 0);
   }
 
   function getFighterUpgradeCost(statType, targetLevel) {
@@ -134,8 +138,10 @@
     COMMANDER_MAX_LEVEL,
     COMMANDER_EXP_TO_NEXT_LEVEL,
     COMMANDER_TOTAL_EXP_BY_LEVEL,
-    STAMINA_BASE_MAX,
+    STAMINA_LEVEL_ONE_MAX,
     STAMINA_PER_LEVEL,
+    STAMINA_MAX_LEVEL_BONUS,
+    STAMINA_RULE_VERSION,
     ENERGY_MAX,
     ENERGY_COST,
     ENERGY_RECOVER_MS,

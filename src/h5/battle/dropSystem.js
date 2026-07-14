@@ -24,7 +24,7 @@
       state.powerTimer = getNextSupplyDelay(state, director);
       return;
     }
-    createPowerup(state, type, 960 + 26, getSafeSupplyY(state), 118);
+    createPowerup(state, type, getField(state).width + 26, getSafeSupplyY(state), 118);
     director.spawned += 1;
     if (type === "life") director.lifeSpawned = (director.lifeSpawned || 0) + 1;
     director.lastDropAt = state.elapsed || 0;
@@ -214,8 +214,10 @@
   }
 
   function getSafeSupplyY(state) {
-    var playerY = state.player ? state.player.y : 270;
-    var y = Math.max(72, Math.min(468, playerY + (Math.random() - 0.5) * 190));
+    var field = getField(state);
+    var playerY = state.player ? state.player.y : field.height / 2;
+    var margin = scaleY(state, 72);
+    var y = Math.max(margin, Math.min(field.height - margin, playerY + (Math.random() - 0.5) * scaleY(state, 190)));
     var enemies = state.enemies || [];
     for (var i = 0; i < enemies.length; i++) {
       if (Math.abs(enemies[i].y - y) < 42 && enemies[i].x > 520) y += y < 270 ? 68 : -68;
@@ -354,6 +356,7 @@
    * 应用道具效果
    */
   function applyPowerup(state, loadout, type) {
+    state.hudDirty = true;
     var MAX_HP = loadout && loadout.finalStats ? (loadout.finalStats.maxHp || ((loadout.finalStats.maxLives || 3) * 100)) : 100;
     if (type === "life") {
       state.player.maxHp = Math.max(state.player.maxHp || MAX_HP, MAX_HP);
@@ -384,10 +387,19 @@
    * 屏幕上浮动文字
    */
   function addNotice(state, text, color, life) {
+    var field = getField(state);
     state.notices.push({
       text: text, color: color,
-      x: 960 / 2, y: 86, life: life || 1.5
+      x: field.width / 2, y: field.noticeY, life: life || 1.5
     });
+  }
+
+  function getField(state) {
+    return scope.battleGeometry.getField(state);
+  }
+
+  function scaleY(state, value) {
+    return scope.battleGeometry.scaleY(state, value);
   }
 
   function playSfx(id) {

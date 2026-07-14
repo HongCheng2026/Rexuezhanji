@@ -402,10 +402,6 @@
   }
 }
 
-.battle-screen.settlement-active .battle-side-panel {
-  display: none !important;
-}
-
 .battle-screen .shop-screen.settlement-ceremony-mode {
   justify-content: stretch;
   overflow: hidden;
@@ -680,11 +676,6 @@
   .battle-screen .settlement-result-view .settlement-reward-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-.battle-screen.settlement-active .battle-side-panel,
-.battle-screen .shop-screen:not(.hidden) ~ .battle-side-panel {
-  display: none;
 }
 
 .battle-screen .victory-intro-stage {

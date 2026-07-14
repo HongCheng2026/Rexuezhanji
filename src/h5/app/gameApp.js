@@ -2,33 +2,31 @@
   "use strict";
   function boot() {
   var shared = root.RXGame || {};
-  var canvas = document.querySelector("#game");
+  var battleUiHandle = shared.battleUiView && shared.battleUiView.mount
+    ? shared.battleUiView.mount(document.querySelector("#battleUiRoot"))
+    : null;
+  var canvas = battleUiHandle && battleUiHandle.canvas;
   var ctx = canvas ? canvas.getContext("2d") : null;
-  if (shared.battleHudView && shared.battleHudView.mount) shared.battleHudView.mount(document.querySelector("#battleHudRoot"));
-
-  if (!canvas || !ctx || !shared.levels || !shared.assets || !shared.profile) {
+  if (!canvas || !ctx || !battleUiHandle || !shared.levels || !shared.assets || !shared.profile) {
     throw new Error("H5 game bootstrap failed: missing canvas or shared modules.");
   }
 
   var WIDTH = canvas.width;
   var HEIGHT = canvas.height;
-  var BATTLE_SAFE_LEFT = 176;
+  var battleField = shared.battleGeometry.getField();
+  var BATTLE_SAFE_LEFT = battleField.playerLeft;
   var keys = new Set();
   var pointer = { active: false, x: BATTLE_SAFE_LEFT, y: HEIGHT / 2 };
   root.rxKeys = keys;
   root.rxPointer = pointer;
 
   var dom = {
-    levelLabelEl: document.querySelector("#levelLabel"),
-    timeLabelEl: document.querySelector("#timeLabel"),
-    livesEl: document.querySelector("#lives"),
-    weaponEl: document.querySelector("#weapon"),
-    coinsEl: document.querySelector("#coins"),
+    battleUiRoot: document.querySelector("#battleUiRoot"),
     overlay: document.querySelector("#overlay"),
     messageEl: document.querySelector("#message"),
     startButton: document.querySelector("#startButton"),
-    pauseButton: document.querySelector("#pauseButton"),
-    activeSkillButton: document.querySelector("#activeSkillButton"),
+    pauseButton: battleUiHandle.elements.pauseButton,
+    decisiveCommandButton: battleUiHandle.elements.decisiveCommandButton,
     shopButton: document.querySelector("#shopButton"),
     chapterSelect: document.querySelector("#chapterSelect"),
     shopScreen: document.querySelector("#shopScreen"),
@@ -109,6 +107,17 @@
   var gatewayError = null;
   var gatewayActionLock = { busy: false };
   var pendingSettlement = null;
+  var battleUiController = shared.battleUiController && shared.battleUiController.create({
+    view: battleUiHandle,
+    getState: function getStateForUi() { return state; },
+    getLoadout: function getLoadoutForUi() {
+      return currentLoadout || (shared.combatStats && shared.combatStats.generateBattleLoadout
+        ? shared.combatStats.generateBattleLoadout(profile)
+        : null);
+    },
+    renderInterval: 100
+  });
+  if (!battleUiController) throw new Error("H5 game bootstrap failed: missing battle UI controller.");
   var settlementController = shared.settlementController && shared.settlementController.create({
     dom: dom,
     assetsConfig: assetsConfig,
@@ -143,7 +152,7 @@
     getGameGateway: function getGameGateway() { return gameGateway; },
     createMenuState: createMenuState,
     getLevelById: getLevelById,
-    updateHud: updateHud,
+    updateHud: renderBattleUi,
     drawScene: drawScene,
     playCampaignStoryReplay: function playCampaignStoryReplay(level) { return battleFlowController.playCampaignStoryReplay(level); },
     closeFeaturePanel: function closeFeaturePanel() { return featurePanelController && featurePanelController.close(); },
@@ -197,7 +206,7 @@
     saveProfile: saveProfile,
     renderLobby: lobbyController.renderLobby,
     renderChapterSelect: lobbyController.renderChapterSelect,
-    updateHud: updateHud
+    updateHud: renderBattleUi
   });
   if (!fighterUpgradeController) throw new Error("H5 game bootstrap failed: missing fighter upgrade controller.");
 
@@ -219,7 +228,7 @@
     saveProfile: saveProfile,
     renderLobby: lobbyController.renderLobby,
     renderChapterSelect: lobbyController.renderChapterSelect,
-    updateHud: updateHud,
+    updateHud: renderBattleUi,
     renderProfilePanel: profileController.render,
     renderFighterUpgradePanel: fighterUpgradeController.render,
     calculateTotalPower: profileController.calculateTotalPower
@@ -261,7 +270,7 @@
     getLevelById: getLevelById,
     createMenuState: createMenuState,
     createLevelProgressSnapshot: createLevelProgressSnapshot,
-    updateHud: updateHud,
+    updateHud: renderBattleUi,
     drawScene: drawScene,
     playSfx: playSfx
   });
@@ -291,7 +300,9 @@
     startSelectedLevel: function startSelectedLevel() { return battleFlowController.startSelectedLevel(); },
     openBattleSelect: lobbyController.openBattleSelect,
     pauseGame: lobbyController.pauseGame,
-    tryCastActiveSkill: tryCastActiveSkill,
+    tryUseDecisiveCommand: tryUseDecisiveCommand,
+    tryCastActiveSlot: tryCastActiveSlot,
+    toggleActiveSlotAuto: toggleActiveSlotAuto,
     renderShop: lobbyController.renderShop,
     showShop: lobbyController.showShop,
     renderSettlementChest: renderSettlementChest,
@@ -338,7 +349,7 @@
   lobbyController.renderLobby();
   lobbyController.renderChapterSelect();
   lobbyController.renderShop();
-  updateHud();
+  renderBattleUi(true);
   drawScene();
   gameEventRouter.bind();
   initializeGameGateway();
@@ -519,7 +530,7 @@
     lobbyController.renderLobby();
     lobbyController.renderChapterSelect();
     lobbyController.renderShop();
-    updateHud();
+    renderBattleUi(true);
     drawScene();
   }
 
@@ -650,68 +661,14 @@
   }
 
   function createMenuState(levelId) {
-    if (shared.battleState && shared.battleState.createMenuState) {
-      return shared.battleState.createMenuState(levelId);
+    if (!shared.battleState || !shared.battleState.createMenuState) {
+      throw new Error("H5 game bootstrap failed: missing battle state.");
     }
-    return {
-      mode: "menu",
-      level: getLevelById(levelId),
-      elapsed: 0,
-      levelCoins: 0,
-      enemyTimer: 0,
-      powerTimer: 10,
-      bossWarning: 0,
-      bossSpawned: false,
-      shake: 0,
-      player: { x: BATTLE_SAFE_LEFT, y: HEIGHT / 2, radius: 23, hp: 100, maxHp: 100, lives: 1, cooldown: 0, invincible: 1, shield: 0, weapons: {} },
-      stars: createStars(),
-      bullets: [],
-      enemyBullets: [],
-      enemies: [],
-      boss: null,
-      coins: [],
-      powerups: [],
-      particles: [],
-      shockwaves: [],
-      notices: []
-    };
+    return shared.battleState.createMenuState(levelId);
   }
 
-  function updateHud() {
-    if (dom.battleScreen && dom.battleScreen.classList.contains("select-mode")) {
-      updateSelectHud();
-      return;
-    }
-    setHudLabels(["\u5173\u5361", "\u65f6\u95f4", "\u751f\u547d", "BOSS", "\u51fb\u843d"]);
-    if (shared.battleHudView && shared.battleHudView.updateHud) {
-      shared.battleHudView.updateHud(state, profile, dom);
-    }
-  }
-
-  function updateSelectHud() {
-    var loadout = shared.combatStats && shared.combatStats.generateBattleLoadout
-      ? shared.combatStats.generateBattleLoadout(profile)
-      : null;
-    var stats = loadout ? loadout.finalStats || {} : {};
-    var maxHp = Math.round(stats.maxHp || 100);
-    var attack = Math.round(stats.attack || 0);
-    var armor = Math.max(0, Math.round(((profile.upgrades && profile.upgrades.armor) || 0) * 20));
-    var armorPen = Math.round((stats.armorPenetration || 0) * 100);
-    var power = profileController.calculateActivePower();
-
-    setHudLabels(["出战战力", "生命", "攻击", "护甲", "破甲"]);
-    if (dom.levelLabelEl) dom.levelLabelEl.textContent = power;
-    if (dom.timeLabelEl) dom.timeLabelEl.textContent = maxHp;
-    if (dom.livesEl) dom.livesEl.textContent = attack;
-    if (dom.weaponEl) dom.weaponEl.textContent = armor;
-    if (dom.coinsEl) dom.coinsEl.textContent = armorPen + "%";
-  }
-
-  function setHudLabels(labels) {
-    var nodes = document.querySelectorAll(".hud .label");
-    for (var i = 0; i < nodes.length && i < labels.length; i += 1) {
-      nodes[i].textContent = labels[i];
-    }
+  function renderBattleUi(force) {
+    return battleUiController.render(Boolean(force));
   }
 
   function drawScene() {
@@ -720,7 +677,7 @@
 
   function setImageSource(image, source) {
     if (!image || !source) return;
-    image.src = source.indexOf("data:") === 0 ? source : encodeURI(source);
+    image.src = String(source);
   }
 
   function applyLobbyPose(image, pose, role) {
@@ -786,6 +743,9 @@
   function applyBattleExperience(targetProfile, value) {
     var amount = Math.max(0, Math.floor(value || 0));
     targetProfile.player = targetProfile.player || {};
+    if (shared.battleRules && shared.battleRules.applyProfileExperience) {
+      return shared.battleRules.applyProfileExperience(targetProfile, amount);
+    }
     if (shared.battleRules && shared.battleRules.applyExperience) {
       return shared.battleRules.applyExperience(targetProfile.player, amount);
     }
@@ -848,15 +808,32 @@
     settlementController.renderSettlement(result);
   }
 
-  function tryCastActiveSkill() {
-    if (!state || state.mode !== "fight" || !shared.weaponSystem || !shared.weaponSystem.tryCastActiveSkill) return false;
-    var casted = shared.weaponSystem.tryCastActiveSkill(state, currentLoadout);
+  function tryUseDecisiveCommand() {
+    if (!state || state.mode !== "fight" || !shared.abilitySystem || !shared.abilitySystem.tryUseDecisiveCommand) return false;
+    var casted = shared.abilitySystem.tryUseDecisiveCommand(state, currentLoadout);
     if (casted) {
       playSfx("skill");
-      updateHud();
+      renderBattleUi(true);
       drawScene();
     }
     return casted;
+  }
+
+  function tryCastActiveSlot(slotIndex) {
+    if (!state || state.mode !== "fight" || !shared.abilitySystem || !shared.abilitySystem.tryCastActiveSlot) return false;
+    var casted = shared.abilitySystem.tryCastActiveSlot(state, currentLoadout, slotIndex);
+    if (casted) {
+      renderBattleUi(true);
+      drawScene();
+    }
+    return casted;
+  }
+
+  function toggleActiveSlotAuto(slotIndex) {
+    if (!state || state.mode !== "fight" || !shared.abilitySystem || !shared.abilitySystem.toggleActiveSlotAuto) return null;
+    var enabled = shared.abilitySystem.toggleActiveSlotAuto(state, currentLoadout, slotIndex);
+    if (enabled !== null) renderBattleUi(true);
+    return enabled;
   }
 
   function playSfx(id) {
@@ -865,21 +842,9 @@
 
   function updatePointer(event) {
     var rect = canvas.getBoundingClientRect();
-    pointer.x = clamp(((event.clientX - rect.left) / rect.width) * WIDTH, BATTLE_SAFE_LEFT, WIDTH - 38);
-    pointer.y = clamp(((event.clientY - rect.top) / rect.height) * HEIGHT, 42, HEIGHT - 42);
-  }
-
-  function createStars() {
-    var stars = [];
-    for (var i = 0; i < 110; i += 1) {
-      stars.push({
-        x: Math.random() * WIDTH,
-        y: Math.random() * HEIGHT,
-        size: Math.random() * 1.8 + 0.5,
-        speed: Math.random() * 120 + 70
-      });
-    }
-    return stars;
+    var field = shared.battleGeometry.getField(state);
+    pointer.x = clamp(((event.clientX - rect.left) / rect.width) * WIDTH, field.playerLeft, WIDTH - field.playerRight);
+    pointer.y = clamp(((event.clientY - rect.top) / rect.height) * HEIGHT, field.playerTop, HEIGHT - field.playerBottom);
   }
 
   function formatResource(value) {

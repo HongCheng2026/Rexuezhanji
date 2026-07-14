@@ -3,11 +3,11 @@
   const isLocalServer = /^(127\.0\.0\.1|localhost|\[::1\])$/i.test(location.hostname);
   const isReleasePackage = /(?:^|\/)release\/netlify-h5(?:\/|$)/i.test(pagePath);
   const isSourceH5 = !isReleasePackage && (isLocalServer || /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) || /(?:^|\/)H5(?:\/|$)/.test(pagePath) || /(?:^|\/)h5\//i.test(pagePath));
-  const cacheVersion = "20260714-roster-economy-v1";
+  const cacheVersion = "20260714-active-skills-v1";
   // Netlify manual ZIP uploads may omit nested folders. Production therefore loads
   // the mirrored root copies, while source-H5 keeps using the canonical shared folder.
   const base = isSourceH5 ? "../shared/" : "";
-  const files = ["balance.js", "levels.js", "enemyStageBalance.js", "campaignStoryFramework.js", "stageStoryConfig.js", "battleStorySystem.js", "chapterMapSystem.js", "battleSettlementSystem.js", "failGuideSystem.js", "taskSystem.js", "achievementSystem.js", "sRankPriceConfig.js", "redeemCodeSystem.js", "shopConfig.js", "featurePanelContent.js", "mainUiConfig.js", "runtimeCore.js", "assets.js", "profile.js", "rosterEconomy.js", "battleRules.js"];
+  const files = ["balance.js", "levels.js", "combatCodexConfig.js", "enemyStageBalance.js", "campaignStoryFramework.js", "stageStoryConfig.js", "battleStorySystem.js", "chapterMapSystem.js", "battleSettlementSystem.js", "failGuideSystem.js", "taskSystem.js", "achievementSystem.js", "sRankPriceConfig.js", "redeemCodeSystem.js", "shopConfig.js", "featurePanelContent.js", "mainUiConfig.js", "runtimeCore.js", "shipSkills.js", "assets.js", "profile.js", "rosterEconomy.js", "battleRules.js"];
   for (const file of files) {
     document.write(`<script src="${base}${file}?v=${cacheVersion}"><\/script>`);
   }
@@ -23,8 +23,13 @@
     "battle/fxSystem.js",
     "battle/canvasRenderer.js",
     "battle/battleState.js",
+    "battle/activeSkillPreferences.js",
+    "battle/activeSkillSystem.js",
     "battle/abilitySystem.js",
     "battle/weaponSystem.js",
+    "battle/activeSkills/skyLockBeam.js",
+    "battle/activeSkills/obsidianGravityWell.js",
+    "battle/activeSkills/goldJudgementBuff.js",
     "battle/enemySystem.js",
     "battle/bossSystem.js",
     "battle/collisionSystem.js",
@@ -36,7 +41,8 @@
     "ui/lobbyView.js",
     "ui/chapterSelectView.js",
     "ui/campaignStoryPlayerView.js",
-    "ui/battleHudView.js",
+    "ui/battlePauseView.js",
+    "ui/battleUiView.js",
     "ui/pilotGalleryView.js",
     "ui/shipGalleryView.js",
     "ui/mainFeaturePanelsView.js",
@@ -45,6 +51,7 @@
     "app/profileController.js",
     "app/fighterUpgradeController.js",
     "app/featurePanelController.js",
+    "app/battleUiController.js",
     "app/battleFlowController.js",
     "app/gameEventRouter.js",
     "app/gameApp.js"

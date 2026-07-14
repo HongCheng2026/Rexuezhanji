@@ -4,6 +4,7 @@
   var levelsConfig = scope.levels || {};
   var balanceConfig = scope.balance || {};
   var enemyBalance = scope.enemyStageBalance || {};
+  var combatCodexConfig = scope.combatCodexConfig || {};
   var assetsConfig = scope.assets || {};
   var weaponSys = scope.weaponSystem || {};
 
@@ -203,6 +204,44 @@
     var fireProfile = getRuntimeFireProfile(level, enemyType, phase);
     var entry = pickEntry(state, level, enemyType, index, total, phase);
     var heavy = enemyType === "elite" || enemyType === "core" || enemyType === "guard";
+
+    // Lookup unitId from codex roster
+    var unitId = null;
+    var unitDef = null;
+    var displayName = null;
+    var category = enemyType === "elite" ? "elite" : (heavy ? "fighter" : "mob");
+    if (combatCodexConfig.getStageEnemyRoster) {
+      var roster = combatCodexConfig.getStageEnemyRoster(level.chapterIndex || 0, level.stageInChapter || 1);
+      if (roster) {
+        var candidates = [];
+        if (enemyType === "elite") candidates = roster.elites || [];
+        else if (heavy) candidates = roster.fighters || [];
+        else candidates = roster.mobs || [];
+        if (candidates.length > 0) {
+          // Use roster weights or fallback equal weights
+          var weights2 = roster.weights || {};
+          var totalW = 0;
+          for (var ci = 0; ci < candidates.length; ci++) {
+            var cw = weights2[candidates[ci]] || 1 / candidates.length;
+            totalW += cw;
+          }
+          var roll = Math.random() * totalW;
+          for (var ci2 = 0; ci2 < candidates.length; ci2++) {
+            roll -= weights2[candidates[ci2]] || 1 / candidates.length;
+            if (roll <= 0) { unitId = candidates[ci2]; break; }
+          }
+          if (!unitId && candidates.length > 0) unitId = candidates[0];
+        }
+      }
+    }
+    if (unitId && combatCodexConfig.getEnemyUnit) {
+      unitDef = combatCodexConfig.getEnemyUnit(unitId);
+      if (unitDef) {
+        displayName = unitDef.name;
+        category = unitDef.category;
+      }
+    }
+
     var radius = enemyType === "elite" ? 30 :
       enemyType === "core" ? 31 :
       enemyType === "guard" ? 28 :
@@ -251,7 +290,19 @@
       waveConfig: runtimeStats.waveConfig || null,
       image: assetList[Math.floor(Math.random() * assetList.length)],
       heavy: heavy,
-      value: heavy ? 80 : 18
+      value: heavy ? 80 : 18,
+      unitId: unitId,
+      displayName: displayName,
+      category: category,
+      motionProfile: unitDef ? unitDef.motionProfile : null,
+      attackProfile: unitDef ? unitDef.attackProfile : null,
+      supportProfile: unitDef ? unitDef.supportProfile : null,
+      drawWidth: (unitDef && unitDef.art) ? unitDef.art.drawWidth : null,
+      drawHeight: (unitDef && unitDef.art) ? unitDef.art.drawHeight : null,
+      drawAngle: (unitDef && unitDef.art) ? unitDef.art.drawAngle : null,
+      hitRadiusX: (unitDef && unitDef.art) ? unitDef.art.hitRadiusX : null,
+      hitRadiusY: (unitDef && unitDef.art) ? unitDef.art.hitRadiusY : null,
+      artStatus: (unitDef && unitDef.art) ? unitDef.art.artStatus : null
     };
 
     return enemy;

@@ -124,7 +124,7 @@
     frame.className = "ship-hangar-art";
 
     var img = document.createElement("img");
-    img.src = encodeAssetSrc(ship.src);
+    img.src = assetSrc(ship.src);
     img.alt = ship.name;
     img.loading = "lazy";
     frame.appendChild(img);
@@ -172,20 +172,13 @@
     appendStat(stats, "战力", formatPower(combatStats.calculateUnitPower ? combatStats.calculateUnitPower(ship, "ship") : 0));
     info.appendChild(stats);
 
-    if (ship.exclusiveSkill) {
-      var skill = document.createElement("div");
-      skill.className = "ship-hangar-skill";
-      var skillLabel = document.createElement("span");
-      skillLabel.textContent = "专属技能";
-      skill.appendChild(skillLabel);
-      var skillName = document.createElement("strong");
-      skillName.textContent = ship.exclusiveSkill.name || "未命名技能";
-      skill.appendChild(skillName);
-      var skillDesc = document.createElement("em");
-      skillDesc.textContent = ship.exclusiveSkill.description || "S级战机专属技能。";
-      skill.appendChild(skillDesc);
-      body.appendChild(skill);
-    }
+    appendShipSkill(body, "S专属技能", Array.isArray(ship.activeSkills) ? ship.activeSkills[0] : null);
+    appendShipSkill(body, "决胜指令", {
+      name: ship.decisiveCommandEffect ? "决胜指令 · " + ship.decisiveCommandEffect.name : "决胜指令",
+      description: ship.decisiveCommandEffect
+        ? ship.decisiveCommandEffect.description
+        : "清除敌方子弹和普通敌机。"
+    });
 
     var status = document.createElement("div");
     status.className = "ship-hangar-status";
@@ -212,6 +205,22 @@
     control.appendChild(status);
 
     return info;
+  }
+
+  function appendShipSkill(parent, label, config) {
+    if (!config) return;
+    var skill = document.createElement("div");
+    skill.className = "ship-hangar-skill";
+    var skillLabel = document.createElement("span");
+    skillLabel.textContent = label;
+    skill.appendChild(skillLabel);
+    var skillName = document.createElement("strong");
+    skillName.textContent = config.name || "未命名技能";
+    skill.appendChild(skillName);
+    var skillDesc = document.createElement("em");
+    skillDesc.textContent = config.description || "技能说明待补充。";
+    skill.appendChild(skillDesc);
+    parent.appendChild(skill);
   }
 
   function createRankLine(ship) {
@@ -266,7 +275,7 @@
       button.setAttribute("aria-current", i === selectedIndex ? "true" : "false");
 
       var img = document.createElement("img");
-      img.src = encodeAssetSrc(ship.src);
+      img.src = assetSrc(ship.src);
       img.alt = "";
       img.loading = "lazy";
       button.appendChild(img);
@@ -318,8 +327,8 @@
     return Math.round((Number(value) || 0) * 100) + "%";
   }
 
-  function encodeAssetSrc(source) {
-    return String(source || "").indexOf("data:") === 0 ? source : encodeURI(String(source || ""));
+  function assetSrc(source) {
+    return String(source || "");
   }
 
   var api = {

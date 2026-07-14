@@ -21,6 +21,8 @@ test("战姬和战机使用最终金币定价", () => {
 
 test("新玩家只拥有初始战姬战机，并从第一关开始", () => {
   const profile = profileModule.createProfile();
+  assert.equal(assets.DEFAULT_PILOT_ID, "pilot-b-linzhihan");
+  assert.equal(assets.DEFAULT_SHIP_ID, "ship-b-01");
   assert.deepEqual(profile.owned.pilots, [assets.DEFAULT_PILOT_ID]);
   assert.deepEqual(profile.owned.ships, [assets.DEFAULT_SHIP_ID]);
   assert.equal(assets.DEFAULT_PILOT_ID, "pilot-b-linzhihan");

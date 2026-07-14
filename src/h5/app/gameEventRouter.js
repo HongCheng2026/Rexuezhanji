@@ -20,7 +20,9 @@
     var startSelectedLevel = options.startSelectedLevel;
     var openBattleSelect = options.openBattleSelect;
     var pauseGame = options.pauseGame;
-    var tryCastActiveSkill = options.tryCastActiveSkill;
+    var tryUseDecisiveCommand = options.tryUseDecisiveCommand;
+    var tryCastActiveSlot = options.tryCastActiveSlot;
+    var toggleActiveSlotAuto = options.toggleActiveSlotAuto;
     var renderShop = options.renderShop;
     var showShop = options.showShop;
     var renderSettlementChest = options.renderSettlementChest;
@@ -147,15 +149,20 @@
       else startSelectedLevel();
     });
     dom.battleEntryButton.addEventListener("click", openBattleSelect);
-    if (dom.pauseButton) {
-      dom.pauseButton.addEventListener("click", function onPause() {
-        if (options.getState().mode === "paused") resumeGame();
-        else pauseGame();
-      });
-    }
-    if (dom.activeSkillButton) {
-      dom.activeSkillButton.addEventListener("click", function onActiveSkillClick() {
-        tryCastActiveSkill();
+    if (dom.battleUiRoot) {
+      dom.battleUiRoot.addEventListener("click", function onBattleUiAction(event) {
+        var target = event.target && event.target.closest ? event.target.closest("[data-battle-action]") : null;
+        if (!target || target.disabled) return;
+        var action = target.dataset.battleAction;
+        if (action === "pause") {
+          if (options.getState().mode === "paused") resumeGame();
+          else pauseGame();
+        }
+        if (action === "decisive-command") tryUseDecisiveCommand();
+        if (action === "active-auto-toggle") toggleActiveSlotAuto(Number(target.dataset.slotIndex));
+        if (action === "pause-resume") resumeGame();
+        if (action === "pause-chapter") abortBattle("chapter");
+        if (action === "pause-lobby") abortBattle("lobby");
       });
     }
     if (dom.shopButton) {
@@ -195,13 +202,6 @@
         playSfx("chest");
         renderSettlement(options.getLastBattleResult());
       }
-    });
-    dom.chapterSelect.addEventListener("click", function onPauseAction(event) {
-      var action = event.target && event.target.dataset ? event.target.dataset.pauseAction : "";
-      if (!action) return;
-      if (action === "resume") resumeGame();
-      if (action === "chapter") abortBattle("chapter");
-      if (action === "lobby") abortBattle("lobby");
     });
     dom.closeFeaturePanel.addEventListener("click", function close() {
       closeFeaturePanel();
@@ -320,13 +320,13 @@
     });
 
     root.addEventListener("keydown", function onKeyDown(event) {
-      var gameKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space"].indexOf(event.code) >= 0;
+      var activeSlotIndex = getActiveSlotIndex(event.code);
+      var gameKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space", "KeyP"].indexOf(event.code) >= 0 || activeSlotIndex >= 0;
       if (gameKey) event.preventDefault();
       keys.add(event.code);
-      if (event.code === "Space" && event.repeat) return;
-      if (event.code === "Space" && options.getState().mode === "fight" && shared.weaponSystem) {
-        if (!tryCastActiveSkill()) shared.weaponSystem.shoot(options.getState(), options.getCurrentLoadout(), options.getState().bullets);
-      }
+      if (event.repeat && (event.code === "Space" || event.code === "KeyP" || activeSlotIndex >= 0)) return;
+      if (event.code === "Space" && options.getState().mode === "fight") tryUseDecisiveCommand();
+      if (activeSlotIndex >= 0 && options.getState().mode === "fight") tryCastActiveSlot(activeSlotIndex);
       if (event.code === "KeyP") {
         if (options.getState().mode === "paused") resumeGame();
         else pauseGame();
@@ -351,6 +351,20 @@
     canvas.addEventListener("pointercancel", function onPointerCancel() {
       pointer.active = false;
     });
+  }
+
+  function getActiveSlotIndex(code) {
+    var keyMap = {
+      Digit1: 0,
+      Digit2: 1,
+      Digit3: 2,
+      Digit4: 3,
+      Numpad1: 0,
+      Numpad2: 1,
+      Numpad3: 2,
+      Numpad4: 3
+    };
+    return Object.prototype.hasOwnProperty.call(keyMap, code) ? keyMap[code] : -1;
   }
 
 

@@ -87,7 +87,7 @@
     if (demoConfig.enabled) {
       showOverlay("Influencer Demo", "三武器开局，先清屏变强，再挑战 BOSS。", "开始试玩");
     }
-    updateHud();
+    updateHud(true);
     drawScene();
   }
 
@@ -109,10 +109,9 @@
     dom.battleScreen.classList.add("hidden");
     dom.battleScreen.classList.remove("select-mode", "overlay-active", "settlement-active");
     closeFeaturePanel();
-    dom.pauseButton.textContent = "暂停";
     renderLobby();
     renderChapterSelect();
-    updateHud();
+    updateHud(true);
     drawScene();
     if (audioSystem && audioSystem.playBgm) audioSystem.playBgm("lobby");
   }
@@ -122,36 +121,24 @@
     if (!state || state.mode !== "fight" || !battleContext) return;
     state.mode = "paused";
     cancelAnimationFrame(battleContext.animationId);
+    battleContext.animationId = 0;
     dom.battleScreen.classList.remove("select-mode");
-    dom.pauseButton.textContent = "继续";
-    showPauseOverlay();
+    updateHud(true);
+    drawScene();
   }
 
   function resumeGame() {
     syncContext();
     if (!state || state.mode !== "paused" || !battleContext) return;
-    dom.overlay.classList.add("hidden");
-    dom.battleScreen.classList.remove("overlay-active");
     state.mode = "fight";
-    dom.pauseButton.textContent = "暂停";
     battleContext.lastTime = performance.now();
+    updateHud(true);
     shared.battleRuntime.resumeBattle(battleContext);
-  }
-
-  function showPauseOverlay() {
-    syncContext();
-    showOverlay("作战暂停", "继续战斗，或主动撤离并返还本次消耗体力。", "继续战斗");
-    dom.overlay.classList.add("pause-overlay");
-    dom.chapterSelect.innerHTML = '<section class="pause-actions" aria-label="暂停操作">' +
-      '<button type="button" data-pause-action="resume">继续战斗</button>' +
-      '<button type="button" data-pause-action="chapter">返回关卡</button>' +
-      '<button type="button" data-pause-action="lobby">返回大厅</button>' +
-    '</section>';
   }
 
   function showOverlay(title, message, buttonText) {
     syncContext();
-    dom.overlay.classList.remove("pause-overlay", "busy-overlay");
+    dom.overlay.classList.remove("busy-overlay");
     dom.overlay.querySelector("h1").textContent = title;
     dom.messageEl.textContent = message;
     dom.startButton.textContent = buttonText;
@@ -196,7 +183,7 @@
           selectedChapter = assignSelectedChapter(chapterIndex || getLevelById(selectedLevel).chapterIndex || 0);
           if (state) state.level = getLevelById(selectedLevel);
           renderChapterSelect();
-          updateHud();
+          updateHud(true);
           drawScene();
         },
         onSelectChapter: function onSelectChapter(chapterIndex) {
@@ -208,7 +195,7 @@
           if (next) selectedLevel = assignSelectedLevel(next.id);
           if (state) state.level = getLevelById(selectedLevel);
           renderChapterSelect();
-          updateHud();
+          updateHud(true);
           drawScene();
         },
         onBackLobby: showLobby,
@@ -320,7 +307,7 @@
       renderShop(upgrades[key].name + " 已升级。");
       renderLobby();
       renderChapterSelect();
-      updateHud();
+      updateHud(true);
     }).catch(function onUpgradeError(error) {
       renderShop(error && error.message ? error.message : "升级失败，请稍后重试。");
     }).finally(function releaseUpgrade() {

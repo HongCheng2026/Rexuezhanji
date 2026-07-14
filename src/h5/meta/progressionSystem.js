@@ -64,9 +64,11 @@
     resources.gold = Math.max(0, Math.floor((resources.gold || 0) + goldReward));
 
     var player = profile.player || {};
-    var levelProgress = battleRules.applyExperience
-      ? battleRules.applyExperience(player, expReward)
-      : { gained: expReward, leveled: 0 };
+    var levelProgress = battleRules.applyProfileExperience
+      ? battleRules.applyProfileExperience(profile, expReward)
+      : battleRules.applyExperience
+        ? battleRules.applyExperience(player, expReward)
+        : { gained: expReward, leveled: 0 };
     profile.player = player;
 
     return {
@@ -108,9 +110,11 @@
     resources.gold = Math.max(0, Math.floor((resources.gold || 0) + goldReward));
 
     var player = profile.player || {};
-    var levelProgress = battleRules.applyExperience
-      ? battleRules.applyExperience(player, expReward)
-      : { gained: expReward, leveled: 0 };
+    var levelProgress = battleRules.applyProfileExperience
+      ? battleRules.applyProfileExperience(profile, expReward)
+      : battleRules.applyExperience
+        ? battleRules.applyExperience(player, expReward)
+        : { gained: expReward, leveled: 0 };
     profile.player = player;
 
     return {

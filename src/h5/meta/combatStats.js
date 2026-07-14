@@ -98,24 +98,22 @@
     var initialWeapons = balance && balance.getInitialWeaponsForRank
       ? balance.getInitialWeaponsForRank(ship.rank)
       : { spread: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1, laser: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1, missile: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1 };
-    var passiveSkill = ship.rank === "S" ? (ship.passiveSkill || null) : null;
-    var activeSlots = Array.isArray(ship.activeSkills) ? ship.activeSkills.slice(0, 4) : [];
+    var activeSlots = ship.rank === "S" && Array.isArray(ship.activeSkills) ? ship.activeSkills.slice(0, 4) : [];
     while (activeSlots.length < 4) activeSlots.push(null);
-    var passiveSlots = Array.isArray(ship.passiveSkills) ? ship.passiveSkills.slice(0, 4) : (passiveSkill ? [passiveSkill] : []);
-    var insuranceRule = scope.battleRules && scope.battleRules.getInsuranceRule
-      ? scope.battleRules.getInsuranceRule(ship.rank)
+    var decisiveCommandRule = scope.battleRules && scope.battleRules.getDecisiveCommandRule
+      ? scope.battleRules.getDecisiveCommandRule(ship.rank)
       : { maxCharges: ship.rank === "S" ? 4 : ship.rank === "A" ? 3 : 2, initialCharges: 1, rechargeSeconds: 18 };
-    var configuredInsurance = ship.insuranceSkill || null;
-    var insurance = Object.assign({
-      id: "emergency-clear",
-      name: "紧急清屏",
-      description: "清除敌方子弹和普通敌机。"
-    }, configuredInsurance || {}, insuranceRule);
-    var skillPierceSlots = passiveSkill && passiveSkill.pierceSlots ? passiveSkill.pierceSlots : {};
+    var decisiveCommand = Object.assign({
+      id: "decisive-command",
+      name: "决胜指令",
+      iconText: "令",
+      description: "清除敌方子弹和普通敌机。",
+      effect: ship.decisiveCommandEffect || null
+    }, decisiveCommandRule);
     var weaponPierceSlots = {
-      spread: Math.max(0, Math.floor(Number(skillPierceSlots.spread) || 0)),
-      laser: Math.max(0, Math.floor(Number(skillPierceSlots.laser) || 0)),
-      missile: Math.max(0, Math.floor(Number(skillPierceSlots.missile) || 0))
+      spread: 0,
+      laser: 0,
+      missile: 0
     };
     var moduleRule = balance && balance.FIGHTER_BATTLE_RULES ? balance.FIGHTER_BATTLE_RULES[ship.rank] : null;
     var moduleSlots = moduleRule ? Math.max(0, Math.floor(Number(moduleRule.moduleSlots) || 0)) : 0;
@@ -127,15 +125,6 @@
     var equippedWeaponModule = equippedModuleId && balance && balance.WEAPON_MODULES
       ? balance.WEAPON_MODULES[equippedModuleId] || null
       : null;
-    if (equippedWeaponModule && passiveSlots.length < 4) {
-      passiveSlots.push({
-        id: equippedWeaponModule.id,
-        name: equippedWeaponModule.name,
-        description: equippedWeaponModule.description || equippedWeaponModule.effectText || "武器模块",
-        icon: equippedWeaponModule.icon || ""
-      });
-    }
-
     return {
       pilot: {
         id: pilot.id,
@@ -155,8 +144,7 @@
         armorPenetration: shipPen,
         src: ship.src,
         primaryWeapon: primaryWeapon,
-        passiveSkill: passiveSkill,
-        insuranceSkill: insurance
+        decisiveCommandEffect: ship.decisiveCommandEffect || null
       },
       upgrades: {
         fire: 0,
@@ -182,8 +170,7 @@
       weaponPierceSlots: weaponPierceSlots,
       abilities: {
         activeSlots: activeSlots,
-        insurance: insurance,
-        passiveSlots: passiveSlots
+        decisiveCommand: decisiveCommand
       },
       moduleSlots: moduleSlots,
       equippedWeaponModule: equippedWeaponModule

@@ -11,7 +11,7 @@
   function createMenuState(levelId) {
     var selectedLevel = (levelsConfig.levels || []).find(function (l) { return l.id === levelId; }) ||
       (levelsConfig.levels || [])[0];
-    var field = geometry.createField ? geometry.createField() : { width: 960, height: 473 };
+    var field = geometry.createField();
     return {
       field: field,
       mode: "menu",
@@ -59,14 +59,14 @@
     var lo = loadout || {};
     var fs = lo.finalStats || {};
     var initWeapons = lo.initialWeapons || {};
-    var field = fieldOverride || (geometry.createField ? geometry.createField() : { width: 960, height: 473 });
+    var field = fieldOverride || geometry.createField();
     var maxHp = Math.max(1, Math.floor(fs.maxHp || 100));
     var abilities = lo.abilities || {};
     var activeSlots = Array.isArray(abilities.activeSlots) ? abilities.activeSlots.slice(0, 4) : [];
     while (activeSlots.length < 4) activeSlots.push(null);
-    var insurance = abilities.insurance || null;
+    var decisiveCommand = abilities.decisiveCommand || null;
     return {
-      x: 92,
+      x: field.playerLeft,
       y: field.height / 2,
       radius: 23,
       cooldown: 0,
@@ -82,8 +82,7 @@
       },
       abilities: {
         activeSlots: activeSlots.map(createActiveSlotRuntime),
-        insurance: insurance ? createInsuranceRuntime(insurance) : null,
-        passiveSlots: Array.isArray(abilities.passiveSlots) ? abilities.passiveSlots.slice(0, 4) : []
+        decisiveCommand: decisiveCommand ? createDecisiveCommandRuntime(decisiveCommand) : null
       }
     };
   }
@@ -94,21 +93,28 @@
       id: skill.id,
       name: skill.name || ("主动技能 " + (index + 1)),
       icon: skill.icon || "",
+      iconText: skill.iconText || "",
       cooldown: Math.max(0, Number(skill.cooldown) || 0),
       cooldownTimer: 0,
+      duration: Math.max(0, Number(skill.duration) || 0),
+      activeRemaining: 0,
+      autoEnabled: Boolean(scope.activeSkillPreferences && scope.activeSkillPreferences.isEnabled && scope.activeSkillPreferences.isEnabled(skill.id)),
+      castLocked: false,
+      data: null,
       charges: skill.charges == null ? null : Math.max(0, Math.floor(Number(skill.charges) || 0))
     };
   }
 
-  function createInsuranceRuntime(insurance) {
-    var maxCharges = Math.max(1, Math.floor(Number(insurance.maxCharges) || 2));
+  function createDecisiveCommandRuntime(command) {
+    var maxCharges = Math.max(1, Math.floor(Number(command.maxCharges) || 2));
     return {
-      id: insurance.id || "emergency-clear",
-      name: insurance.name || "紧急清屏",
-      icon: insurance.icon || "",
-      charges: Math.max(0, Math.min(maxCharges, Math.floor(Number(insurance.initialCharges) || 1))),
+      id: command.id || "decisive-command",
+      name: command.name || "决胜指令",
+      icon: command.icon || "",
+      iconText: command.iconText || "令",
+      charges: Math.max(0, Math.min(maxCharges, Math.floor(Number(command.initialCharges) || 1))),
       maxCharges: maxCharges,
-      rechargeSeconds: Math.max(1, Number(insurance.rechargeSeconds) || 18),
+      rechargeSeconds: Math.max(1, Number(command.rechargeSeconds) || 18),
       rechargeTimer: 0
     };
   }
@@ -118,7 +124,7 @@
    */
   function createStars(fieldOverride) {
     var count = 110;
-    var field = fieldOverride || (geometry.createField ? geometry.createField() : { width: 960, height: 473 });
+    var field = fieldOverride || geometry.createField();
     var stars = [];
     for (var i = 0; i < count; i++) {
       stars.push({
