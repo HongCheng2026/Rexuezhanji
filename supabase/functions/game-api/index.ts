@@ -28,6 +28,62 @@ const levels = (() => {
   for (let chapter = 1; chapter <= 9; chapter += 1) for (let stage = 1; stage <= 10; stage += 1) result.push({ id: result.length + 1, code: `${chapter}-${stage}`, reward: Math.round(280 + chapter * 210 + stage * 55 + (stage === 10 ? 320 : 0)) });
   return result;
 })();
+
+function normalizeHonorTier(value: unknown) {
+  return Math.max(0, Math.min(5, Math.floor(Number(value) || 0)));
+}
+
+function readHonorTier(value: unknown) {
+  if (value && typeof value === "object") {
+    const rating = value as Json;
+    return normalizeHonorTier(Math.max(
+      Number(rating.bestHonorTier) || 0,
+      Number(rating.honorTier) || 0,
+      Number(rating.tier) || 0,
+      Number(rating.stars) || 0
+    ));
+  }
+  return normalizeHonorTier(value);
+}
+
+function getStageKeyByLevelId(levelId: number) {
+  if (levelId <= 3) return `prologue_${levelId}`;
+  const chapterIndex = Math.floor((levelId - 4) / 10) + 1;
+  const stageInChapter = ((levelId - 4) % 10) + 1;
+  return `${chapterIndex}_${stageInChapter}`;
+}
+
+function getStageAliases(level: { id: number; code: string }) {
+  const stageKey = getStageKeyByLevelId(level.id);
+  return Array.from(new Set([
+    stageKey,
+    stageKey.replace(/_/g, "-"),
+    String(level.id),
+    level.code,
+    level.code.replace(/-/g, "_")
+  ]));
+}
+
+function readBestHonor(map: Json | undefined, aliases: string[]) {
+  if (!map) return 0;
+  return aliases.reduce((best, key) => Math.max(best, readHonorTier(map[key])), 0);
+}
+
+function migrateStageHonors(profile: any) {
+  profile.progress = profile.progress || {};
+  profile.progress.stageHonors = profile.progress.stageHonors || {};
+  profile.progress.stageStars = profile.progress.stageStars || {};
+  profile.ratings = profile.ratings || {};
+  for (const level of levels) {
+    const aliases = getStageAliases(level);
+    const tier = Math.max(
+      readBestHonor(profile.progress.stageHonors, aliases),
+      readBestHonor(profile.progress.stageStars, aliases),
+      readBestHonor(profile.ratings, aliases)
+    );
+    if (tier > 0) profile.progress.stageHonors[getStageKeyByLevelId(level.id)] = tier;
+  }
+}
 const upgrades: Record<string, { max: number; baseCost: number }> = {
   armor: { max: 6, baseCost: 130 },
   engine: { max: 6, baseCost: 110 },
@@ -100,7 +156,7 @@ function baseProfile() {
     scene: { pilotId: "pilot-b-linzhihan", shipId: "ship-b-01", backgroundId: "bg-hangar-01" },
     owned: { pilots: ["pilot-b-linzhihan"], ships: ["ship-b-01"], backgrounds: ["bg-hangar-01"] },
     ratings: {},
-    progress: { clearedStageIds: [] as string[], clearedChapterIds: [] as number[], stageStars: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 },
+    progress: { clearedStageIds: [] as string[], clearedChapterIds: [] as number[], stageStars: {}, stageHonors: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 },
     localEarned: { gold: 0, diamonds: 0 }
   };
 }
@@ -157,6 +213,7 @@ function normalizeProfile(input: any = {}) {
   profile.progress.clearedStageIds = Array.from(new Set(Array.isArray(profile.progress.clearedStageIds) ? profile.progress.clearedStageIds.map(String) : []));
   profile.progress.clearedChapterIds = Array.from(new Set(Array.isArray(profile.progress.clearedChapterIds) ? profile.progress.clearedChapterIds.map(Number).filter(Number.isFinite) : []));
   profile.progress.stageStars = profile.progress.stageStars || {};
+  migrateStageHonors(profile);
   if (incomingVersion < 6) {
     const fireLevel = Math.max(0, Math.min(10, Math.floor(Number(profile.upgrades.fire) || 0)));
     let credit = 90 * fireLevel * (fireLevel + 1) / 2;
@@ -229,13 +286,18 @@ const game = {
       profile.unlockedLevel = Math.max(profile.unlockedLevel || 1, Math.min(levels.length, level.id + 1));
       profile.ratings = profile.ratings || {};
       profile.ratings[level.id] = Math.max(Number(profile.ratings[level.id]) || 0, rating.stars);
-      profile.progress = profile.progress || { clearedStageIds: [], clearedChapterIds: [], stageStars: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 };
+      profile.progress = profile.progress || { clearedStageIds: [], clearedChapterIds: [], stageStars: {}, stageHonors: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 };
       const chapterIndex = level.id <= 3 ? 0 : Math.floor((level.id - 4) / 10) + 1;
       const stageInChapter = level.id <= 3 ? level.id : ((level.id - 4) % 10) + 1;
       const stageId = chapterIndex === 0 ? `prologue_${stageInChapter}` : `${chapterIndex}_${stageInChapter}`;
       if (!profile.progress.clearedStageIds.includes(stageId)) profile.progress.clearCount += 1;
       profile.progress.clearedStageIds = Array.from(new Set([...profile.progress.clearedStageIds, stageId]));
       profile.progress.stageStars[level.id] = Math.max(Number(profile.progress.stageStars[level.id]) || 0, rating.stars);
+      profile.progress.stageHonors = profile.progress.stageHonors || {};
+      profile.progress.stageHonors[stageId] = Math.max(
+        readHonorTier(profile.progress.stageHonors[stageId]),
+        readHonorTier(rating)
+      );
       if (rating.stars >= 3) profile.progress.perfectClearCount += 1;
       if (stageInChapter === 10 && profile.progress.clearedStageIds.filter((id: string) => id.startsWith(`${chapterIndex}_`)).length >= 10 && !profile.progress.clearedChapterIds.includes(chapterIndex)) profile.progress.clearedChapterIds.push(chapterIndex);
     }
@@ -416,8 +478,18 @@ async function finishBattle(ctx: Context, body: Json) {
   if (Date.now() > new Date(battle.expires_at).getTime() || elapsed < 60_000) return error("战斗时长校验未通过。", 409);
   const { profile, revision } = await loadProfile(ctx);
   if (level.id > Number(profile.unlockedLevel || 1)) return error("关卡状态异常。", 409);
-  const stars = Math.max(1, Math.min(3, Math.floor(Number((body.rating as Json)?.stars) || 1)));
-  const rating = { stars, icons: "★".repeat(stars) + "☆".repeat(3 - stars), label: `${stars}星` };
+  const incomingRating = body.rating as Json || {};
+  const stars = Math.max(1, Math.min(3, Math.floor(Number(incomingRating.stars) || 1)));
+  const honorTier = Math.max(stars, readHonorTier(incomingRating));
+  const honorLabels = ["未通关", "1星", "2星", "3星", "3星金冠", "3星彩冠"];
+  const rating = {
+    stars: Math.min(3, honorTier),
+    honorTier,
+    honorLabel: honorLabels[honorTier],
+    honorIcon: honorTier >= 5 ? "crownColorful" : honorTier >= 4 ? "crownGold" : "starBadge",
+    icons: "★".repeat(Math.min(3, honorTier)) + "☆".repeat(3 - Math.min(3, honorTier)),
+    label: honorLabels[honorTier]
+  };
   const gold = Math.floor(Number(level.reward) || 0);
   const experience = game.battleRules.getBattleExperience({ levelId: level.id, levelCoins: 0, baseReward: gold });
   game.profile.setGold(profile, game.profile.getGold(profile) + gold);

@@ -230,23 +230,64 @@
 
   function renderEnemyCodexPanel() {
     syncProfile();
-    var enemies = assetsConfig.ENEMY_CODEX || [];
+    var combatCodexConfig = scope.combatCodexConfig || {};
     var bullets = assetsConfig.ENEMY_BULLET_CODEX || {};
     dom.featurePanelKicker.textContent = "COMBAT CODEX";
     dom.featurePanelTitle.textContent = "敌机与敌弹图鉴";
-    dom.featurePanelBody.textContent = "查看当前战斗会出现的敌机、进攻方式和对应敌弹。";
+    dom.featurePanelBody.textContent = "查看当前战役中的敌军单位、进攻方式和对应敌弹。";
     dom.featurePanelSlots.className = "enemy-codex-grid";
-    var html = '<section class="enemy-codex-section"><h3>敌机</h3><div class="enemy-codex-list">';
-    for (var i = 0; i < enemies.length; i++) {
-      var enemy = enemies[i];
-      html += '<article class="enemy-codex-card">' +
-        '<img src="' + escapeAttr(enemy.src || "") + '" alt="">' +
-        '<div><strong>' + escapeHtml(enemy.name || enemy.id) + '</strong>' +
-        '<span>首次出现：' + formatCodexChapter(enemy.firstChapter) + '</span>' +
-        '<p>' + escapeHtml(enemy.attack || "") + '</p>' +
-        '<em>' + escapeHtml(enemy.danger || "") + '</em></div>' +
-      '</article>';
+    var html = '<section class="enemy-codex-section"><h3>敌军单位</h3>';
+
+    // Chapter tabs
+    var chapterNames = ["序章","第一章","第二章","第三章","第四章","第五章","第六章","第七章","第八章","第九章"];
+    html += '<div class="codex-chapter-tabs">';
+    for (var ch = 0; ch <= 9; ch++) {
+      html += '<button class="codex-chapter-tab" data-codex-chapter="' + ch + '">' + chapterNames[ch] + '</button>';
     }
+    html += '</div>';
+
+    // Enemy cards by chapter (default to chapter 1)
+    if (combatCodexConfig.getAllEnemyUnits) {
+      var allUnits = combatCodexConfig.getAllEnemyUnits();
+      for (var ch = 0; ch <= 9; ch++) {
+        var chUnits = [];
+        for (var ui = 0; ui < allUnits.length; ui++) {
+          if (allUnits[ui].chapterIndex === ch) chUnits.push(allUnits[ui]);
+        }
+        var activeClass = ch === 1 ? '' : ' codex-chapter-hidden';
+        html += '<div class="codex-chapter-units' + activeClass + '" data-codex-chapter-units="' + ch + '">';
+        for (var eu = 0; eu < chUnits.length; eu++) {
+          var unit = chUnits[eu];
+          var artResult = combatCodexConfig.resolveEnemyArt(unit, assetsConfig);
+          var imgSrc = artResult && artResult.src ? artResult.src : (assetsConfig.ASSET_PATHS && assetsConfig.ASSET_PATHS.smallEnemies ? assetsConfig.ASSET_PATHS.smallEnemies[0] : "");
+          var catLabel = unit.category === "mob" ? "小怪" : unit.category === "fighter" ? "普通敌机" : "精英";
+          html += '<article class="enemy-codex-card">' +
+            '<img src="' + escapeAttr(imgSrc) + '" alt=""' + (artResult && artResult.isPlaceholder ? ' class="placeholder-art"' : '') + '>' +
+            '<div><strong>' + escapeHtml(unit.name) + '</strong>' +
+            '<span>' + catLabel + ' / 首次出现：' + formatCodexChapter(unit.chapterIndex) + '</span>' +
+            '<p>' + escapeHtml(unit.codex && unit.codex.attack ? unit.codex.attack : "") + '</p>' +
+            '<em>' + escapeHtml(unit.codex && unit.codex.danger ? unit.codex.danger : "") + '</em></div>' +
+          '</article>';
+        }
+        html += '</div>';
+      }
+    } else {
+      // Fallback to legacy ENEMY_CODEX
+      var enemies = assetsConfig.ENEMY_CODEX || [];
+      html += '<div class="codex-chapter-units">';
+      for (var i = 0; i < enemies.length; i++) {
+        var enemy = enemies[i];
+        html += '<article class="enemy-codex-card">' +
+          '<img src="' + escapeAttr(enemy.src || "") + '" alt="">' +
+          '<div><strong>' + escapeHtml(enemy.name || enemy.id) + '</strong>' +
+          '<span>首次出现：' + formatCodexChapter(enemy.firstChapter) + '</span>' +
+          '<p>' + escapeHtml(enemy.attack || "") + '</p>' +
+          '<em>' + escapeHtml(enemy.danger || "") + '</em></div>' +
+        '</article>';
+      }
+      html += '</div>';
+    }
+
     html += '</div></section><section class="enemy-codex-section"><h3>敌弹</h3><div class="enemy-bullet-codex">';
     Object.keys(bullets).forEach(function renderBullet(key) {
       var bullet = bullets[key];
@@ -259,6 +300,40 @@
     });
     html += '</div></section>';
     dom.featurePanelSlots.innerHTML = html;
+
+    // Attach chapter tab click handlers
+    setTimeout(function() {
+      var tabs = dom.featurePanelSlots.querySelectorAll('.codex-chapter-tab');
+      for (var ti = 0; ti < tabs.length; ti++) {
+        tabs[ti].addEventListener('click', function(e) {
+          var sel = parseInt(e.target.getAttribute('data-codex-chapter'), 10);
+          var allPanels = dom.featurePanelSlots.querySelectorAll('[data-codex-chapter-units]');
+          var allTabs = dom.featurePanelSlots.querySelectorAll('.codex-chapter-tab');
+          for (var pi = 0; pi < allPanels.length; pi++) {
+            var panelCh = parseInt(allPanels[pi].getAttribute('data-codex-chapter-units'), 10);
+            if (panelCh === sel) {
+              allPanels[pi].classList.remove('codex-chapter-hidden');
+            } else {
+              allPanels[pi].classList.add('codex-chapter-hidden');
+            }
+          }
+          for (var tj = 0; tj < allTabs.length; tj++) {
+            allTabs[tj].classList.remove('codex-chapter-active');
+          }
+          e.target.classList.add('codex-chapter-active');
+        });
+      }
+      // Activate default tab
+      var defTab = dom.featurePanelSlots.querySelector('.codex-chapter-tab[data-codex-chapter="1"]');
+      if (defTab) defTab.classList.add('codex-chapter-active');
+      // Show chapter 1 by default
+      var defPanels = dom.featurePanelSlots.querySelectorAll('[data-codex-chapter-units]');
+      for (var di = 0; di < defPanels.length; di++) {
+        var dch = parseInt(defPanels[di].getAttribute('data-codex-chapter-units'), 10);
+        if (dch === 1) defPanels[di].classList.remove('codex-chapter-hidden');
+      }
+    }, 0);
+
     openFeaturePanelShell("");
   }
 

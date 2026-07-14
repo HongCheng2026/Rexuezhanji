@@ -1,6 +1,7 @@
 (function registerBattleRules(root) {
   const scope = root.RXGame || (root.RXGame = {});
   const levelsConfig = scope.levels || {};
+  const stageHonorSystem = scope.stageHonorSystem || {};
 
   const BATTLE_REWARD_CONFIG = {
     staminaCost: levelsConfig.ENERGY_COST || 5,
@@ -161,8 +162,12 @@
   function completeLevel(profile, level, rating) {
     profile.completed = Array.from(new Set([...(profile.completed || []), level.id]));
     profile.unlockedLevel = Math.max(profile.unlockedLevel || 1, Math.min((levelsConfig.levels || []).length || 3, level.id + 1));
-    profile.ratings = profile.ratings || {};
-    profile.ratings[level.id] = Math.max(profile.ratings[level.id] || 0, rating.stars);
+    if (stageHonorSystem.recordStageHonor) {
+      stageHonorSystem.recordStageHonor(profile, level, rating);
+    } else {
+      profile.ratings = profile.ratings || {};
+      profile.ratings[level.id] = Math.max(profile.ratings[level.id] || 0, rating.stars);
+    }
     return profile;
   }
 

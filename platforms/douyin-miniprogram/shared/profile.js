@@ -3,6 +3,7 @@
   const assets = scope.assets || {};
   const levelConfig = scope.levels || {};
   const balanceConfig = scope.balance || {};
+  const stageHonorSystem = scope.stageHonorSystem || {};
 
   const SAVE_VERSION = 6;
   const ENERGY_MAX = levelConfig.ENERGY_MAX || 120;
@@ -169,6 +170,9 @@
       ,progress: { clearedStageIds: uniqueList(nextProfile.progress?.clearedStageIds), clearedChapterIds: uniqueList(nextProfile.progress?.clearedChapterIds).map(Number).filter(Number.isFinite), stageStars: nextProfile.progress?.stageStars || {}, stageHonors: nextProfile.progress?.stageHonors || {}, storySeenSceneIds: uniqueList(nextProfile.progress?.storySeenSceneIds), perfectClearCount: Math.max(0, Number(nextProfile.progress?.perfectClearCount) || 0), noDamageBossClearCount: Math.max(0, Number(nextProfile.progress?.noDamageBossClearCount) || 0), clearCount: Math.max(0, Number(nextProfile.progress?.clearCount) || 0) }
     };
 
+    if (stageHonorSystem.migrateProfileStageHonors) {
+      stageHonorSystem.migrateProfileStageHonors(normalized, levelConfig.levels || []);
+    }
     recoverEnergy(normalized);
     for (const statType of ["attack", "armorPenetration", "hp"]) {
       normalized.fighterUpgrades[statType] = clamp(Math.floor(Number(normalized.fighterUpgrades[statType]) || 1), 1, Math.min(player.level, levelConfig.FIGHTER_MAX_UPGRADE_LEVEL || 60));

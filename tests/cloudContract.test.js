@@ -34,6 +34,14 @@ test("云端体力规则与本地保持一致并记录升级返还", () => {
   assert.match(staminaSql, /'finish-battle', p_delta_gold, p_delta_energy/);
 });
 
+test("云端保存三星、金冠和彩冠，不会在刷新后丢失", () => {
+  assert.match(apiSource, /stageHonors/);
+  assert.match(apiSource, /migrateStageHonors/);
+  assert.match(apiSource, /honorTier/);
+  assert.match(apiSource, /crownColorful/);
+  assert.match(apiSource, /profile\.progress\.stageHonors\[stageId\]/);
+});
+
 test("服务端提供正式游戏所需的全部写操作", () => {
   for (const action of ["start-battle", "finish-battle", "abandon-battle", "sweep", "upgrade", "upgrade-fighter", "buy-pilot", "buy-ship", "buy-weapon-module", "equip-weapon-module", "save-cosmetics"]) {
     assert.match(apiSource, new RegExp(`action === ["']${action}["']`), `缺少 ${action}`);

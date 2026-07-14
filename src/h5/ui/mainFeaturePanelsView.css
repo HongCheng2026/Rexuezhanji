@@ -69,6 +69,45 @@
   margin: 7px 0 0;
 }
 
+/* Codex chapter tabs */
+.feature-panel .codex-chapter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.feature-panel .codex-chapter-tab {
+  background: rgba(7, 13, 24, 0.78);
+  border: 1px solid rgba(94, 231, 255, 0.22);
+  border-radius: 5px;
+  color: rgba(215, 235, 250, 0.75);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 5px 10px;
+  transition: background 0.2s, color 0.2s;
+}
+.feature-panel .codex-chapter-tab:hover {
+  background: rgba(94, 231, 255, 0.15);
+  color: #fff;
+}
+.feature-panel .codex-chapter-tab.codex-chapter-active {
+  background: rgba(94, 231, 255, 0.22);
+  border-color: rgba(94, 231, 255, 0.48);
+  color: #ffd166;
+}
+.feature-panel .codex-chapter-units {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.feature-panel .codex-chapter-hidden {
+  display: none;
+}
+.feature-panel .enemy-codex-card img.placeholder-art {
+  opacity: 0.55;
+  filter: grayscale(0.3);
+}
+
 .feature-panel .enemy-bullet-codex {
   display: grid;
   gap: 10px;

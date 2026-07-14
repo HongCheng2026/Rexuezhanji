@@ -200,9 +200,6 @@
   }
 
   function createEnemy(state, level, enemyType, index, total, phase) {
-    var runtimeStats = getRuntimeStats(level, enemyType);
-    var fireProfile = getRuntimeFireProfile(level, enemyType, phase);
-    var entry = pickEntry(state, level, enemyType, index, total, phase);
     var heavy = enemyType === "elite" || enemyType === "core" || enemyType === "guard";
 
     // Lookup unitId from codex roster
@@ -241,6 +238,10 @@
         category = unitDef.category;
       }
     }
+
+    var runtimeStats = getRuntimeStats(level, enemyType, unitId);
+    var fireProfile = getRuntimeFireProfile(level, enemyType, phase);
+    var entry = pickEntry(state, level, enemyType, index, total, phase);
 
     var radius = enemyType === "elite" ? 30 :
       enemyType === "core" ? 31 :
@@ -410,14 +411,16 @@
     return { side: side, x: x, y: y, vx: vx, vy: vy, pattern: pattern };
   }
 
-  function getRuntimeStats(level, enemyType) {
+  function getRuntimeStats(level, enemyType, unitId) {
     if (enemyBalance && enemyBalance.getEnemyFinalStats) {
       try {
-        return enemyBalance.getEnemyFinalStats({
+        var opts = {
           chapterIndex: level.chapterIndex != null ? level.chapterIndex : 1,
           stageInChapter: level.stageInChapter != null ? level.stageInChapter : (level.id || 1),
           enemyType: enemyType
-        });
+        };
+        if (unitId) opts.unitId = unitId;
+        return enemyBalance.getEnemyFinalStats(opts);
       } catch (e) { /* fallback below */ }
     }
 

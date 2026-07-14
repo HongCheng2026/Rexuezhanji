@@ -290,14 +290,10 @@
   function updateStageHonorRecord(level, result) {
     syncContext();
     if (!level || !result || !result.rating) return;
-    var stageId = getStageKey(level);
-    profile.progress = profile.progress || {};
-    profile.progress.stageHonors = profile.progress.stageHonors || {};
-    var nextTier = Math.max(0, Math.floor(Number(result.rating.honorTier) || Number(result.rating.stars) || 0));
-    var previousTier = Math.max(0, Math.floor(Number(profile.progress.stageHonors[stageId]) || 0));
-    result.rating.bestHonorTier = Math.max(previousTier, nextTier);
-    result.rating.isNewRecord = nextTier > previousTier;
-    if (nextTier > previousTier) profile.progress.stageHonors[stageId] = nextTier;
+    if (!shared.stageHonorSystem || !shared.stageHonorSystem.recordStageHonor) return;
+    var record = shared.stageHonorSystem.recordStageHonor(profile, level, result.rating);
+    result.rating.bestHonorTier = record.tier;
+    result.rating.isNewRecord = record.isNewRecord;
   }
 
   function getStageKey(level) {

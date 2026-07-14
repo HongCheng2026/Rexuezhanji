@@ -115,9 +115,10 @@
       var enemy = enemies[i];
       var image = getImage(enemy.image);
       if (image.complete && image.naturalWidth) {
-        var spriteW = enemy.radius * (enemy.heavy ? 2.18 : 2.04);
-        var spriteH = enemy.radius * (enemy.heavy ? 2.92 : 2.72);
-        drawRotatedImage(image, enemy.x, enemy.y, spriteW, spriteH, -Math.PI / 2);
+        var spriteW = enemy.drawWidth || (enemy.radius * (enemy.heavy ? 2.18 : 2.04));
+        var spriteH = enemy.drawHeight || (enemy.radius * (enemy.heavy ? 2.92 : 2.72));
+        var drawAngle = enemy.drawAngle != null ? enemy.drawAngle : (-Math.PI / 2);
+        drawRotatedImage(image, enemy.x, enemy.y, spriteW, spriteH, drawAngle);
       } else {
         ctx.fillStyle = enemy.heavy ? "#ff8a5c" : "#ffcf5a";
         ctx.beginPath();

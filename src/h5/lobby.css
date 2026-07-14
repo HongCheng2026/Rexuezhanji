@@ -517,8 +517,26 @@
 }
 
 .lobby-screen .feature-tile .hud-skin-wide {
-  border-image-slice: 20 34 20 34 fill;
-  border-image-source: var(--rx-a-lobby-frame-entry);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  border: 0;
+}
+
+.lobby-screen .feature-tile.pilot .hud-skin-wide {
+  background-image: var(--rx-a-feature-pilot-icon);
+}
+
+.lobby-screen .feature-tile.hangar .hud-skin-wide {
+  background-image: var(--rx-a-feature-fighter-icon);
+}
+
+.lobby-screen .feature-tile.upgrade .hud-skin-wide {
+  background-image: var(--rx-a-feature-upgrade-icon);
+}
+
+.lobby-screen .feature-tile.codex .hud-skin-wide {
+  background-image: var(--rx-a-feature-codex-icon);
 }
 
 .lobby-screen .feature-tile-content {
@@ -531,29 +549,10 @@
 }
 
 .lobby-screen .feature-tile-icon {
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
   display: block;
   height: 64px;
   justify-self: center;
   width: 64px;
-}
-
-.lobby-screen .feature-tile.pilot .feature-tile-icon {
-  background-image: var(--rx-a-feature-pilot-icon);
-}
-
-.lobby-screen .feature-tile.hangar .feature-tile-icon {
-  background-image: var(--rx-a-feature-fighter-icon);
-}
-
-.lobby-screen .feature-tile.upgrade .feature-tile-icon {
-  background-image: var(--rx-a-feature-upgrade-icon);
-}
-
-.lobby-screen .feature-tile.codex .feature-tile-icon {
-  background-image: var(--rx-a-feature-codex-icon);
 }
 
 .lobby-screen .feature-tile-copy {

@@ -3,6 +3,7 @@
   var levelsConfig = scope.levels || {};
   var assets = scope.assets || {};
   var settlementIcons = assets.SETTLEMENT_ICON_ASSETS || {};
+  var stageHonorSystem = scope.stageHonorSystem || {};
   var storyConfig = scope.stageStoryConfig || {};
   var campaignStory = scope.campaignStoryFramework || {};
   var levels = levelsConfig.levels || [];
@@ -52,6 +53,42 @@
     { x: 1284, y: 102 },
     { x: 1438, y: 208 }
   ];
+
+  function getEnemyRosterPreview(level) {
+    var combatCodexConfig = scope.combatCodexConfig;
+    if (combatCodexConfig && combatCodexConfig.getStageEnemyRoster) {
+      var roster = combatCodexConfig.getStageEnemyRoster(
+        level && level.chapterIndex != null ? level.chapterIndex : 0,
+        level && level.stageInChapter != null ? level.stageInChapter : 1
+      );
+      if (roster) {
+        var names = [];
+        var getUnitName = function(id) {
+          var u = combatCodexConfig.getEnemyUnit(id);
+          return u ? u.name : id;
+        };
+        for (var mi = 0; mi < (roster.mobs || []).length; mi++) names.push(getUnitName(roster.mobs[mi]));
+        for (var fi = 0; fi < (roster.fighters || []).length; fi++) names.push(getUnitName(roster.fighters[fi]));
+        if (roster.elites && roster.elites.length > 0) {
+          for (var ei = 0; ei < roster.elites.length; ei++) names.push(getUnitName(roster.elites[ei]));
+        } else {
+          names.push("本关无精英单位");
+        }
+        var bossName = null;
+        if (combatCodexConfig.getStageBoss) {
+          var boss = combatCodexConfig.getStageBoss(
+            level && level.chapterIndex != null ? level.chapterIndex : 0,
+            level && level.stageInChapter != null ? level.stageInChapter : 1
+          );
+          if (boss) bossName = boss.name;
+        }
+        if (bossName) names.push("BOSS: " + bossName);
+        return names.join(" / ");
+      }
+    }
+    // Fallback
+    return level && level.isDifficultyStage ? "重甲旗舰 / 护卫群" : "敌方战斗机 / 精英护航";
+  }
 
   function renderChapterSelect(container, profile, selectedChapter, selectedLevel, callbacks) {
     callbacks = callbacks || {};
@@ -205,7 +242,7 @@
       renderDetailCell("campaign-map-detail-main", "", getMissionType(level), getLevelTitle(level), story.summary || level && level.desc || "选择关卡后开始战斗。") +
       renderDetailCell("", "status", "状态", getLevelStatus(profile, level), "") +
       renderDetailCell("", "target", "作战目标", findStoryValue(story, ["作战目标", "目标"]) || level && level.desc || "击破关卡 BOSS", "") +
-      renderDetailCell("", "enemy", "主要敌军", findStoryValue(story, ["主要敌情", "敌情"]) || (level && level.isDifficultyStage ? "重甲旗舰 / 护卫群" : "敌方战斗机 / 精英护航"), "") +
+      renderDetailCell("", "enemy", "主要敌军", getEnemyRosterPreview(level), "") +
       renderDetailCell("", "drop", "可能掉落", "强化凭证 / 战斗金币", "") +
       renderDetailCell("", "reward", "首通奖励", String(level && level.reward || 0) + " 金币", "") +
       renderDetailCell("campaign-map-detail-honor", "honor", "荣誉评价", renderHonorBadge(honor, false), "", true) +
@@ -318,13 +355,12 @@
 
   function renderNodeHonor(honor, completed, isBoss) {
     if (honor.tier > 0) return renderHonorBadge(honor, true);
-    return '<em>' + (completed ? "★★★" : isBoss ? "决战" : "待命") + "</em>";
+    return '<em>' + (completed ? "已通关" : isBoss ? "决战" : "待命") + "</em>";
   }
 
   function getStageHonor(profile, level) {
-    if (!level || !profile || !profile.progress || !profile.progress.stageHonors) return { tier: 0 };
-    var stageId = level.chapterIndex === 0 ? "prologue_" + level.stageInChapter : level.chapterIndex + "_" + level.stageInChapter;
-    return { tier: Math.max(0, Math.floor(Number(profile.progress.stageHonors[stageId]) || 0)) };
+    if (stageHonorSystem.getStageHonor) return stageHonorSystem.getStageHonor(profile, level);
+    return { tier: 0, stars: 0, crownKey: "" };
   }
 
   function renderHonorBadge(honor, compact) {
@@ -332,7 +368,8 @@
     var stars = "";
     for (var i = 1; i <= 3; i += 1) stars += '<i class="' + (i <= Math.min(3, tier) ? "is-filled" : "") + '">★</i>';
     var crown = getHonorIconSrc(tier);
-    return '<span class="campaign-map-honor' + (compact ? " is-compact" : "") + '"><span>' + stars + "</span>" + (crown ? '<img src="' + escapeHtml(crown) + '" alt="">' : "") + "</span>";
+    var label = honor && honor.label || (tier >= 5 ? "3星彩冠" : tier >= 4 ? "3星金冠" : tier + "星");
+    return '<span class="campaign-map-honor' + (compact ? " is-compact" : "") + '" aria-label="' + escapeHtml(label) + '"><span>' + stars + "</span>" + (crown ? '<img src="' + escapeHtml(crown) + '" alt="' + escapeHtml(label) + '">' : "") + "</span>";
   }
 
   function getHonorIconSrc(tier) {
