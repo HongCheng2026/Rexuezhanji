@@ -2,13 +2,13 @@
   const scope = root.RXGame || (root.RXGame = {});
 
   // 本地测试开关：为 true 时解锁全部关卡（不解锁则仅依赖 unlockedLevel）
-  const LOCAL_TEST_UNLOCK_ALL_LEVELS = true;
+  const LOCAL_TEST_UNLOCK_ALL_LEVELS = false;
 
   // 本地测试开关：为 true 时全部战姬视为已拥有
-  const LOCAL_TEST_UNLOCK_ALL_PILOTS = true;
+  const LOCAL_TEST_UNLOCK_ALL_PILOTS = false;
 
   // 本地测试开关：为 true 时全部战机视为已拥有
-  const LOCAL_TEST_UNLOCK_ALL_SHIPS = true;
+  const LOCAL_TEST_UNLOCK_ALL_SHIPS = false;
 
   function scoreStats(stats) {
     stats = stats || {};
@@ -72,8 +72,7 @@
       levelsConfig.FIGHTER_UPGRADE_STAT_GAIN.attackPerLevel) || 1;
     var fighterAttackBonus = Math.max(0, (fighterUps.attack || 1) - 1) * attackPerLevel;
     var baseAttack = (pilot.damage || 0) + (ship.damage || 0);
-    var fireMultiplier = Math.min(2, 1 + (ups.fire || 0) * 0.1);
-    var attack = Math.round(baseAttack * fireMultiplier + fighterAttackBonus);
+    var attack = Math.round(baseAttack + fighterAttackBonus);
 
     // --- 生命 ---
     var hpPerLevel = (levelsConfig.FIGHTER_UPGRADE_STAT_GAIN &&
@@ -92,32 +91,50 @@
     var coinBonus = 1 + (ups.bounty || 0) * 0.12;
 
     // --- 武器伤害倍率 ---
-    var weaponDamageMultiplier = fireMultiplier;
+    var weaponDamageMultiplier = 1;
 
     // --- 初始武器等级 ---
-    var fire = ups.fire || 0;
-    var maxWeapon = (balance && balance.MAX_WEAPON_LEVEL) || levelsConfig.MAX_WEAPON_LEVEL || 5;
-    function getInitialWeaponLevel(offset, step) {
-      return Math.max(1, Math.min(maxWeapon, 1 + Math.floor(Math.max(0, fire - offset) / step)));
-    }
     var primaryWeapon = ship.primaryWeapon || "spread";
-    var initialWeapons = { spread: 0, laser: 0, missile: 0 };
-    if (ship.rank === "B") {
-      initialWeapons[primaryWeapon] = getInitialWeaponLevel(0, 3);
-    } else {
-      var rarityWeaponFloor = ship.rank === "S" ? 2 : 1;
-      initialWeapons.spread = Math.max(rarityWeaponFloor, getInitialWeaponLevel(0, 3));
-      initialWeapons.laser = Math.max(rarityWeaponFloor, getInitialWeaponLevel(2, 4));
-      initialWeapons.missile = Math.max(rarityWeaponFloor, getInitialWeaponLevel(4, 4));
-    }
-    var passiveSkill = ship.rank === "S" ? (ship.passiveSkill || ship.exclusiveSkill || null) : null;
-    var activeSkill = ship.rank === "S" ? (ship.activeSkill || null) : null;
+    var initialWeapons = balance && balance.getInitialWeaponsForRank
+      ? balance.getInitialWeaponsForRank(ship.rank)
+      : { spread: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1, laser: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1, missile: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1 };
+    var passiveSkill = ship.rank === "S" ? (ship.passiveSkill || null) : null;
+    var activeSlots = Array.isArray(ship.activeSkills) ? ship.activeSkills.slice(0, 4) : [];
+    while (activeSlots.length < 4) activeSlots.push(null);
+    var passiveSlots = Array.isArray(ship.passiveSkills) ? ship.passiveSkills.slice(0, 4) : (passiveSkill ? [passiveSkill] : []);
+    var insuranceRule = scope.battleRules && scope.battleRules.getInsuranceRule
+      ? scope.battleRules.getInsuranceRule(ship.rank)
+      : { maxCharges: ship.rank === "S" ? 4 : ship.rank === "A" ? 3 : 2, initialCharges: 1, rechargeSeconds: 18 };
+    var configuredInsurance = ship.insuranceSkill || null;
+    var insurance = Object.assign({
+      id: "emergency-clear",
+      name: "紧急清屏",
+      description: "清除敌方子弹和普通敌机。"
+    }, configuredInsurance || {}, insuranceRule);
     var skillPierceSlots = passiveSkill && passiveSkill.pierceSlots ? passiveSkill.pierceSlots : {};
     var weaponPierceSlots = {
       spread: Math.max(0, Math.floor(Number(skillPierceSlots.spread) || 0)),
       laser: Math.max(0, Math.floor(Number(skillPierceSlots.laser) || 0)),
       missile: Math.max(0, Math.floor(Number(skillPierceSlots.missile) || 0))
     };
+    var moduleRule = balance && balance.FIGHTER_BATTLE_RULES ? balance.FIGHTER_BATTLE_RULES[ship.rank] : null;
+    var moduleSlots = moduleRule ? Math.max(0, Math.floor(Number(moduleRule.moduleSlots) || 0)) : 0;
+    var moduleState = profile.weaponModules || {};
+    var ownedModuleIds = Array.isArray(moduleState.ownedIds) ? moduleState.ownedIds : [];
+    var equippedModuleId = moduleSlots > 0 && ownedModuleIds.indexOf(moduleState.equippedId) >= 0
+      ? moduleState.equippedId
+      : null;
+    var equippedWeaponModule = equippedModuleId && balance && balance.WEAPON_MODULES
+      ? balance.WEAPON_MODULES[equippedModuleId] || null
+      : null;
+    if (equippedWeaponModule && passiveSlots.length < 4) {
+      passiveSlots.push({
+        id: equippedWeaponModule.id,
+        name: equippedWeaponModule.name,
+        description: equippedWeaponModule.description || equippedWeaponModule.effectText || "武器模块",
+        icon: equippedWeaponModule.icon || ""
+      });
+    }
 
     return {
       pilot: {
@@ -138,12 +155,11 @@
         armorPenetration: shipPen,
         src: ship.src,
         primaryWeapon: primaryWeapon,
-        exclusiveSkill: passiveSkill,
         passiveSkill: passiveSkill,
-        activeSkill: activeSkill
+        insuranceSkill: insurance
       },
       upgrades: {
-        fire: fire,
+        fire: 0,
         armor: ups.armor || 0,
         engine: ups.engine || 0,
         bounty: ups.bounty || 0
@@ -164,7 +180,13 @@
       },
       initialWeapons: initialWeapons,
       weaponPierceSlots: weaponPierceSlots,
-      activeSkill: activeSkill
+      abilities: {
+        activeSlots: activeSlots,
+        insurance: insurance,
+        passiveSlots: passiveSlots
+      },
+      moduleSlots: moduleSlots,
+      equippedWeaponModule: equippedWeaponModule
     };
   }
 

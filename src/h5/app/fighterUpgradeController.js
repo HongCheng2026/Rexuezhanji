@@ -66,7 +66,7 @@
 
     dom.featurePanelKicker.textContent = "UPGRADE";
     dom.featurePanelTitle.textContent = "战机升级";
-    dom.featurePanelBody.textContent = "强化攻击、破甲和生命，升级结果会写入存档并进入下一次出战快照。";
+    dom.featurePanelBody.textContent = "强化战机属性，查看开场武器等级，并管理 S 级战机武器模块。";
     setFeaturePanelMode("fighter-upgrade-panel");
     dom.featurePanelSlots.className = "fighter-upgrade-ui";
     dom.featurePanelSlots.innerHTML =
@@ -102,7 +102,8 @@
           '<em>收益与消耗按当前等级实时计算</em>' +
         '</div>' +
         buildFighterUpgradeRows(loadout, levelCap, maxLevel) +
-      '</section>';
+      '</section>' +
+      renderWeaponModuleSection(loadout);
     openFeaturePanelShell("fighter-upgrade-panel");
   }
 
@@ -220,6 +221,41 @@
     }).join("");
   }
 
+  function renderWeaponModuleSection(loadout) {
+    var modules = shared.balance && shared.balance.WEAPON_MODULES || {};
+    var moduleState = profile.weaponModules || { ownedIds: [], equippedId: null };
+    var ownedIds = Array.isArray(moduleState.ownedIds) ? moduleState.ownedIds : [];
+    var equippedId = moduleState.equippedId || "";
+    var isSRank = Boolean(loadout && loadout.ship && loadout.ship.rank === "S");
+    var weaponNames = { spread: "散射", laser: "激光", missile: "追踪弹" };
+    var cards = Object.keys(modules).map(function renderModuleCard(moduleId) {
+      var module = modules[moduleId];
+      var owned = ownedIds.indexOf(moduleId) >= 0;
+      var equipped = equippedId === moduleId;
+      var button = "";
+      if (!isSRank) {
+        button = '<button type="button" disabled>S级战机专用</button>';
+      } else if (!owned) {
+        button = '<button type="button" data-module-buy="' + escapeAttr(moduleId) + '">购买 ' + formatResource(module.price) + '</button>';
+      } else if (equipped) {
+        button = '<button type="button" class="equipped" data-module-unequip="1">卸下</button>';
+      } else {
+        button = '<button type="button" data-module-equip="' + escapeAttr(moduleId) + '">装备</button>';
+      }
+      return '<article class="weapon-module-card' + (equipped ? " is-equipped" : "") + '">' +
+        '<div class="weapon-module-card-head"><span>' + escapeHtml(weaponNames[module.weaponType] || module.weaponType) + '</span><em>' + (equipped ? "已装备" : owned ? "已拥有" : "未购买") + '</em></div>' +
+        '<strong>' + escapeHtml(module.name) + '</strong>' +
+        '<p>' + escapeHtml(module.description) + '</p>' +
+        button +
+      '</article>';
+    }).join("");
+    var equippedName = equippedId && modules[equippedId] ? modules[equippedId].name : "未装备";
+    return '<section class="weapon-module-section">' +
+      '<div class="weapon-module-section-head"><div><span>S级武器模块</span><strong>当前：' + escapeHtml(equippedName) + '</strong></div><em>' + (isSRank ? "1个全局槽位 · 仅强化对应基础武器" : "当前战机无模块槽") + '</em></div>' +
+      '<div class="weapon-module-grid">' + cards + '</div>' +
+    '</section>';
+  }
+
   function upgradeFighterStat(statType) {
     profile = options.getProfile();
     if (gatewayActionLock.busy) return;
@@ -238,6 +274,36 @@
       dom.featurePanelBody.textContent = error && error.message ? error.message : "强化失败，请稍后重试。";
       renderFighterUpgradePanel();
     }).finally(function releaseFighterUpgrade() {
+      gatewayActionLock.busy = false;
+    });
+  }
+
+  function buyWeaponModule(moduleId) {
+    runModuleAction("buyWeaponModule", moduleId);
+  }
+
+  function equipWeaponModule(moduleId) {
+    runModuleAction("equipWeaponModule", moduleId || null);
+  }
+
+  function runModuleAction(method, moduleId) {
+    profile = options.getProfile();
+    if (gatewayActionLock.busy) return;
+    gatewayActionLock.busy = true;
+    ensureGameGateway().then(function invokeModuleGateway() {
+      return options.getGameGateway()[method](moduleId);
+    }).then(function onModuleActionComplete(response) {
+      if (response && response.profile) applyGatewayProfile(response.profile);
+      profile = options.getProfile();
+      saveProfile();
+      renderLobby();
+      renderChapterSelect();
+      updateHud();
+      renderFighterUpgradePanel();
+    }).catch(function onModuleActionError(error) {
+      renderFighterUpgradePanel();
+      dom.featurePanelBody.textContent = error && error.message ? error.message : "模块操作失败，请稍后重试。";
+    }).finally(function releaseModuleAction() {
       gatewayActionLock.busy = false;
     });
   }
@@ -322,6 +388,8 @@
     return {
       render: renderFighterUpgradePanel,
       upgrade: upgradeFighterStat,
+      buyWeaponModule: buyWeaponModule,
+      equipWeaponModule: equipWeaponModule,
       isBusy: function isBusy() { return gatewayActionLock.busy; }
     };
   }

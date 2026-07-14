@@ -100,12 +100,6 @@
   const levels = createLevels();
 
   const upgrades = {
-    fire: {
-      name: "火力核心",
-      desc: "提升所有子弹伤害，并让基础弹幕更密。",
-      max: 10,
-      baseCost: 90
-    },
     armor: {
       name: "装甲舱",
       desc: "每级增加 1 点初始生命。",

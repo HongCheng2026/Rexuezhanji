@@ -7,7 +7,8 @@
   const DEFAULT_BACKGROUND_ID = "bg-hangar-01";
   const LOBBY_REFERENCE = Object.freeze({ width: 1600, height: 900 });
   const pagePath = root.location?.pathname ? decodeURIComponent(root.location.pathname).replace(/\\/g, "/") : "";
-  const runtimeBase = /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) ? "../../assets/runtime/" : "assets/runtime/";
+  const runtimeRelativeBase = /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) ? "../../assets/runtime/" : "assets/runtime/";
+  const runtimeBase = root.location?.href ? new URL(runtimeRelativeBase, root.location.href).href : runtimeRelativeBase;
   const runtimeAsset = (group, file) => runtimeBase + group + "/" + file;
   const shipLobbyAsset = (file) => runtimeAsset("ships/lobby", file);
   const shipBattleAsset = (file) => runtimeAsset("ships/battle", file);
@@ -95,9 +96,9 @@
   }));
 
   const SHIP_ASSETS = [
-    { id: "ship-s-09", rank: "S", name: "苍穹零式", codeName: "星链", primaryWeapon: "laser", description: "旗舰原型机，蓝白能量导流覆盖全机，适合高压清场与 BOSS 输出。", exclusiveSkill: { id: "stellar-overload", name: "星链超载", description: "周期性发射高伤害爆裂弹，命中后造成大范围溅射。", cooldown: 2.4, damageMultiplier: 2.2 }, passiveSkill: { id: "stellar-overload", name: "星链超载", cooldown: 2.4, damageMultiplier: 2.2 }, activeSkill: { id: "stellar-beam", name: "星链贯星炮", description: "释放贯穿光束，清直线敌机并压制 BOSS。", maxCharges: 2, initialCharges: 1, rechargeSeconds: 18, damageMultiplier: 4.8 }, src: shipLobbyAsset("ship-lobby-09.png"), battleSrc: shipBattleAsset("ship-battle-tech-09.png") },
-    { id: "ship-s-08", rank: "S", name: "黑曜幽影", codeName: "暗核", primaryWeapon: "missile", description: "重型隐袭轰击机，黑色装甲与宽翼结构适合深空突防。", exclusiveSkill: { id: "dark-cluster", name: "暗核重爆", description: "周期性追加三枚集束弹，命中后造成范围爆炸。", cooldown: 2.1, damageMultiplier: 1.45 }, passiveSkill: { id: "dark-cluster", name: "暗核重爆", cooldown: 2.1, damageMultiplier: 1.45 }, activeSkill: { id: "dark-core", name: "暗核坍缩弹", description: "投放暗核爆点，吸附附近目标后爆炸清场。", maxCharges: 2, initialCharges: 1, rechargeSeconds: 18, damageMultiplier: 3.6 }, src: shipLobbyAsset("ship-lobby-08.png"), battleSrc: shipBattleAsset("ship-battle-tech-08.png") },
-    { id: "ship-b-04", rank: "S", name: "金矢裁决", codeName: "金矢", primaryWeapon: "spread", description: "金色精密截击机，短爆发窗口强，适合压制高护甲目标。", exclusiveSkill: { id: "golden-pierce", name: "金矢贯穿", description: "三类武器获得额外穿透槽，稳定击穿密集目标。", pierceSlots: { spread: 1, laser: 1, missile: 1 } }, passiveSkill: { id: "golden-pierce", name: "金矢贯穿", pierceSlots: { spread: 1, laser: 1, missile: 1 } }, activeSkill: { id: "golden-lances", name: "金矢裁决阵", description: "释放多枚贯穿金矛，短时间破甲并穿透多目标。", maxCharges: 2, initialCharges: 1, rechargeSeconds: 18, damageMultiplier: 3.8 }, src: shipLobbyAsset("ship-lobby-05.png"), battleSrc: shipBattleAsset("ship-battle-tech-05.png") },
+    { id: "ship-s-09", rank: "S", name: "苍穹零式", codeName: "星链", primaryWeapon: "laser", description: "旗舰原型机，蓝白能量导流覆盖全机，适合高压清场与 BOSS 输出。", passiveSkill: { id: "sky-lock-beam", name: "锁敌贯星炮", description: "自动锁定最高威胁目标，发射细型贯穿光束。", cooldown: 0.8, referenceLevel: 8, damageBudget: 1 }, insuranceSkill: { id: "stellar-beam", name: "星链贯星炮", description: "释放贯穿光束，清直线敌机并压制 BOSS。", damageMultiplier: 4.8 }, src: shipLobbyAsset("ship-lobby-09.png"), battleSrc: shipBattleAsset("ship-battle-tech-09.png") },
+    { id: "ship-s-08", rank: "S", name: "黑曜幽影", codeName: "暗核", primaryWeapon: "missile", description: "重型隐袭轰击机，黑色装甲与宽翼结构适合深空突防。", passiveSkill: { id: "obsidian-gravity-well", name: "暗域引力井", description: "在敌群中心生成小型引力井，持续聚怪并造成伤害。", cooldown: 1.6, duration: 0.8, ticks: 4, referenceLevel: 8, damageBudget: 2 }, insuranceSkill: { id: "dark-core", name: "暗核坍缩弹", description: "投放暗核爆点，吸附附近目标后爆炸清场。", damageMultiplier: 3.6 }, src: shipLobbyAsset("ship-lobby-08.png"), battleSrc: shipBattleAsset("ship-battle-tech-08.png") },
+    { id: "ship-b-04", rank: "S", name: "金矢裁决", codeName: "金矢", primaryWeapon: "spread", description: "金色精密截击机，短爆发窗口强，适合压制高护甲目标。", passiveSkill: { id: "gold-judgement-spear", name: "破甲裁决枪", description: "自动锁定最高血量目标，发射贯穿金矛并施加破甲。", cooldown: 1, referenceLevel: 8, damageBudget: 1.25, armorBreakRatio: 0.15, armorBreakDuration: 1.5 }, insuranceSkill: { id: "golden-lances", name: "金矢裁决阵", description: "释放多枚贯穿金矛，短时间破甲并穿透多目标。", damageMultiplier: 3.8 }, src: shipLobbyAsset("ship-lobby-05.png"), battleSrc: shipBattleAsset("ship-battle-tech-05.png") },
     { id: "ship-a-07", rank: "A", name: "白昼指挥", codeName: "白昼", primaryWeapon: "laser", description: "指挥级白色战机，传感器与装甲层级更高，适合稳定推进。", src: shipLobbyAsset("ship-lobby-07.png"), battleSrc: shipBattleAsset("ship-battle-tech-07.png") },
     { id: DEFAULT_SHIP_ID, rank: "A", name: "银翼06", codeName: "银翼", primaryWeapon: "spread", description: "均衡型主力战机，火力、破甲和操控稳定，是长期出战基准。", src: shipLobbyAsset("ship-lobby-01.png"), battleSrc: shipBattleAsset("ship-battle-tech-01.png") },
     { id: "ship-b-02", rank: "A", name: "赤枪03", codeName: "赤枪", primaryWeapon: "missile", description: "红色突击战机，挂点强化明显，适合中距离持续压制。", src: shipLobbyAsset("ship-lobby-03.png"), battleSrc: shipBattleAsset("ship-battle-tech-03.png") },
@@ -108,8 +109,10 @@
     ...item,
     lobbySrc: item.lobbySrc || item.src,
     primaryWeapon: item.primaryWeapon || "spread",
+    activeSkills: Array.isArray(item.activeSkills) ? item.activeSkills.slice(0, 4) : [],
+    passiveSkills: Array.isArray(item.passiveSkills) ? item.passiveSkills.slice(0, 4) : (item.passiveSkill ? [item.passiveSkill] : []),
     passiveSkill: item.passiveSkill || null,
-    activeSkill: item.activeSkill || null,
+    insuranceSkill: item.insuranceSkill || null,
     battleScale: item.battleScale || 1,
     battleWidth: item.battleWidth || 110,
     battleHeight: item.battleHeight || 86,

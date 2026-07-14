@@ -32,10 +32,11 @@
     var saveProfile = options.saveProfile;
     var renderLobby = options.renderLobby;
     var upgradeFighterStat = options.upgradeFighterStat;
+    var buyWeaponModule = options.buyWeaponModule;
+    var equipWeaponModule = options.equipWeaponModule;
     var handleProfilePanelClick = options.handleProfilePanelClick;
     var handleAvatarUpload = options.handleAvatarUpload;
     var openFeaturePanel = options.openFeaturePanel;
-    var syncLobbyViewportScale = options.syncLobbyViewportScale;
     var updatePointer = options.updatePointer;
     var bound = false;
 
@@ -255,6 +256,21 @@
         closeFeaturePanel();
         return;
       }
+      var moduleBuy = event.target && event.target.closest ? event.target.closest("[data-module-buy]") : null;
+      if (moduleBuy && !moduleBuy.disabled) {
+        buyWeaponModule(moduleBuy.dataset.moduleBuy);
+        return;
+      }
+      var moduleEquip = event.target && event.target.closest ? event.target.closest("[data-module-equip]") : null;
+      if (moduleEquip && !moduleEquip.disabled) {
+        equipWeaponModule(moduleEquip.dataset.moduleEquip);
+        return;
+      }
+      var moduleUnequip = event.target && event.target.closest ? event.target.closest("[data-module-unequip]") : null;
+      if (moduleUnequip && !moduleUnequip.disabled) {
+        equipWeaponModule(null);
+        return;
+      }
       var target = event.target && event.target.closest ? event.target.closest("[data-fighter-upgrade]") : null;
       if (!target || target.disabled) return;
       upgradeFighterStat(target.dataset.fighterUpgrade);
@@ -289,8 +305,6 @@
     root.addEventListener("keyup", function onKeyUp(event) {
       keys.delete(event.code);
     });
-    root.addEventListener("resize", syncLobbyViewportScale);
-
     canvas.addEventListener("pointerdown", function onPointerDown(event) {
       pointer.active = true;
       updatePointer(event);

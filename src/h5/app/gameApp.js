@@ -1,11 +1,11 @@
 (function registerH5GameApp(root) {
   "use strict";
-
   function boot() {
-
   var shared = root.RXGame || {};
   var canvas = document.querySelector("#game");
   var ctx = canvas ? canvas.getContext("2d") : null;
+
+  if (shared.battleHudView && shared.battleHudView.mount) shared.battleHudView.mount(document.querySelector("#battleHudRoot"));
 
   if (!canvas || !ctx || !shared.levels || !shared.assets || !shared.profile) {
     throw new Error("H5 game bootstrap failed: missing canvas or shared modules.");
@@ -213,6 +213,10 @@
     getFeaturePanels: function getFeaturePanels() { return featurePanels || {}; },
     isCloudMode: function isCloudMode() { return battleFlowController.isCloudMode(); },
     persistProfileMetadata: function persistProfileMetadata() { return battleFlowController.persistProfileMetadata(); },
+    gatewayActionLock: gatewayActionLock,
+    ensureGameGateway: ensureGameGateway,
+    getGameGateway: function getGameGateway() { return gameGateway; },
+    applyGatewayProfile: applyGatewayProfile,
     saveProfile: saveProfile,
     renderLobby: lobbyController.renderLobby,
     renderChapterSelect: lobbyController.renderChapterSelect,
@@ -300,10 +304,11 @@
     saveProfile: saveProfile,
     renderLobby: lobbyController.renderLobby,
     upgradeFighterStat: function upgradeFighterStat(statType) { return fighterUpgradeController.upgrade(statType); },
+    buyWeaponModule: function buyWeaponModule(moduleId) { return fighterUpgradeController.buyWeaponModule(moduleId); },
+    equipWeaponModule: function equipWeaponModule(moduleId) { return fighterUpgradeController.equipWeaponModule(moduleId); },
     handleProfilePanelClick: profileController.handleClick,
     handleAvatarUpload: profileController.handleAvatarUpload,
     openFeaturePanel: function openFeaturePanel(key) { return featurePanelController.open(key); },
-    syncLobbyViewportScale: syncLobbyViewportScale,
     updatePointer: updatePointer
   });
   if (!gameEventRouter) throw new Error("H5 game bootstrap failed: missing event router.");
@@ -330,7 +335,6 @@
     chat: ["CHAT", "世界频道", "频道消息为本地预览，发送功能未开放。"]  };
 
   applyRuntimeAssetCssVars();
-  syncLobbyViewportScale();
   saveProfile();
   lobbyController.renderLobby();
   lobbyController.renderChapterSelect();
@@ -454,6 +458,10 @@
         saveProfile();
         return { profile: profile, cost: check.cost, statType: statType, level: check.targetLevel };
       },
+      buyPilot: function buyPilotLocal(pilotId) { var result = shared.rosterEconomy.purchase(profile, "pilot", pilotId); saveProfile(); return result; },
+      buyShip: function buyShipLocal(shipId) { var result = shared.rosterEconomy.purchase(profile, "ship", shipId); saveProfile(); return result; },
+      buyWeaponModule: function buyWeaponModuleLocal(moduleId) { var result = shared.weaponModuleSystem.buy(profile, moduleId); saveProfile(); return result; },
+      equipWeaponModule: function equipWeaponModuleLocal(moduleId) { var result = shared.weaponModuleSystem.equip(profile, moduleId, getShipAsset()); saveProfile(); return result; },
       saveCosmetics: function saveLocalCosmetics(nextProfile) {
         profile = shared.profile.normalizeProfile(nextProfile || profile);
         saveProfile();
@@ -662,15 +670,6 @@
       shockwaves: [],
       notices: []
     };
-  }
-
-  function syncLobbyViewportScale() {
-    if (!dom.lobbyScreen) return;
-    var reference = assetsConfig.LOBBY_REFERENCE || { width: 1600, height: 900 };
-    var viewportWidth = root.innerWidth || root.document.documentElement.clientWidth || reference.width;
-    var viewportHeight = root.innerHeight || root.document.documentElement.clientHeight || reference.height;
-    var scale = Math.min(viewportWidth / reference.width, viewportHeight / reference.height);
-    dom.lobbyScreen.style.setProperty("--lobby-scale", String(Math.max(0.1, scale)));
   }
 
   function updateHud() {

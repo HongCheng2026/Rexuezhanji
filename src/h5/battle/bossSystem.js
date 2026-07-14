@@ -13,6 +13,7 @@
     if (state.bossSpawned || state.elapsed < BOSS_SPAWN_TIME) return;
     state.bossSpawned = true;
     state.bossWarning = 3;
+    var field = getField(state);
 
     var bossStats = getBossStats(level);
     var waveConfig = bossStats.waveConfig || {};
@@ -24,12 +25,12 @@
     var hitRadiusX = visual ? visual.hitRadiusX : 78;
     var hitRadiusY = visual ? visual.hitRadiusY : 78;
     var minY = Math.max(96, drawHeight / 2 + 12);
-    var maxY = 540 - minY;
+    var maxY = field.height - minY;
     state.boss = {
       id: "boss-" + (level.id || level.code || "1"),
-      x: 960 + drawWidth / 2 + 24,
-      y: 540 / 2,
-      targetX: 960 - drawWidth / 2 - 18,
+      x: field.width + drawWidth / 2 + 24,
+      y: field.height / 2,
+      targetX: field.width - drawWidth / 2 - 18,
       radius: Math.max(hitRadiusX, hitRadiusY),
       hitRadiusX: hitRadiusX,
       hitRadiusY: hitRadiusY,
@@ -71,8 +72,8 @@
       life: 3
     };
     state.shockwaves = state.shockwaves || [];
-    state.shockwaves.push({ x: state.boss.targetX, y: 270, radius: 18, life: 0.9, maxLife: 0.9, color: "#ff6b6b" });
-    state.notices.push({ text: state.boss.title, color: "#ff6b6b", x: 960 / 2, y: 86, life: 2.4 });
+    state.shockwaves.push({ x: state.boss.targetX, y: field.height / 2, radius: 18, life: 0.9, maxLife: 0.9, color: "#ff6b6b" });
+    addNotice(state, state.boss.title, "#ff6b6b", 2.4);
     playSfx("bossWarning");
   }
 
@@ -172,12 +173,12 @@
       boss.armorMode = "exposed";
       boss.damageTakenMultiplier = Math.max(boss.originalDamageTakenMultiplier || 1, 1.15);
       boss.armorTimer = config.exposedPhaseSeconds || 2.2;
-      state.notices.push({ text: "核心暴露", color: "#42f5c8", x: 960 / 2, y: 118, life: 0.9 });
+      addNotice(state, "核心暴露", "#42f5c8", 0.9);
     } else {
       boss.armorMode = "shielded";
       boss.damageTakenMultiplier = Math.min(boss.originalDamageTakenMultiplier || 1, boss.theme === "armorCore" ? 0.32 : 0.5);
       boss.armorTimer = config.shieldPhaseSeconds || 4;
-      state.notices.push({ text: "重甲护盾", color: "#ffd166", x: 960 / 2, y: 118, life: 0.9 });
+      addNotice(state, "重甲护盾", "#ffd166", 0.9);
     }
   }
 
@@ -198,7 +199,7 @@
         boss.burstTriggered[String(trigger)] = true;
         boss.burstRemaining = config.duration || 2;
         boss.burstTimer = 0;
-        state.notices.push({ text: "BOSS 火力爆发", color: "#ff9fc5", x: 960 / 2, y: 116, life: 1.4 });
+        addNotice(state, "BOSS 火力爆发", "#ff9fc5", 1.4);
         break;
       }
     }
@@ -223,7 +224,7 @@
     if (pattern === "boss_lanes") {
       var laneCount = (boss.waveConfig && boss.waveConfig.laneCount) || 4;
       for (var i = 0; i < laneCount; i++) {
-        var y = 72 + i * ((540 - 144) / Math.max(1, laneCount - 1));
+        var y = scaleY(state, 72) + i * ((getField(state).height - scaleY(state, 144)) / Math.max(1, laneCount - 1));
         pushBossBullet(state, boss.x - 74, y, Math.PI, boss.attackDamage, boss.bulletSpeed + 45, 6, "#ff784d", "boss_lanes");
       }
       return;
@@ -245,7 +246,7 @@
       return;
     }
     if (pattern === "boss_summon") {
-      state.notices.push({ text: "护卫群接敌", color: "#ffd166", x: 960 / 2, y: 118, life: 1 });
+      addNotice(state, "护卫群接敌", "#ffd166", 1);
       var guardBurst = (boss.waveConfig && boss.waveConfig.summonGuardBurst) || (boss.theme === "mothership" ? 8 : 5);
       state.bossGuardBurst = Math.max(Math.floor(Number(state.bossGuardBurst) || 0), guardBurst);
       state.enemyTimer = Math.min(state.enemyTimer || 0, 0.05);
@@ -297,7 +298,7 @@
       : 0.38;
     boss.pendingPattern = { id: pattern, timer: delay };
     addBossTelegraph(state, boss, pattern, delay);
-    state.notices.push({ text: getPatternNotice(pattern), color: "#ffd166", x: 960 / 2, y: 116, life: Math.max(0.55, delay) });
+    addNotice(state, getPatternNotice(pattern), "#ffd166", Math.max(0.55, delay));
   }
 
   function getPatternNotice(pattern) {
@@ -385,6 +386,19 @@
     var chapter = state && state.level ? Number(state.level.chapterIndex) || 0 : 0;
     var caps = [8, 14, 18, 24, 28, 32, 36, 40, 44, 48];
     return list.length < (caps[Math.max(0, Math.min(caps.length - 1, chapter))] || 24);
+  }
+
+  function getField(state) {
+    return scope.battleGeometry.getField(state);
+  }
+
+  function scaleY(state, value) {
+    return scope.battleGeometry.scaleY(state, value);
+  }
+
+  function addNotice(state, text, color, life) {
+    var field = getField(state);
+    state.notices.push({ text: text, color: color, x: field.width / 2, y: field.noticeY, life: life });
   }
 
   var api = {

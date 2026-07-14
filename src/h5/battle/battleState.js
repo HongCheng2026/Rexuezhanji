@@ -3,6 +3,7 @@
 
   var levelsConfig = scope.levels || {};
   var balanceConfig = scope.balance || {};
+  var geometry = scope.battleGeometry || {};
 
   /**
    * 创建初始菜单/战斗状态
@@ -10,7 +11,9 @@
   function createMenuState(levelId) {
     var selectedLevel = (levelsConfig.levels || []).find(function (l) { return l.id === levelId; }) ||
       (levelsConfig.levels || [])[0];
+    var field = geometry.createField ? geometry.createField() : { width: 960, height: 473 };
     return {
+      field: field,
       mode: "menu",
       level: selectedLevel,
       elapsed: 0,
@@ -20,8 +23,8 @@
       bossWarning: 0,
       bossSpawned: false,
       shake: 0,
-      player: createPlayer(),
-      stars: createStars(),
+      player: createPlayer(null, field),
+      stars: createStars(field),
       bullets: [],
       enemyBullets: [],
       enemies: [],
@@ -52,15 +55,19 @@
   /**
    * 创建玩家对象（使用 BattleLoadout 的 finalStats + initialWeapons）
    */
-  function createPlayer(loadout) {
+  function createPlayer(loadout, fieldOverride) {
     var lo = loadout || {};
     var fs = lo.finalStats || {};
     var initWeapons = lo.initialWeapons || {};
+    var field = fieldOverride || (geometry.createField ? geometry.createField() : { width: 960, height: 473 });
     var maxHp = Math.max(1, Math.floor(fs.maxHp || 100));
-    var activeSkill = lo.activeSkill || (lo.ship && lo.ship.activeSkill) || null;
+    var abilities = lo.abilities || {};
+    var activeSlots = Array.isArray(abilities.activeSlots) ? abilities.activeSlots.slice(0, 4) : [];
+    while (activeSlots.length < 4) activeSlots.push(null);
+    var insurance = abilities.insurance || null;
     return {
       x: 92,
-      y: (root.innerHeight || 540) / 2,
+      y: field.height / 2,
       radius: 23,
       cooldown: 0,
       invincible: 1,
@@ -73,32 +80,50 @@
         laser: initWeapons.laser || 0,
         missile: initWeapons.missile || 0
       },
-      activeSkill: activeSkill ? {
-        id: activeSkill.id,
-        name: activeSkill.name || "主动技能",
-        charges: Math.max(0, Math.min(
-          Math.floor(Number(activeSkill.maxCharges) || 2),
-          Math.floor(Number(activeSkill.initialCharges) || 1)
-        )),
-        maxCharges: Math.max(1, Math.floor(Number(activeSkill.maxCharges) || 2)),
-        rechargeSeconds: Math.max(1, Number(activeSkill.rechargeSeconds) || 18),
-        rechargeTimer: 0
-      } : null
+      abilities: {
+        activeSlots: activeSlots.map(createActiveSlotRuntime),
+        insurance: insurance ? createInsuranceRuntime(insurance) : null,
+        passiveSlots: Array.isArray(abilities.passiveSlots) ? abilities.passiveSlots.slice(0, 4) : []
+      }
+    };
+  }
+
+  function createActiveSlotRuntime(skill, index) {
+    if (!skill || !skill.id) return null;
+    return {
+      id: skill.id,
+      name: skill.name || ("主动技能 " + (index + 1)),
+      icon: skill.icon || "",
+      cooldown: Math.max(0, Number(skill.cooldown) || 0),
+      cooldownTimer: 0,
+      charges: skill.charges == null ? null : Math.max(0, Math.floor(Number(skill.charges) || 0))
+    };
+  }
+
+  function createInsuranceRuntime(insurance) {
+    var maxCharges = Math.max(1, Math.floor(Number(insurance.maxCharges) || 2));
+    return {
+      id: insurance.id || "emergency-clear",
+      name: insurance.name || "紧急清屏",
+      icon: insurance.icon || "",
+      charges: Math.max(0, Math.min(maxCharges, Math.floor(Number(insurance.initialCharges) || 1))),
+      maxCharges: maxCharges,
+      rechargeSeconds: Math.max(1, Number(insurance.rechargeSeconds) || 18),
+      rechargeTimer: 0
     };
   }
 
   /**
    * 创建星空背景
    */
-  function createStars() {
+  function createStars(fieldOverride) {
     var count = 110;
-    var WIDTH = typeof root.innerWidth !== "undefined" ? 960 : 960;
-    var HEIGHT = 540;
+    var field = fieldOverride || (geometry.createField ? geometry.createField() : { width: 960, height: 473 });
     var stars = [];
     for (var i = 0; i < count; i++) {
       stars.push({
-        x: Math.random() * WIDTH,
-        y: Math.random() * HEIGHT,
+        x: Math.random() * field.width,
+        y: Math.random() * field.height,
         size: Math.random() * 1.8 + 0.5,
         speed: Math.random() * 120 + 70
       });

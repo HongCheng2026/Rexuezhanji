@@ -214,6 +214,10 @@
   font-weight: 900;
 }
 
+.feature-panel.ship-hangar-panel .ship-hangar-status.insufficient {
+  color: #ff9b8a;
+}
+
 .feature-panel.ship-hangar-panel .ship-hangar-equip {
   background:
   linear-gradient(180deg, rgba(255, 217, 105, 0.96), rgba(172, 93, 10, 0.95));
@@ -224,6 +228,10 @@
   min-height: 42px;
   min-width: 156px;
   padding: 0 18px;
+}
+
+.feature-panel.ship-hangar-panel .ship-hangar-equip.purchase {
+  font-size: 14px;
 }
 
 .feature-panel.ship-hangar-panel .ship-hangar-equip:disabled {
@@ -282,6 +290,10 @@
   object-fit: contain;
   object-position: center;
   width: 82px;
+}
+
+.feature-panel.ship-hangar-panel .ship-hangar-thumb.locked:not(.selected) img {
+  filter: grayscale(0.75) brightness(0.62);
 }
 
 .feature-panel.ship-hangar-panel .ship-hangar-thumb span {

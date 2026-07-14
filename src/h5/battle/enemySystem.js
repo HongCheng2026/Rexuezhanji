@@ -229,7 +229,7 @@
       entrySide: entry.side,
       spawnPattern: entry.pattern,
       spawnState: "entering",
-      activationX: 960 - radius - 4,
+      activationX: getField(state).width - radius - 4,
       activationDelay: activationDelay,
       activationTimer: activationDelay,
       canTakeDamage: false,
@@ -280,14 +280,16 @@
   }
 
   function pickEntry(state, level, enemyType, index, total, phase) {
+    var field = getField(state);
+    var height = field.height;
     var side = "right";
     var patterns = (phase && phase.entryPatterns) || ["lane"];
     var pattern = patterns[(index + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % patterns.length] || "lane";
     var lane = (index + 1) / (total + 1);
     var laneCount = 5;
     var laneIndex = ((index + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % laneCount) + 1;
-    var y = 58 + lane * (540 - 116) + (Math.random() - 0.5) * 34;
-    var x = 1004 + Math.random() * 80;
+    var y = scaleY(state, 58) + lane * (height - scaleY(state, 116)) + (Math.random() - 0.5) * scaleY(state, 34);
+    var x = field.width + field.spawnPadding + Math.random() * 80;
     var baseSpeed = enemyType === "charger" ? 235 :
       enemyType === "bomber" ? 92 :
       enemyType === "sniper" ? 108 :
@@ -298,25 +300,25 @@
     var vx = -baseSpeed;
     var vy = (Math.random() - 0.5) * 35;
     if (pattern === "lane") {
-      y = 64 + laneIndex * ((540 - 128) / (laneCount + 1));
+      y = scaleY(state, 64) + laneIndex * ((height - scaleY(state, 128)) / (laneCount + 1));
       vy = (Math.random() - 0.5) * 18;
     } else if (pattern === "diagonal") {
-      y = index % 2 === 0 ? 68 + Math.random() * 80 : 392 + Math.random() * 80;
+      y = index % 2 === 0 ? scaleY(state, 68 + Math.random() * 80) : scaleY(state, 392 + Math.random() * 80);
       vy = index % 2 === 0 ? 42 + Math.random() * 18 : -42 - Math.random() * 18;
     } else if (pattern === "formation") {
-      y = 132 + ((index + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % 4) * 82;
+      y = scaleY(state, 132 + ((index + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % 4) * 82);
       x += index * 34;
       vy = Math.sin(index) * 16;
     } else if (pattern === "fishScale") {
-      y = 124 + ((index * 2 + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % 5) * 68;
+      y = scaleY(state, 124 + ((index * 2 + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % 5) * 68);
       x += index * 42;
       vy = (index % 2 === 0 ? 18 : -18) + (Math.random() - 0.5) * 10;
     } else if (pattern === "crossLayer") {
-      y = index % 2 === 0 ? 112 + (index % 4) * 54 : 424 - (index % 4) * 54;
+      y = scaleY(state, index % 2 === 0 ? 112 + (index % 4) * 54 : 424 - (index % 4) * 54);
       vy = index % 2 === 0 ? 34 : -34;
       x += index * 30;
     } else if (pattern === "shieldLine") {
-      y = 86 + laneIndex * ((540 - 172) / (laneCount + 1));
+      y = scaleY(state, 86) + laneIndex * ((height - scaleY(state, 172)) / (laneCount + 1));
       x += index * 26;
       vx = -Math.max(82, baseSpeed * 0.72);
       vy = 0;
@@ -325,30 +327,30 @@
       vy = (Math.random() - 0.5) * 80;
     } else if (pattern === "chargeThrough") {
       vx = -Math.max(270, baseSpeed * 1.28);
-      y = 88 + laneIndex * ((540 - 176) / (laneCount + 1));
+      y = scaleY(state, 88) + laneIndex * ((height - scaleY(state, 176)) / (laneCount + 1));
       vy = (Math.random() - 0.5) * 36;
     } else if (pattern === "delayedPincer") {
-      y = index % 2 === 0 ? -28 - Math.random() * 40 : 568 + Math.random() * 40;
-      x = 982 + index * 38 + Math.random() * 60;
+      y = index % 2 === 0 ? scaleY(state, -28 - Math.random() * 40) : height + scaleY(state, 28 + Math.random() * 40);
+      x = field.width + 22 + index * 38 + Math.random() * 60;
       vx = -Math.max(118, baseSpeed * 0.92);
       vy = index % 2 === 0 ? 88 + Math.random() * 26 : -88 - Math.random() * 26;
     } else if (pattern === "topDive") {
       y = -34 - Math.random() * 42;
-      x = 1000 + index * 36 + Math.random() * 50;
+      x = field.width + 40 + index * 36 + Math.random() * 50;
       vx = -Math.max(116, baseSpeed * 0.9);
       vy = 96 + Math.random() * 34;
     } else if (pattern === "bottomRise") {
-      y = 574 + Math.random() * 42;
-      x = 1000 + index * 36 + Math.random() * 50;
+      y = height + scaleY(state, 34 + Math.random() * 42);
+      x = field.width + 40 + index * 36 + Math.random() * 50;
       vx = -Math.max(116, baseSpeed * 0.9);
       vy = -96 - Math.random() * 34;
     } else if (pattern === "eliteEscort") {
-      y = 150 + ((index + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % 3) * 110;
+      y = scaleY(state, 150 + ((index + ((state.spawnDirector && state.spawnDirector.waveIndex) || 0)) % 3) * 110);
       x += index * 50;
       vx = -Math.max(92, baseSpeed * 0.78);
       vy = (index % 2 === 0 ? 14 : -14);
     } else if (pattern === "mothershipGuard") {
-      y = 88 + laneIndex * ((540 - 176) / (laneCount + 1));
+      y = scaleY(state, 88) + laneIndex * ((height - scaleY(state, 176)) / (laneCount + 1));
       x += index * 58;
       vx = -Math.max(88, baseSpeed * 0.7);
       vy = Math.sin((index + 1) * 1.7) * 28;
@@ -396,7 +398,7 @@
       if (enemy.dead) continue;
       enemy.x += (enemy.vx != null ? enemy.vx : -enemy.speed) * dt;
       enemy.y += (enemy.vy || 0) * dt + Math.sin(enemy.wobble + state.elapsed * 2.5) * 22 * dt;
-      if (enemy.y < 36 || enemy.y > 504) enemy.vy = -(enemy.vy || 0);
+      if (enemy.y < scaleY(state, 36) || enemy.y > getField(state).height - scaleY(state, 36)) enemy.vy = -(enemy.vy || 0);
       if (enemy.spawnState === "entering" && enemy.x <= enemy.activationX) {
         enemy.spawnState = "active";
         enemy.canTakeDamage = true;
@@ -590,6 +592,14 @@
     return (typeof crypto !== "undefined" && crypto.randomUUID)
       ? crypto.randomUUID()
       : (state.elapsed || 0) + "-" + Math.random();
+  }
+
+  function getField(state) {
+    return scope.battleGeometry.getField(state);
+  }
+
+  function scaleY(state, value) {
+    return scope.battleGeometry.scaleY(state, value);
   }
 
   var api = {

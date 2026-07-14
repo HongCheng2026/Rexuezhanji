@@ -74,6 +74,18 @@
       upgradeFighter: function upgradeFighter(statType) {
         return callAdapter(adapter, "upgradeFighter", [statType], mode);
       },
+      buyPilot: function buyPilot(pilotId) {
+        return callAdapter(adapter, "buyPilot", [pilotId], mode);
+      },
+      buyShip: function buyShip(shipId) {
+        return callAdapter(adapter, "buyShip", [shipId], mode);
+      },
+      buyWeaponModule: function buyWeaponModule(moduleId) {
+        return callAdapter(adapter, "buyWeaponModule", [moduleId], mode);
+      },
+      equipWeaponModule: function equipWeaponModule(moduleId) {
+        return callAdapter(adapter, "equipWeaponModule", [moduleId], mode);
+      },
       saveCosmetics: function saveCosmetics(profile) {
         return callAdapter(adapter, "saveCosmetics", [profile], mode);
       }

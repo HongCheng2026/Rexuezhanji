@@ -13,9 +13,12 @@
     var modeClasses = options.modeClasses || [];
     var profile;
     var featurePanels;
-    var isCloudMode = options.isCloudMode;
     var persistProfileMetadata = options.persistProfileMetadata;
     var saveProfile = options.saveProfile;
+    var gatewayActionLock = options.gatewayActionLock || { busy: false };
+    var ensureGameGateway = options.ensureGameGateway;
+    var getGameGateway = options.getGameGateway;
+    var applyGatewayProfile = options.applyGatewayProfile;
     var renderLobby = options.renderLobby;
     var renderChapterSelect = options.renderChapterSelect;
     var updateHud = options.updateHud;
@@ -41,6 +44,39 @@
       return escapeHtml(value);
     }
 
+    function refreshRosterViews(type) {
+      renderLobby();
+      renderChapterSelect();
+      updateHud();
+      if (type === "pilot") reRenderPilotGallery();
+      else reRenderShipGallery();
+    }
+
+    function buyRosterItem(type, itemId) {
+      if (gatewayActionLock.busy) return;
+      gatewayActionLock.busy = true;
+      var method = type === "pilot" ? "buyPilot" : "buyShip";
+      var label = type === "pilot" ? "战姬" : "战机";
+      Promise.resolve().then(function ensureGatewayReady() {
+        return ensureGameGateway();
+      }).then(function performPurchase() {
+        var gateway = getGameGateway();
+        if (!gateway || typeof gateway[method] !== "function") throw new Error("购买服务尚未就绪。");
+        return gateway[method](itemId);
+      }).then(function applyPurchaseResult(result) {
+        if (!result || !result.profile) throw new Error("购买结果无效。");
+        applyGatewayProfile(result.profile);
+        saveProfile();
+        dom.featurePanelBody.textContent = label + "购买成功，已加入你的收藏。";
+        refreshRosterViews(type);
+      }).catch(function showPurchaseError(error) {
+        dom.featurePanelBody.textContent = error && error.message ? error.message : "购买失败，请稍后重试。";
+        refreshRosterViews(type);
+      }).finally(function releasePurchaseLock() {
+        gatewayActionLock.busy = false;
+      });
+    }
+
   function renderPilotGalleryPanel() {
     syncProfile();
     dom.featurePanelKicker.textContent = "PILOT DOSSIER";
@@ -62,10 +98,7 @@
           profile.scene = profile.scene || {};
           profile.owned = profile.owned || {};
           profile.owned.pilots = Array.isArray(profile.owned.pilots) ? profile.owned.pilots : [];
-          if (isCloudMode() && profile.owned.pilots.indexOf(pilotId) < 0) return;
-          if (profile.owned.pilots.indexOf(pilotId) < 0) {
-            profile.owned.pilots.push(pilotId);
-          }
+          if (profile.owned.pilots.indexOf(pilotId) < 0) return;
           profile.scene.pilotId = pilotId;
           persistProfileMetadata().catch(function keepPreviousPilot() {});
           renderLobby();
@@ -73,18 +106,8 @@
           updateHud();
           reRenderPilotGallery();
         },
-        onBuyPilot: function onBuyPilot(pilotId, price) {
-          if (isCloudMode()) return;
-          profile.resources.diamonds = Math.max(0, (profile.resources.diamonds || 0) - price);
-          profile.owned.pilots = profile.owned.pilots || [];
-          if (profile.owned.pilots.indexOf(pilotId) < 0) {
-            profile.owned.pilots.push(pilotId);
-          }
-          saveProfile();
-          renderLobby();
-          renderChapterSelect();
-          updateHud();
-          reRenderPilotGallery();
+        onBuyPilot: function onBuyPilot(pilotId) {
+          buyRosterItem("pilot", pilotId);
         }
       });
     }
@@ -111,16 +134,16 @@
           profile.scene = profile.scene || {};
           profile.owned = profile.owned || {};
           profile.owned.ships = Array.isArray(profile.owned.ships) ? profile.owned.ships : [];
-          if (isCloudMode() && profile.owned.ships.indexOf(shipId) < 0) return;
-          if (profile.owned.ships.indexOf(shipId) < 0) {
-            profile.owned.ships.push(shipId);
-          }
+          if (profile.owned.ships.indexOf(shipId) < 0) return;
           profile.scene.shipId = shipId;
           persistProfileMetadata().catch(function keepPreviousShip() {});
           renderLobby();
           renderChapterSelect();
           updateHud();
           reRenderShipGallery();
+        },
+        onBuyShip: function onBuyShip(shipId) {
+          buyRosterItem("ship", shipId);
         }
       });
     }

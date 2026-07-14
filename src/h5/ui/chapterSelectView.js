@@ -7,7 +7,6 @@
   var campaignStory = scope.campaignStoryFramework || {};
   var levels = levelsConfig.levels || [];
   var ENERGY_COST = levelsConfig.ENERGY_COST || 5;
-  var fitControllers = typeof WeakMap !== "undefined" ? new WeakMap() : null;
 
   var FALLBACK_CHAPTER_NAMES = [
     "序章：苍穹启动",
@@ -87,8 +86,6 @@
     rotate.className = "campaign-map-rotate";
     rotate.innerHTML = '<strong>请横屏作战</strong><span>旋转设备后继续选择关卡</span>';
     container.appendChild(rotate);
-
-    attachFitController(container, canvas);
 
     return {
       container: container,
@@ -261,32 +258,6 @@
     });
     actions.appendChild(sweepButton);
     return actions;
-  }
-
-  function attachFitController(container, canvas) {
-    var controller = fitControllers && fitControllers.get(container);
-    if (!controller) {
-      controller = { canvas: canvas, frame: 0 };
-      controller.resize = function resizeCampaignMap() {
-        if (!controller.canvas || !controller.canvas.isConnected) return;
-        var rect = container.getBoundingClientRect();
-        var designWidth = controller.canvas.offsetWidth;
-        var designHeight = controller.canvas.offsetHeight;
-        if (!designWidth || !designHeight) return;
-        var scale = Math.min(rect.width / designWidth, rect.height / designHeight);
-        controller.canvas.style.setProperty("--campaign-map-scale", String(Math.max(0.1, scale)));
-      };
-      if (typeof ResizeObserver !== "undefined") {
-        controller.observer = new ResizeObserver(controller.resize);
-        controller.observer.observe(container);
-      } else {
-        root.addEventListener("resize", controller.resize);
-      }
-      if (fitControllers) fitControllers.set(container, controller);
-    }
-    controller.canvas = canvas;
-    if (controller.frame) root.cancelAnimationFrame(controller.frame);
-    controller.frame = root.requestAnimationFrame(controller.resize);
   }
 
   function setAssetVariables(canvas, chapterAssets) {

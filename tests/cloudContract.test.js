@@ -12,9 +12,26 @@ const atomicSql = fs.readFileSync(path.join(root, "supabase/migrations/202607130
 const loaderSource = fs.readFileSync(path.join(root, "src/h5/shared-loader.js"), "utf8");
 
 test("服务端提供正式游戏所需的全部写操作", () => {
-  for (const action of ["start-battle", "finish-battle", "abandon-battle", "sweep", "upgrade", "upgrade-fighter", "save-cosmetics"]) {
+  for (const action of ["start-battle", "finish-battle", "abandon-battle", "sweep", "upgrade", "upgrade-fighter", "buy-pilot", "buy-ship", "buy-weapon-module", "equip-weapon-module", "save-cosmetics"]) {
     assert.match(apiSource, new RegExp(`action === ["']${action}["']`), `缺少 ${action}`);
   }
+});
+
+test("云端战姬战机购买由服务端定价并校验金币与重复购买", () => {
+  assert.match(apiSource, /PILOT_PRICE_BY_RANK\s*=\s*\{\s*B:\s*30000,\s*A:\s*120000,\s*S:\s*900000/);
+  assert.match(apiSource, /SHIP_PRICE_BY_RANK\s*=\s*\{\s*B:\s*50000,\s*A:\s*150000,\s*S:\s*1300000/);
+  assert.match(apiSource, /if \(ownedIds\.includes\(itemId\)\)/);
+  assert.match(apiSource, /getGold\(profile\) < cost/);
+  assert.match(apiSource, /type === "pilot" \? "buy-pilot" : "buy-ship"/);
+});
+
+test("云端模块接口校验ID、金币、重复购买、S级槽位并记录流水", () => {
+  assert.match(apiSource, /const WEAPON_MODULES/);
+  assert.match(apiSource, /ownedIds\.includes\(moduleId\)/);
+  assert.match(apiSource, /getGold\(profile\) < definition\.price/);
+  assert.match(apiSource, /S_RANK_SHIP_IDS\.has/);
+  assert.match(apiSource, /ledger\(ctx, "buy-weapon-module"/);
+  assert.match(apiSource, /ledger\(ctx, "equip-weapon-module"/);
 });
 
 test("CORS 同时覆盖两个正式域名和本地预览", () => {
@@ -22,6 +39,7 @@ test("CORS 同时覆盖两个正式域名和本地预览", () => {
   assert.match(apiSource, /https:\/\/www\.rexuezhanji\.top/);
   assert.match(apiSource, /localhost/);
   assert.match(apiSource, /127\\\.0\\\.0\\\.1/);
+  assert.match(apiSource, /rexuezhanji\\\.netlify\\\.app/);
 });
 
 test("清理迁移只移除旧结构，不重写迁移历史", () => {

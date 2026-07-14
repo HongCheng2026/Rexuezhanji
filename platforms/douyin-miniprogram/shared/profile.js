@@ -2,8 +2,9 @@
   const scope = root.RXGame || (root.RXGame = {});
   const assets = scope.assets || {};
   const levelConfig = scope.levels || {};
+  const balanceConfig = scope.balance || {};
 
-  const SAVE_VERSION = 5;
+  const SAVE_VERSION = 6;
   const ENERGY_MAX = levelConfig.ENERGY_MAX || 305;
   const ENERGY_COST = levelConfig.ENERGY_COST || 5;
   const ENERGY_RECOVER_MS = levelConfig.ENERGY_RECOVER_MS || 5 * 60 * 1000;
@@ -60,10 +61,35 @@
     return labels[Math.max(1, Math.min(10, Math.floor(Number(value) || 1)))] || "I";
   }
 
+  function migrateLegacyFireUpgrade(incomingVersion, upgrades, fighterUpgrades, resources, player) {
+    if (incomingVersion >= 6) return;
+    const fireLevel = clamp(Math.floor(Number(upgrades.fire) || 0), 0, 10);
+    upgrades.fire = 0;
+    if (!fireLevel) return;
+
+    let credit = 90 * fireLevel * (fireLevel + 1) / 2;
+    const maxAttackLevel = Math.min(
+      Math.max(1, Math.floor(Number(player.level) || 1)),
+      levelConfig.FIGHTER_MAX_UPGRADE_LEVEL || 60
+    );
+    let attackLevel = clamp(Math.floor(Number(fighterUpgrades.attack) || 1), 1, maxAttackLevel);
+    while (attackLevel < maxAttackLevel) {
+      const targetLevel = attackLevel + 1;
+      const cost = levelConfig.getFighterUpgradeCost
+        ? Math.max(0, Math.floor(Number(levelConfig.getFighterUpgradeCost("attack", targetLevel)) || 0))
+        : 0;
+      if (!cost || cost > credit) break;
+      credit -= cost;
+      attackLevel = targetLevel;
+    }
+    fighterUpgrades.attack = attackLevel;
+    resources.gold = Math.max(0, Math.floor(Number(resources.gold) || 0)) + credit;
+  }
+
   function normalizeProfile(nextProfile = {}) {
     const incomingVersion = Number(nextProfile.saveVersion) || 0;
     let player = { ...LOBBY_DEFAULTS.player, ...(nextProfile.player || {}) };
-    if (incomingVersion < SAVE_VERSION && (player.avatar === "guide.png" || (Number(player.level) === 56 && Number(player.exp) === 12080))) {
+    if (incomingVersion < 5 && (player.avatar === "guide.png" || (Number(player.level) === 56 && Number(player.exp) === 12080))) {
       player = { ...LOBBY_DEFAULTS.player };
     }
     const maxLevel = levelConfig.COMMANDER_MAX_LEVEL || 60;
@@ -85,11 +111,24 @@
     const resources = { ...LOBBY_DEFAULTS.resources, ...(nextProfile.resources || {}) };
     const energyMaxForLevel = levelConfig.getMaxEnergyByLevel ? levelConfig.getMaxEnergyByLevel(player.level) : ENERGY_MAX;
     resources.maxEnergy = energyMaxForLevel;
-    if (incomingVersion < SAVE_VERSION) resources.energy = Math.max(Math.floor(Number(resources.energy) || 0), energyMaxForLevel);
+    if (incomingVersion < 5) resources.energy = Math.max(Math.floor(Number(resources.energy) || 0), energyMaxForLevel);
     resources.energy = clamp(Math.floor(Number(resources.energy) || 0), 0, resources.maxEnergy);
     resources.diamonds = Math.max(0, Math.floor(Number(resources.diamonds) || 0));
     resources.gold = Math.max(0, Math.floor(Number(resources.gold ?? nextProfile.coins) || 0));
     resources.lastEnergyAt = Math.floor(Number(resources.lastEnergyAt) || Date.now());
+
+    const upgrades = { fire: 0, armor: 0, engine: 0, bounty: 0, ...(nextProfile.upgrades || {}) };
+    const fighterUpgrades = { attack: 1, armorPenetration: 1, hp: 1, ...(nextProfile.fighterUpgrades || {}) };
+    migrateLegacyFireUpgrade(incomingVersion, upgrades, fighterUpgrades, resources, player);
+
+    const incomingModules = nextProfile.weaponModules || {};
+    const knownModuleIds = Object.keys(balanceConfig.WEAPON_MODULES || {});
+    const ownedModuleIds = uniqueList(incomingModules.ownedIds).filter(function keepKnownModule(id) {
+      return !knownModuleIds.length || knownModuleIds.includes(id);
+    });
+    const equippedModuleId = ownedModuleIds.includes(incomingModules.equippedId)
+      ? incomingModules.equippedId
+      : null;
 
     const owned = {
       pilots: uniqueList([...(LOBBY_DEFAULTS.owned.pilots || []), ...((nextProfile.owned && nextProfile.owned.pilots) || [])]),
@@ -107,8 +146,9 @@
       saveVersion: SAVE_VERSION,
       coins: resources.gold,
       completed: Array.isArray(nextProfile.completed) ? nextProfile.completed : [],
-      upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0, ...(nextProfile.upgrades || {}) },
-      fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1, ...(nextProfile.fighterUpgrades || {}) },
+      upgrades,
+      fighterUpgrades,
+      weaponModules: { ownedIds: ownedModuleIds, equippedId: equippedModuleId },
       player,
       resources,
       scene,
@@ -130,10 +170,11 @@
     return normalizeProfile({
       saveVersion: SAVE_VERSION,
       coins: 0,
-      unlockedLevel: 3,
-      completed: [1, 2, 3],
+      unlockedLevel: 1,
+      completed: [],
       upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
       fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1 },
+      weaponModules: { ownedIds: [], equippedId: null },
       player: { ...LOBBY_DEFAULTS.player },
       resources: { ...LOBBY_DEFAULTS.resources },
       scene: { ...LOBBY_DEFAULTS.scene },
@@ -185,6 +226,7 @@
     uniqueList,
     normalizeHonorLevel,
     honorLevelToText,
+    migrateLegacyFireUpgrade,
     normalizeProfile,
     createProfile,
     recoverEnergy,

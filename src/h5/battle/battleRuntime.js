@@ -36,7 +36,7 @@
     // 使用 BattleLoadout 覆盖玩家初始属性
     if (loadout) {
       state.player = (scope.battleState && scope.battleState.createPlayer)
-        ? scope.battleState.createPlayer(loadout)
+        ? scope.battleState.createPlayer(loadout, state.field)
         : state.player;
     }
 
@@ -112,8 +112,8 @@
     state.player.cooldown -= dt;
     state.player.invincible = Math.max(0, state.player.invincible - dt);
     state.player.shield = Math.max(0, state.player.shield - dt);
-    if (scope.weaponSystem && scope.weaponSystem.updateActiveSkill) {
-      scope.weaponSystem.updateActiveSkill(state, dt);
+    if (scope.abilitySystem && scope.abilitySystem.update) {
+      scope.abilitySystem.update(state, battleContext.loadout, dt);
     }
 
     // 剧情更新
@@ -232,13 +232,14 @@
   }
 
   function updateStars(state, dt) {
+    var field = getField(state);
     for (var i = 0; i < state.stars.length; i++) {
       var star = state.stars[i];
       var speedMultiplier = state.boss ? 1.25 : 1;
       star.x -= star.speed * dt * speedMultiplier;
       if (star.x < -8) {
-        star.x = 960 + 8;
-        star.y = Math.random() * 540;
+        star.x = field.width + 8;
+        star.y = Math.random() * field.height;
       }
     }
   }
@@ -271,8 +272,13 @@
       state.player.y += (dy / length) * speed * dt;
     }
 
-    state.player.x = Math.max(176, Math.min(960 - 38, state.player.x));
-    state.player.y = Math.max(42, Math.min(540 - 42, state.player.y));
+    if (scope.battleGeometry && scope.battleGeometry.clampPlayer) scope.battleGeometry.clampPlayer(state, state.player);
+  }
+
+  function getField(state) {
+    return scope.battleGeometry && scope.battleGeometry.getField
+      ? scope.battleGeometry.getField(state)
+      : (state && state.field) || { width: 960, height: 473 };
   }
 
   var api = {

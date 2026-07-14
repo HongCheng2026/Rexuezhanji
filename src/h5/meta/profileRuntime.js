@@ -35,7 +35,7 @@
   function createDefaultProfile() {
     var profile = profileModule.createProfile
       ? profileModule.createProfile({})
-      : { unlockedLevel: 3, completed: [1, 2, 3] };
+      : { unlockedLevel: 1, completed: [] };
 
     return unlockForLocalTest(profile);
   }

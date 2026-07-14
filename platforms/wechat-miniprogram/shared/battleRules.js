@@ -10,6 +10,16 @@
     perfectGold: 1000
   };
 
+  const INSURANCE_RULES = Object.freeze({
+    B: Object.freeze({ maxCharges: 2, initialCharges: 1, rechargeSeconds: 18 }),
+    A: Object.freeze({ maxCharges: 3, initialCharges: 1, rechargeSeconds: 18 }),
+    S: Object.freeze({ maxCharges: 4, initialCharges: 1, rechargeSeconds: 18 })
+  });
+
+  function getInsuranceRule(rank) {
+    return INSURANCE_RULES[String(rank || "B").toUpperCase()] || INSURANCE_RULES.B;
+  }
+
   function getUpgradeCost(upgrade, currentLevel) {
     return upgrade.baseCost * (currentLevel + 1);
   }
@@ -137,6 +147,8 @@
   const api = {
     getUpgradeCost,
     BATTLE_REWARD_CONFIG,
+    INSURANCE_RULES,
+    getInsuranceRule,
     getPerfectBattleReward,
     getBattleRewardByKillCount,
     getFighterUpgradeResult,

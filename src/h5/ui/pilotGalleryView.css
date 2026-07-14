@@ -206,6 +206,10 @@
   font-weight: 900;
 }
 
+.feature-panel.pilot-dossier-panel .pilot-dossier-status.insufficient {
+  color: #ff9b8a;
+}
+
 .feature-panel.pilot-dossier-panel .pilot-dossier-equip {
   background:
   linear-gradient(180deg, rgba(255, 217, 105, 0.96), rgba(172, 93, 10, 0.95));
@@ -216,6 +220,10 @@
   min-height: 42px;
   min-width: 156px;
   padding: 0 18px;
+}
+
+.feature-panel.pilot-dossier-panel .pilot-dossier-equip.purchase {
+  font-size: 14px;
 }
 
 .feature-panel.pilot-dossier-panel .pilot-dossier-equip:disabled {
@@ -274,6 +282,10 @@
   object-fit: cover;
   object-position: top center;
   width: 56px;
+}
+
+.feature-panel.pilot-dossier-panel .pilot-dossier-thumb.locked:not(.selected) img {
+  filter: grayscale(0.75) brightness(0.62);
 }
 
 .feature-panel.pilot-dossier-panel .pilot-dossier-thumb span {

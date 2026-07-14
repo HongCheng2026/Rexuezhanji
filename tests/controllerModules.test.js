@@ -53,11 +53,12 @@ test("控制器在 gameApp 之前按依赖顺序加载", () => {
 test("云端写操作继续共用同一把锁", () => {
   const app = fs.readFileSync(path.join(root, "src/h5/app/gameApp.js"), "utf8");
   assert.match(app, /var gatewayActionLock = \{ busy: false \}/);
-  assert.equal((app.match(/gatewayActionLock: gatewayActionLock/g) || []).length, 3);
+  assert.equal((app.match(/gatewayActionLock: gatewayActionLock/g) || []).length, 4);
 
   for (const modulePath of [
     "src/h5/app/lobbyController.js",
     "src/h5/app/fighterUpgradeController.js",
+    "src/h5/app/featurePanelController.js",
     "src/h5/app/battleFlowController.js"
   ]) {
     const source = fs.readFileSync(path.join(root, modulePath), "utf8");

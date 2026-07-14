@@ -21,6 +21,10 @@ function createAdapter(label, calls) {
     sweep: record("sweep"),
     upgrade: record("upgrade"),
     upgradeFighter: record("upgradeFighter"),
+    buyPilot: record("buyPilot"),
+    buyShip: record("buyShip"),
+    buyWeaponModule: record("buyWeaponModule"),
+    equipWeaponModule: record("equipWeaponModule"),
     saveCosmetics: record("saveCosmetics")
   };
 }
@@ -101,12 +105,22 @@ test("结算、升级和外观接口完整透传参数", async () => {
   await gateway.finishBattle("ticket-1", 5, rating, details);
   await gateway.upgrade("fire");
   await gateway.upgradeFighter("attack");
+  await gateway.buyPilot("pilot-b-bailing");
+  await gateway.buyShip("ship-b-01");
+  await gateway.buyWeaponModule("spread-focus");
+  await gateway.equipWeaponModule("spread-focus");
+  await gateway.equipWeaponModule(null);
   await gateway.saveCosmetics(profile);
 
   assert.deepEqual(calls.map((item) => [item.method, item.args]), [
     ["finishBattle", ["ticket-1", 5, rating, details]],
     ["upgrade", ["fire"]],
     ["upgradeFighter", ["attack"]],
+    ["buyPilot", ["pilot-b-bailing"]],
+    ["buyShip", ["ship-b-01"]],
+    ["buyWeaponModule", ["spread-focus"]],
+    ["equipWeaponModule", ["spread-focus"]],
+    ["equipWeaponModule", [null]],
     ["saveCosmetics", [profile]]
   ]);
 });

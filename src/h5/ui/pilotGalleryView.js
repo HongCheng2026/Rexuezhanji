@@ -4,10 +4,10 @@
   var assetsConfig = scope.assets || {};
   var balanceConfig = scope.balance || {};
   var combatStats = scope.combatStats || {};
+  var rosterEconomy = scope.rosterEconomy || {};
   var PILOT_ASSETS = assetsConfig.PILOT_ASSETS || [];
   var DEFAULT_PILOT_ID = assetsConfig.DEFAULT_PILOT_ID || "pilot-s-lingyan";
-  var LOCAL_TEST_UNLOCK_ALL_PILOTS = true;
-  var FUTURE_ECONOMY_RESERVED = true;
+  var LOCAL_TEST_UNLOCK_ALL_PILOTS = false;
 
   function renderPilotGallery(container, profile, callbacks) {
     callbacks = callbacks || {};
@@ -16,6 +16,8 @@
     container.tabIndex = 0;
 
     var activePilotId = (profile.scene && profile.scene.pilotId) || DEFAULT_PILOT_ID;
+    var ownedPilotIds = (profile.owned && Array.isArray(profile.owned.pilots)) ? profile.owned.pilots : [];
+    var gold = scope.profile && scope.profile.getGold ? scope.profile.getGold(profile) : Math.max(0, Number(profile.resources && profile.resources.gold) || 0);
     var selectedIndex = findPilotIndex(activePilotId);
     var dragStartX = null;
     var dragStartY = null;
@@ -93,6 +95,7 @@
     function renderCurrent() {
       var pilot = PILOT_ASSETS[selectedIndex] || PILOT_ASSETS[0];
       var isActive = pilot && pilot.id === ((profile.scene && profile.scene.pilotId) || DEFAULT_PILOT_ID);
+      var isOwned = pilot && ownedPilotIds.indexOf(pilot.id) >= 0;
       stage.innerHTML = "";
       thumbStrip.innerHTML = "";
       if (!pilot) {
@@ -101,8 +104,8 @@
       }
 
       stage.appendChild(createPilotArtwork(pilot));
-      stage.appendChild(createPilotInfo(pilot, isActive, callbacks));
-      renderThumbs(thumbStrip, selectedIndex, (profile.scene && profile.scene.pilotId) || DEFAULT_PILOT_ID, selectAbsolute);
+      stage.appendChild(createPilotInfo(pilot, isActive, isOwned, gold, callbacks));
+      renderThumbs(thumbStrip, selectedIndex, (profile.scene && profile.scene.pilotId) || DEFAULT_PILOT_ID, ownedPilotIds, selectAbsolute);
     }
   }
 
@@ -128,7 +131,7 @@
     return frame;
   }
 
-  function createPilotInfo(pilot, isActive, callbacks) {
+  function createPilotInfo(pilot, isActive, isOwned, gold, callbacks) {
     var info = document.createElement("div");
     info.className = "pilot-dossier-info";
 
@@ -173,16 +176,24 @@
 
     var status = document.createElement("div");
     status.className = "pilot-dossier-status";
-    status.textContent = LOCAL_TEST_UNLOCK_ALL_PILOTS ? "已开放" : "已拥有";
+    var price = rosterEconomy.getPrice ? rosterEconomy.getPrice("pilot", pilot.rank) : 0;
+    var canAfford = gold >= price;
+    status.textContent = isOwned ? "已拥有" : (canAfford ? "售价 " : "金币不足 · 售价 ") + formatGold(price);
+    if (!isOwned && !canAfford) status.classList.add("insufficient");
 
     var action = document.createElement("button");
     action.type = "button";
     action.className = "pilot-dossier-equip";
-    action.textContent = isActive ? "当前出战" : "设为出战";
-    action.disabled = isActive;
+    action.textContent = isOwned ? (isActive ? "当前出战" : "设为出战") : "购买 " + formatGold(price);
+    action.disabled = isOwned ? isActive : !canAfford || !price;
+    if (!isOwned) action.classList.add("purchase");
     action.addEventListener("click", function onEquip() {
-      if (isActive) return;
-      if (callbacks.onSelectPilot) callbacks.onSelectPilot(pilot.id);
+      if (isOwned) {
+        if (isActive) return;
+        if (callbacks.onSelectPilot) callbacks.onSelectPilot(pilot.id);
+        return;
+      }
+      if (canAfford && callbacks.onBuyPilot) callbacks.onBuyPilot(pilot.id);
     });
     control.appendChild(action);
     control.appendChild(status);
@@ -225,7 +236,11 @@
     return Math.max(0, Math.round(Number(value) || 0)).toLocaleString("zh-CN");
   }
 
-  function renderThumbs(container, selectedIndex, activePilotId, onSelect) {
+  function formatGold(value) {
+    return Math.max(0, Math.floor(Number(value) || 0)).toLocaleString("zh-CN") + " 金币";
+  }
+
+  function renderThumbs(container, selectedIndex, activePilotId, ownedPilotIds, onSelect) {
     for (var i = 0; i < PILOT_ASSETS.length; i++) {
       var pilot = PILOT_ASSETS[i];
       var button = document.createElement("button");
@@ -233,6 +248,7 @@
       button.className = "pilot-dossier-thumb";
       if (i === selectedIndex) button.classList.add("selected");
       if (pilot.id === activePilotId) button.classList.add("active");
+      if (ownedPilotIds.indexOf(pilot.id) < 0) button.classList.add("locked");
       button.setAttribute("aria-label", "查看" + pilot.name);
       button.setAttribute("aria-current", i === selectedIndex ? "true" : "false");
 
@@ -295,8 +311,7 @@
 
   var api = {
     renderPilotGallery: renderPilotGallery,
-    LOCAL_TEST_UNLOCK_ALL_PILOTS: LOCAL_TEST_UNLOCK_ALL_PILOTS,
-    FUTURE_ECONOMY_RESERVED: FUTURE_ECONOMY_RESERVED
+    LOCAL_TEST_UNLOCK_ALL_PILOTS: LOCAL_TEST_UNLOCK_ALL_PILOTS
   };
 
   scope.pilotGalleryView = api;

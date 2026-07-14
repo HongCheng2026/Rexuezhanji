@@ -237,7 +237,16 @@
         ctx.moveTo(effect.x - 6, effect.y);
         ctx.lineTo(effect.x + (effect.width || 820), effect.y);
         ctx.stroke();
-      } else if (effect.type === "dark-core") {
+      } else if (effect.type === "sky-lock-beam") {
+        ctx.strokeStyle = "rgba(218, 255, 255, " + (0.9 * alpha).toFixed(3) + ")";
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 16 * alpha;
+        ctx.lineWidth = 2 + Math.sin(progress * Math.PI) * 3;
+        ctx.beginPath();
+        ctx.moveTo(effect.x, effect.y);
+        ctx.lineTo(effect.targetX, effect.targetY);
+        ctx.stroke();
+      } else if (effect.type === "dark-core" || effect.type === "obsidian-gravity-well") {
         var radius = (effect.radius || 120) * (0.42 + progress * 0.58);
         var darkGrad = ctx.createRadialGradient(effect.x, effect.y, radius * 0.1, effect.x, effect.y, radius);
         darkGrad.addColorStop(0, "rgba(255, 255, 255, " + (0.74 * alpha).toFixed(3) + ")");
@@ -252,6 +261,15 @@
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(effect.x, effect.y, radius * (1.04 - progress * 0.34), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (effect.type === "gold-judgement-spear") {
+        ctx.strokeStyle = "rgba(255, 238, 160, " + (0.92 * alpha).toFixed(3) + ")";
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 22 * alpha;
+        ctx.lineWidth = 5 + Math.sin(progress * Math.PI) * 5;
+        ctx.beginPath();
+        ctx.moveTo(effect.x, effect.y);
+        ctx.lineTo(effect.targetX, effect.targetY);
         ctx.stroke();
       } else if (effect.type === "golden-lances") {
         ctx.strokeStyle = "rgba(255, 209, 102, " + (0.78 * alpha).toFixed(3) + ")";

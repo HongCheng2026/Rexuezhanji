@@ -1,7 +1,6 @@
 /* Lobby screen. */
 
 .lobby-screen {
-  --lobby-scale: 1;
   --lobby-text: #f5fbff;
   --lobby-muted: #9edff4;
   --lobby-gold: #ffe184;
@@ -17,13 +16,10 @@
   --z-modal: 90;
   background: #020914;
   height: 900px;
+  inset: 0;
   isolation: isolate;
-  left: 50%;
   overflow: hidden;
   position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%) scale(var(--lobby-scale));
-  transform-origin: center;
   width: 1600px;
 }
 

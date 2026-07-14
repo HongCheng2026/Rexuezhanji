@@ -22,7 +22,6 @@ const levels = (() => {
   return result;
 })();
 const upgrades: Record<string, { max: number; baseCost: number }> = {
-  fire: { max: 10, baseCost: 90 },
   armor: { max: 6, baseCost: 130 },
   engine: { max: 6, baseCost: 110 },
   bounty: { max: 8, baseCost: 100 }
@@ -33,6 +32,40 @@ const fighterUpgradeCosts: Record<string, number[]> = {
   armorPenetration: [0, 0, 585, 855, 1008, 1107, 1197, 1269, 1341, 1395, 1449, 1503, 1548, 1593, 1629, 1665, 1701, 1737, 1773, 1800, 1845, 4500, 4950, 5400, 5850, 6300, 4500, 4950, 5400, 5850, 6300, 12312, 15966, 17721, 18963, 19944, 20763, 21474, 22095, 22653, 23166, 23634, 24066, 24471, 24858, 25209, 25551, 25875, 26181, 26469, 26748, 27018, 27279, 27531, 27774, 27999, 28224, 28449, 28665, 28872, 29070],
   hp: [0, 0, 325, 475, 560, 615, 665, 705, 745, 775, 805, 835, 860, 885, 905, 925, 945, 965, 985, 1000, 1025, 2500, 2750, 3000, 3250, 3500, 2500, 2750, 3000, 3250, 3500, 6840, 8870, 9845, 10535, 11080, 11535, 11930, 12275, 12585, 12870, 13130, 13370, 13595, 13810, 14005, 14195, 14375, 14545, 14705, 14860, 15010, 15155, 15295, 15430, 15555, 15680, 15805, 15925, 16040, 16150]
 };
+const WEAPON_MODULES: Record<string, { price: number; weaponType: "spread" | "laser" | "missile" }> = {
+  "spread-focus": { price: 50000, weaponType: "spread" },
+  "spread-storm": { price: 50000, weaponType: "spread" },
+  "laser-prism": { price: 50000, weaponType: "laser" },
+  "laser-capacitor": { price: 50000, weaponType: "laser" },
+  "missile-guidance": { price: 50000, weaponType: "missile" },
+  "missile-warhead": { price: 50000, weaponType: "missile" }
+};
+const PILOT_RANK_BY_ID: Record<string, "S" | "A" | "B"> = {
+  "pilot-s-lingyan": "S",
+  "pilot-s-luoqi": "S",
+  "pilot-a-yelan": "S",
+  "pilot-a-luofeiyin": "A",
+  "pilot-a-shenyao": "A",
+  "pilot-b-shenqingyao": "A",
+  "pilot-b-bailing": "B",
+  "pilot-b-linzhihan": "B",
+  "pilot-b-sumianxing": "B",
+  "pilot-b-xingtao": "B"
+};
+const SHIP_RANK_BY_ID: Record<string, "S" | "A" | "B"> = {
+  "ship-s-09": "S",
+  "ship-s-08": "S",
+  "ship-b-04": "S",
+  "ship-a-07": "A",
+  "ship-a-06": "A",
+  "ship-b-02": "A",
+  "ship-b-01": "B",
+  "ship-b-03": "B",
+  "ship-b-05": "B"
+};
+const PILOT_PRICE_BY_RANK = { B: 30000, A: 120000, S: 900000 } as const;
+const SHIP_PRICE_BY_RANK = { B: 50000, A: 150000, S: 1300000 } as const;
+const S_RANK_SHIP_IDS = new Set(["ship-s-09", "ship-s-08", "ship-b-04"]);
 const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "gold" | "stamina" | "item"; amount: number; itemId?: string }> }> = {
   RXZJ666: { minLevel: 1, rewards: [{ type: "gold", amount: 30000 }, { type: "stamina", amount: 50 }] },
   SKY2026: { minLevel: 1, rewards: [{ type: "gold", amount: 50000 }] },
@@ -45,12 +78,13 @@ const shopItems: Record<string, { priceDiamond: number; gold: number }> = { gold
 function baseProfile() {
   const now = Date.now();
   return {
-    saveVersion: 5,
+    saveVersion: 6,
     coins: 0,
     unlockedLevel: 1,
     completed: [] as number[],
     upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
     fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1 },
+    weaponModules: { ownedIds: [] as string[], equippedId: null as string | null },
     player: { uid: "", name: "王牌飞行员", signature: "保持航线，火力覆盖。", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
     resources: { energy: ENERGY_MAX, maxEnergy: ENERGY_MAX, gold: 0, diamonds: 0, lastEnergyAt: now },
     scene: { pilotId: "pilot-s-lingyan", shipId: "ship-a-06", backgroundId: "bg-hangar-01" },
@@ -63,6 +97,7 @@ function baseProfile() {
 
 function normalizeProfile(input: any = {}) {
   const base = baseProfile();
+  const incomingVersion = Math.max(0, Math.floor(Number(input.saveVersion) || 0));
   const profile: any = {
     ...base,
     ...input,
@@ -72,10 +107,11 @@ function normalizeProfile(input: any = {}) {
     owned: { ...base.owned, ...(input.owned || {}) },
     upgrades: { ...base.upgrades, ...(input.upgrades || {}) },
     fighterUpgrades: { ...base.fighterUpgrades, ...(input.fighterUpgrades || {}) },
+    weaponModules: { ...base.weaponModules, ...(input.weaponModules || {}) },
     ratings: input.ratings || {}
     ,progress: { ...base.progress, ...(input.progress || {}) }
   };
-  profile.saveVersion = 5;
+  profile.saveVersion = 6;
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
   profile.completed = Array.from(new Set((Array.isArray(input.completed) ? input.completed : []).map(Number).filter((id) => levels.some((level) => level.id === id))));
   profile.player.level = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(profile.player.level) || 1)));
@@ -93,11 +129,46 @@ function normalizeProfile(input: any = {}) {
   profile.resources.diamonds = Math.max(0, Math.floor(Number(profile.resources.diamonds) || 0));
   profile.resources.lastEnergyAt = Math.floor(Number(profile.resources.lastEnergyAt) || Date.now());
   profile.coins = profile.resources.gold;
+  profile.owned.pilots = Array.from(new Set([
+    ...base.owned.pilots,
+    ...(Array.isArray(profile.owned.pilots) ? profile.owned.pilots.map(String) : [])
+  ].filter((id) => Boolean(PILOT_RANK_BY_ID[id]))));
+  profile.owned.ships = Array.from(new Set([
+    ...base.owned.ships,
+    ...(Array.isArray(profile.owned.ships) ? profile.owned.ships.map(String) : [])
+  ].filter((id) => Boolean(SHIP_RANK_BY_ID[id]))));
+  if (!profile.owned.pilots.includes(profile.scene.pilotId)) profile.scene.pilotId = base.scene.pilotId;
+  if (!profile.owned.ships.includes(profile.scene.shipId)) profile.scene.shipId = base.scene.shipId;
   profile.progress.clearedStageIds = Array.from(new Set(Array.isArray(profile.progress.clearedStageIds) ? profile.progress.clearedStageIds.map(String) : []));
   profile.progress.clearedChapterIds = Array.from(new Set(Array.isArray(profile.progress.clearedChapterIds) ? profile.progress.clearedChapterIds.map(Number).filter(Number.isFinite) : []));
   profile.progress.stageStars = profile.progress.stageStars || {};
+  if (incomingVersion < 6) {
+    const fireLevel = Math.max(0, Math.min(10, Math.floor(Number(profile.upgrades.fire) || 0)));
+    let credit = 90 * fireLevel * (fireLevel + 1) / 2;
+    let attackLevel = Math.max(1, Math.min(profile.player.level, Math.floor(Number(profile.fighterUpgrades.attack) || 1)));
+    while (attackLevel < Math.min(profile.player.level, FIGHTER_MAX_UPGRADE_LEVEL)) {
+      const nextLevel = attackLevel + 1;
+      const cost = Math.max(0, Math.floor(Number(fighterUpgradeCosts.attack[nextLevel]) || 0));
+      if (!cost || cost > credit) break;
+      credit -= cost;
+      attackLevel = nextLevel;
+    }
+    profile.fighterUpgrades.attack = attackLevel;
+    profile.resources.gold += credit;
+  }
+  profile.upgrades.fire = 0;
   for (const [key, definition] of Object.entries(upgrades)) profile.upgrades[key] = Math.max(0, Math.min(definition.max, Math.floor(Number(profile.upgrades[key]) || 0)));
   for (const key of ["attack", "armorPenetration", "hp"]) profile.fighterUpgrades[key] = Math.max(1, Math.min(profile.player.level, Math.floor(Number(profile.fighterUpgrades[key]) || 1)));
+  const knownModuleIds = Object.keys(WEAPON_MODULES);
+  profile.weaponModules.ownedIds = Array.from(new Set(
+    (Array.isArray(profile.weaponModules.ownedIds) ? profile.weaponModules.ownedIds : [])
+      .map(String)
+      .filter((id: string) => knownModuleIds.includes(id))
+  ));
+  profile.weaponModules.equippedId = profile.weaponModules.ownedIds.includes(profile.weaponModules.equippedId)
+    ? profile.weaponModules.equippedId
+    : null;
+  profile.coins = profile.resources.gold;
   return profile;
 }
 
@@ -147,8 +218,9 @@ const allowedOrigins = new Set(["https://rexuezhanji.top", "https://www.rexuezha
 function corsHeaders(request: Request) {
   const origin = request.headers.get("origin") || "";
   const isLocal = /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i.test(origin);
+  const isDeployPreview = /^https:\/\/[a-z0-9-]+--rexuezhanji\.netlify\.app$/i.test(origin);
   return {
-    "Access-Control-Allow-Origin": allowedOrigins.has(origin) || isLocal ? origin : "https://rexuezhanji.top",
+    "Access-Control-Allow-Origin": allowedOrigins.has(origin) || isLocal || isDeployPreview ? origin : "https://rexuezhanji.top",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rexuezhanji-source-token",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin"
@@ -397,6 +469,65 @@ async function upgradeFighter(ctx: Context, body: Json) {
   return reply({ profile: publicProfile(saved), cost, statType, level: targetLevel });
 }
 
+async function buyRosterItem(ctx: Context, body: Json, type: "pilot" | "ship") {
+  const idField = type === "pilot" ? "pilotId" : "shipId";
+  const itemId = String(body[idField] || "");
+  const rankMap = type === "pilot" ? PILOT_RANK_BY_ID : SHIP_RANK_BY_ID;
+  const rank = rankMap[itemId];
+  if (!rank) return error(type === "pilot" ? "战姬不存在。" : "战机不存在。", 404);
+  const prices = type === "pilot" ? PILOT_PRICE_BY_RANK : SHIP_PRICE_BY_RANK;
+  const cost = prices[rank];
+  const ownedField = type === "pilot" ? "pilots" : "ships";
+  const { profile, revision } = await loadProfile(ctx);
+  profile.owned = profile.owned || { pilots: [], ships: [], backgrounds: [] };
+  const ownedIds = Array.isArray(profile.owned[ownedField]) ? profile.owned[ownedField] : [];
+  if (ownedIds.includes(itemId)) return error(type === "pilot" ? "该战姬已经拥有。" : "该战机已经拥有。", 409);
+  if (game.profile.getGold(profile) < cost) return error("金币不足。", 409);
+  game.profile.setGold(profile, game.profile.getGold(profile) - cost);
+  profile.owned[ownedField] = [...ownedIds, itemId];
+  const saved = await saveProfile(ctx, profile, revision);
+  await ledger(ctx, type === "pilot" ? "buy-pilot" : "buy-ship", -cost, 0, { itemId, rank });
+  return reply({ profile: publicProfile(saved), cost, [idField]: itemId, rank });
+}
+
+async function buyPilot(ctx: Context, body: Json) {
+  return buyRosterItem(ctx, body, "pilot");
+}
+
+async function buyShip(ctx: Context, body: Json) {
+  return buyRosterItem(ctx, body, "ship");
+}
+
+async function buyWeaponModule(ctx: Context, body: Json) {
+  const moduleId = String(body.moduleId || "");
+  const definition = WEAPON_MODULES[moduleId];
+  if (!definition) return error("武器模块不存在。", 404);
+  const { profile, revision } = await loadProfile(ctx);
+  profile.weaponModules = profile.weaponModules || { ownedIds: [], equippedId: null };
+  const ownedIds = Array.isArray(profile.weaponModules.ownedIds) ? profile.weaponModules.ownedIds : [];
+  if (ownedIds.includes(moduleId)) return error("该模块已经购买。", 409);
+  if (game.profile.getGold(profile) < definition.price) return error("金币不足。", 409);
+  game.profile.setGold(profile, game.profile.getGold(profile) - definition.price);
+  profile.weaponModules.ownedIds = [...ownedIds, moduleId];
+  const saved = await saveProfile(ctx, profile, revision);
+  await ledger(ctx, "buy-weapon-module", -definition.price, 0, { moduleId, weaponType: definition.weaponType });
+  return reply({ profile: publicProfile(saved), cost: definition.price, moduleId });
+}
+
+async function equipWeaponModule(ctx: Context, body: Json) {
+  const moduleId = body.moduleId == null || body.moduleId === "" ? null : String(body.moduleId);
+  if (moduleId && !WEAPON_MODULES[moduleId]) return error("武器模块不存在。", 404);
+  const { profile, revision } = await loadProfile(ctx);
+  const ownedIds = Array.isArray(profile.weaponModules?.ownedIds) ? profile.weaponModules.ownedIds : [];
+  if (moduleId && !ownedIds.includes(moduleId)) return error("请先购买该模块。", 403);
+  if (moduleId && !S_RANK_SHIP_IDS.has(String(profile.scene?.shipId || ""))) return error("只有 S 级战机可以装备模块。", 403);
+  profile.weaponModules = profile.weaponModules || { ownedIds, equippedId: null };
+  profile.weaponModules.equippedId = moduleId;
+  const saved = await saveProfile(ctx, profile, revision);
+  await ledger(ctx, "equip-weapon-module", 0, 0, { moduleId: moduleId || "" });
+  return reply({ profile: publicProfile(saved), moduleId });
+}
+
 async function saveCosmetics(ctx: Context, body: Json) {
   const { profile, revision } = await loadProfile(ctx);
   const incoming = (body.profile || {}) as any;
@@ -490,6 +621,10 @@ Deno.serve(async (request) => {
         else if (action === "sweep") response = await sweep(ctx, body);
         else if (action === "upgrade") response = await upgrade(ctx, body);
         else if (action === "upgrade-fighter") response = await upgradeFighter(ctx, body);
+        else if (action === "buy-pilot") response = await buyPilot(ctx, body);
+        else if (action === "buy-ship") response = await buyShip(ctx, body);
+        else if (action === "buy-weapon-module") response = await buyWeaponModule(ctx, body);
+        else if (action === "equip-weapon-module") response = await equipWeaponModule(ctx, body);
         else if (action === "save-cosmetics") response = await saveCosmetics(ctx, body);
         else if (action === "redeem") response = await redeem(ctx, body);
         else if (action === "shop-buy") response = await buyShopItem(ctx, body);

@@ -2,237 +2,32 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" href="data:," />
     <title>星空打飞机：第一章</title>
-    <link rel="stylesheet" href="style.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="lobby.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/featurePanelShell.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/profileView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/pilotGalleryView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/shipGalleryView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/fighterUpgradeView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/mainFeaturePanelsView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/starWingsGachaView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/campaignStoryPlayerView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/battleHudView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/battleSettlementView.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/chapterSelectLayout.generated.css?v=20260713-css-split-v4" />
-    <link rel="stylesheet" href="ui/chapterSelectView.css?v=20260713-css-split-v4" />
+    <link rel="stylesheet" href="viewport.css?v=20260714-game-viewport-v1" />
   </head>
-  <body>
-    <main class="app-root">
-      <section id="lobbyScreen" class="lobby-screen" aria-label="游戏主界面">
-        <div class="lobby-stage" aria-hidden="true">
-          <div class="lobby-default-bg"></div>
-          <img id="lobbyBackgroundLayer" class="lobby-background-layer" alt="" />
-          <img id="lobbyShipLayer" class="lobby-ship-layer" alt="" />
-        </div>
+  <body class="game-viewport-host">
+    <main id="gameViewport" class="game-viewport" aria-label="热血战姬游戏窗口">
+      <iframe
+        id="gameFrame"
+        class="game-frame"
+        title="热血战姬"
+        data-src="game-frame.html"
+        allow="autoplay; fullscreen"
+        allowfullscreen
+      ></iframe>
 
-        <div class="lobby-center-hero" aria-hidden="true">
-          <img id="lobbyPilotLayer" class="lobby-pilot-layer" alt="" />
-        </div>
+      <button id="fullscreenToggle" class="viewport-fullscreen" type="button" aria-pressed="false">
+        <span class="viewport-fullscreen-icon" aria-hidden="true">⛶</span>
+        <span id="fullscreenLabel">全屏</span>
+      </button>
 
-        <header class="lobby-topbar hud-zone" aria-label="顶部状态区">
-          <button class="pilot-card lobby-action" type="button" data-panel="profile" aria-label="打开飞行员资料">
-            <span class="hud-content pilot-card-content">
-              <span class="pilot-avatar-slot"><img id="pilotAvatar" class="pilot-avatar" alt="" /></span>
-              <span class="pilot-info">
-                <strong id="pilotName">王牌飞行员</strong>
-                <span id="pilotLevel" class="pilot-level-row">Lv.1</span>
-                <span class="pilot-exp-row">
-                  <span class="exp-track" aria-hidden="true"><span id="pilotExpBar"></span></span>
-                  <span id="pilotExpText">0/100</span>
-                </span>
-              </span>
-              <span class="pilot-honor" aria-label="飞行员荣誉等级">
-                <span class="pilot-honor-icon" aria-hidden="true"></span>
-                <span id="pilotBadge" class="pilot-badge">I</span>
-                <span class="pilot-honor-label">PILOT</span>
-              </span>
-            </span>
-            <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-          </button>
-
-          <section class="resource-strip" aria-label="玩家资源">
-            <div class="resource-unit energy-resource">
-              <span class="hud-content resource-content"><span class="resource-icon" aria-hidden="true"></span><strong id="energyValue">0</strong></span>
-              <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-              <button class="resource-add lobby-action" type="button" data-panel="energy" aria-label="打开体力补充">+</button>
-            </div>
-            <div class="top-command-crest" aria-hidden="true"></div>
-            <div class="resource-unit gold-resource">
-              <span class="hud-content resource-content"><span class="resource-icon" aria-hidden="true"></span><strong id="goldValue">0</strong></span>
-              <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-              <button class="resource-add lobby-action" type="button" data-panel="gold" aria-label="打开金币补充">+</button>
-            </div>
-            <strong id="diamondValue" class="diamond-resource" aria-hidden="true">0</strong>
-          </section>
-
-          <div class="starport-log" aria-hidden="true">
-            <strong>STARPORT LOG</strong>
-            <span>07.10 Mission Briefing Updated</span>
-            <span>07.10 Daily Supply Ready</span>
-            <span>07.09 Star Wings Preview</span>
-          </div>
-
-          <nav class="quick-nav" aria-label="快捷入口">
-            <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-            <button class="quick-icon mail-icon lobby-action" type="button" data-panel="mail" aria-label="邮件"><span class="hud-content" aria-hidden="true"></span></button>
-            <button class="quick-icon signin-icon lobby-action" type="button" data-panel="signin" aria-label="签到"><span class="hud-content" aria-hidden="true"></span></button>
-            <button class="quick-icon friend-icon lobby-action" type="button" data-panel="friend" aria-label="好友"><span class="hud-content" aria-hidden="true"></span></button>
-            <button class="quick-icon setting-icon lobby-action" type="button" data-panel="setting" aria-label="设置"><span class="hud-content" aria-hidden="true"></span></button>
-          </nav>
-        </header>
-
-        <section class="lobby-main" aria-label="大厅功能区">
-          <nav class="left-entry-list" aria-label="主玩法入口">
-            <button class="feature-tile wide pilot lobby-action" type="button" data-panel="pilotGallery">
-              <span class="hud-content feature-tile-content"><span class="feature-tile-icon" aria-hidden="true"></span><span class="feature-tile-copy"><strong>战姬</strong><span>PILOT ROSTER</span></span></span>
-              <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-            </button>
-            <button class="feature-tile wide hangar lobby-action" type="button" data-panel="shipGallery">
-              <span class="hud-content feature-tile-content"><span class="feature-tile-icon" aria-hidden="true"></span><span class="feature-tile-copy"><strong>战机</strong><span>FIGHTER HANGAR</span></span></span>
-              <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-            </button>
-            <button class="feature-tile wide upgrade lobby-action" type="button" data-panel="upgrade">
-              <span class="hud-content feature-tile-content"><span class="feature-tile-icon" aria-hidden="true"></span><span class="feature-tile-copy"><strong>战机强化</strong><span>FIGHTER UPGRADE</span></span></span>
-              <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-            </button>
-            <button class="feature-tile wide codex lobby-action" type="button" data-panel="enemyCodex">
-              <span class="hud-content feature-tile-content"><span class="feature-tile-icon" aria-hidden="true"></span><span class="feature-tile-copy"><strong>图鉴</strong><span>CODEX</span></span></span>
-              <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-            </button>
-          </nav>
-
-          <nav class="right-entry-grid" aria-label="系统入口">
-            <button class="menu-tile task has-alert lobby-action" type="button" data-panel="task"><span class="hud-content menu-tile-content"><span class="menu-icon" aria-hidden="true"></span><strong>任务</strong><em>TASK</em></span><span class="hud-skin hud-skin-tile" aria-hidden="true"></span><span class="menu-alert" aria-hidden="true"></span></button>
-            <button class="menu-tile event has-alert lobby-action" type="button" data-panel="event"><span class="hud-content menu-tile-content"><span class="menu-icon" aria-hidden="true"></span><strong>活动</strong><em>EVENT</em></span><span class="hud-skin hud-skin-tile" aria-hidden="true"></span><span class="menu-alert" aria-hidden="true"></span></button>
-            <button class="menu-tile achievement has-alert lobby-action" type="button" data-panel="achievement"><span class="hud-content menu-tile-content"><span class="menu-icon" aria-hidden="true"></span><strong>成就</strong><em>ACHIEVEMENT</em></span><span class="hud-skin hud-skin-tile" aria-hidden="true"></span><span class="menu-alert" aria-hidden="true"></span></button>
-            <button class="menu-tile shop lobby-action" type="button" data-panel="shop"><span class="hud-content menu-tile-content"><span class="menu-icon" aria-hidden="true"></span><strong>商店</strong><em>SHOP</em></span><span class="hud-skin hud-skin-tile" aria-hidden="true"></span><span class="menu-alert" aria-hidden="true"></span></button>
-            <button class="menu-tile ranking lobby-action" type="button" data-panel="ranking"><span class="hud-content menu-tile-content"><span class="menu-icon" aria-hidden="true"></span><strong>排行榜</strong><em>RANKING</em></span><span class="hud-skin hud-skin-tile" aria-hidden="true"></span><span class="menu-alert" aria-hidden="true"></span></button>
-            <button class="menu-tile friend has-alert lobby-action" type="button" data-panel="friend"><span class="hud-content menu-tile-content"><span class="menu-icon" aria-hidden="true"></span><strong>好友</strong><em>FRIEND</em></span><span class="hud-skin hud-skin-tile" aria-hidden="true"></span><span class="menu-alert" aria-hidden="true"></span></button>
-          </nav>
-        </section>
-
-        <footer class="lobby-footer hud-zone" aria-label="底部操作区">
-          <button class="promo-card lobby-action" type="button" data-panel="starWingsGacha" aria-label="打开星穹之翼抽奖">
-            <span class="promo-art" aria-hidden="true"></span>
-            <span class="hud-content promo-copy"><span class="promo-kicker">LIMITED SIGNAL</span><strong>星穹之翼</strong><span class="promo-detail">苍穹零式概率提升</span><span class="promo-command">进入跃迁</span></span>
-            <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-          </button>
-          <section class="lobby-center-action" aria-label="中央出击入口">
-            <button id="battleEntryButton" class="battle-entry" type="button">
-              <span class="hud-content battle-copy"><strong>开始战斗</strong><em>START BATTLE</em></span>
-              <span class="hud-skin hud-skin-battle" aria-hidden="true"></span>
-            </button>
-          </section>
-          <div class="footer-side-stack">
-            <button class="gift-card lobby-action" type="button" data-panel="contact">
-              <span class="hud-content gift-card-content"><span class="contact-copy"><strong>联系我们</strong><span>CONTACT US</span></span><span class="contact-emblem" aria-hidden="true"></span></span>
-              <span class="hud-skin hud-skin-contact" aria-hidden="true"></span>
-            </button>
-            <button class="chat-strip lobby-action" type="button" data-panel="chat" aria-label="打开聊天">
-              <span class="hud-content chat-strip-content"><span class="chat-strip-icon" aria-hidden="true"></span><span class="chat-strip-copy"><strong>星港聊天</strong><em>世界频道 · 等待指挥官接入</em></span></span>
-              <span class="hud-skin hud-skin-chat" aria-hidden="true"></span>
-            </button>
-          </div>
-        </footer>
-
-      </section>
-
-      <section id="featurePanel" class="feature-panel hidden" aria-label="功能界面">
-        <div class="feature-panel-box">
-          <button id="closeFeaturePanel" class="panel-close" type="button" aria-label="关闭">×</button>
-          <span id="featurePanelKicker">SYSTEM</span>
-          <h2 id="featurePanelTitle">功能界面</h2>
-          <p id="featurePanelBody">内容待填充。</p>
-          <div id="featurePanelSlots" class="feature-slots"></div>
-        </div>
-      </section>
-      <input id="avatarUpload" type="file" accept="image/*" hidden />
-
-      <section id="battleScreen" class="game-shell battle-screen hidden" aria-label="战斗界面">
-      <section class="stage-wrap" aria-label="游戏区域">
-        <canvas id="game" width="960" height="540"></canvas>
-        <section class="hud battle-cockpit-hud" aria-label="游戏状态">
-          <div class="hud-compact-cell">
-            <span class="label">关卡</span>
-            <strong id="levelLabel">1-1</strong>
-          </div>
-          <div class="hud-compact-cell">
-            <span class="label">时间</span>
-            <strong id="timeLabel">90</strong>
-          </div>
-          <div class="hud-hp-cell">
-            <span class="label">生命</span>
-            <strong id="lives">3</strong>
-            <span class="hud-bar" aria-hidden="true"><span id="playerHpBar"></span></span>
-          </div>
-          <div class="hud-boss-cell">
-            <span class="label">BOSS</span>
-            <strong id="weapon">未接敌</strong>
-            <span class="hud-bar boss" aria-hidden="true"><span id="bossHpBar"></span></span>
-          </div>
-          <div class="hud-status-cell">
-            <span class="label">击落</span>
-            <strong id="coins">0</strong>
-            <button id="pauseButton" class="hud-pause-button" type="button">暂停</button>
-          </div>
-        </section>
-        <aside id="battleSidePanel" class="battle-side-panel" aria-label="战斗武器与道具">
-          <section class="weapon-panel">
-            <span class="panel-kicker">WEAPONS</span>
-            <div id="battleWeaponSlots" class="weapon-slots"></div>
-          </section>
-          <section class="item-panel">
-            <span class="panel-kicker">SUPPLY</span>
-            <div id="battleItemSlots" class="item-slots"></div>
-          </section>
-          <section class="active-skill-panel">
-            <span class="panel-kicker">ACTIVE SKILL</span>
-            <button id="activeSkillButton" class="active-skill-button" type="button" disabled>
-              <strong>未搭载</strong>
-              <span>NO SKILL</span>
-              <em></em>
-            </button>
-          </section>
-        </aside>
-
-        <div id="overlay" class="overlay">
-          <h1>第一章：星港突围</h1>
-          <p id="message">横版 90 秒关卡模式，撑到 BOSS 出现并击破即可过关。</p>
-          <div id="chapterSelect" class="campaign-map-viewport" aria-label="章节关卡"></div>
-          <button id="startButton" type="button">开始 1-1</button>
-        </div>
-
-        <div id="shopScreen" class="shop-screen hidden" aria-label="购买与升级">
-          <section class="shop-guide">
-            <div class="guide-portrait" aria-hidden="true">
-              <div class="guide-hair"></div>
-              <div class="guide-face"></div>
-              <div class="guide-body"></div>
-            </div>
-            <div>
-              <h2>星港导购</h2>
-              <p id="shopMessage">欢迎回来，飞行员。把战斗金币换成实打实的性能吧。</p>
-              <strong id="shopCoins">0 金币</strong>
-            </div>
-          </section>
-          <section id="upgradeList" class="upgrade-list"></section>
-          <section class="shop-actions">
-            <button id="nextLevelButton" type="button">进入下一关</button>
-            <button id="replayButton" type="button">再次挑战</button>
-            <button id="backToChapterButton" type="button">返回关卡</button>
-          </section>
-        </div>
-      </section>
-
-      </section>
+      <p id="orientationHint" class="viewport-orientation-hint">横屏体验更好</p>
+      <p id="viewportNotice" class="viewport-notice" role="status" aria-live="polite"></p>
     </main>
 
-    <script src="shared-loader.js?v=20260713-profile-power-v1"></script>
-    <script src="supabase-config.js?v=20260625-local-fix"></script>
-    <script src="cloud-save.js?v=20260713-profile-power-v1"></script>
-    <script src="game.js?v=20260713-profile-power-v1"></script>
+    <script src="app/gameViewportController.js?v=20260714-game-viewport-v1"></script>
+    <script src="viewportHost.js?v=20260714-game-viewport-v1"></script>
   </body>
 </html>

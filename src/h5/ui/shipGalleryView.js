@@ -4,10 +4,10 @@
   var assetsConfig = scope.assets || {};
   var balanceConfig = scope.balance || {};
   var combatStats = scope.combatStats || {};
+  var rosterEconomy = scope.rosterEconomy || {};
   var SHIP_ASSETS = assetsConfig.SHIP_ASSETS || [];
   var DEFAULT_SHIP_ID = assetsConfig.DEFAULT_SHIP_ID || "ship-a-06";
-  var LOCAL_TEST_UNLOCK_ALL_SHIPS = true;
-  var FUTURE_ECONOMY_RESERVED = true;
+  var LOCAL_TEST_UNLOCK_ALL_SHIPS = false;
 
   function renderShipGallery(container, profile, callbacks) {
     callbacks = callbacks || {};
@@ -16,6 +16,8 @@
     container.tabIndex = 0;
 
     var activeShipId = (profile.scene && profile.scene.shipId) || DEFAULT_SHIP_ID;
+    var ownedShipIds = (profile.owned && Array.isArray(profile.owned.ships)) ? profile.owned.ships : [];
+    var gold = scope.profile && scope.profile.getGold ? scope.profile.getGold(profile) : Math.max(0, Number(profile.resources && profile.resources.gold) || 0);
     var selectedIndex = findShipIndex(activeShipId);
     var dragStartX = null;
     var dragStartY = null;
@@ -94,6 +96,7 @@
       var ship = SHIP_ASSETS[selectedIndex] || SHIP_ASSETS[0];
       var activeShipId = (profile.scene && profile.scene.shipId) || DEFAULT_SHIP_ID;
       var isActive = ship && ship.id === activeShipId;
+      var isOwned = ship && ownedShipIds.indexOf(ship.id) >= 0;
       stage.innerHTML = "";
       thumbStrip.innerHTML = "";
       if (!ship) {
@@ -102,8 +105,8 @@
       }
 
       stage.appendChild(createShipArtwork(ship));
-      stage.appendChild(createShipInfo(ship, isActive, callbacks));
-      renderThumbs(thumbStrip, selectedIndex, activeShipId, selectAbsolute);
+      stage.appendChild(createShipInfo(ship, isActive, isOwned, gold, callbacks));
+      renderThumbs(thumbStrip, selectedIndex, activeShipId, ownedShipIds, selectAbsolute);
     }
   }
 
@@ -133,7 +136,7 @@
     return frame;
   }
 
-  function createShipInfo(ship, isActive, callbacks) {
+  function createShipInfo(ship, isActive, isOwned, gold, callbacks) {
     var info = document.createElement("div");
     info.className = "ship-hangar-info";
 
@@ -186,16 +189,24 @@
 
     var status = document.createElement("div");
     status.className = "ship-hangar-status";
-    status.textContent = LOCAL_TEST_UNLOCK_ALL_SHIPS ? "已开放" : "已拥有";
+    var price = rosterEconomy.getPrice ? rosterEconomy.getPrice("ship", ship.rank) : 0;
+    var canAfford = gold >= price;
+    status.textContent = isOwned ? "已拥有" : (canAfford ? "售价 " : "金币不足 · 售价 ") + formatGold(price);
+    if (!isOwned && !canAfford) status.classList.add("insufficient");
 
     var action = document.createElement("button");
     action.type = "button";
     action.className = "ship-hangar-equip";
-    action.textContent = isActive ? "当前出战" : "设为出战";
-    action.disabled = isActive;
+    action.textContent = isOwned ? (isActive ? "当前出战" : "设为出战") : "购买 " + formatGold(price);
+    action.disabled = isOwned ? isActive : !canAfford || !price;
+    if (!isOwned) action.classList.add("purchase");
     action.addEventListener("click", function onEquip() {
-      if (isActive) return;
-      if (callbacks.onSelectShip) callbacks.onSelectShip(ship.id);
+      if (isOwned) {
+        if (isActive) return;
+        if (callbacks.onSelectShip) callbacks.onSelectShip(ship.id);
+        return;
+      }
+      if (canAfford && callbacks.onBuyShip) callbacks.onBuyShip(ship.id);
     });
     control.appendChild(action);
     control.appendChild(status);
@@ -238,7 +249,11 @@
     return Math.max(0, Math.round(Number(value) || 0)).toLocaleString("zh-CN");
   }
 
-  function renderThumbs(container, selectedIndex, activeShipId, onSelect) {
+  function formatGold(value) {
+    return Math.max(0, Math.floor(Number(value) || 0)).toLocaleString("zh-CN") + " 金币";
+  }
+
+  function renderThumbs(container, selectedIndex, activeShipId, ownedShipIds, onSelect) {
     for (var i = 0; i < SHIP_ASSETS.length; i++) {
       var ship = SHIP_ASSETS[i];
       var button = document.createElement("button");
@@ -246,6 +261,7 @@
       button.className = "ship-hangar-thumb";
       if (i === selectedIndex) button.classList.add("selected");
       if (ship.id === activeShipId) button.classList.add("active");
+      if (ownedShipIds.indexOf(ship.id) < 0) button.classList.add("locked");
       button.setAttribute("aria-label", "查看" + ship.name);
       button.setAttribute("aria-current", i === selectedIndex ? "true" : "false");
 
@@ -308,8 +324,7 @@
 
   var api = {
     renderShipGallery: renderShipGallery,
-    LOCAL_TEST_UNLOCK_ALL_SHIPS: LOCAL_TEST_UNLOCK_ALL_SHIPS,
-    FUTURE_ECONOMY_RESERVED: FUTURE_ECONOMY_RESERVED
+    LOCAL_TEST_UNLOCK_ALL_SHIPS: LOCAL_TEST_UNLOCK_ALL_SHIPS
   };
 
   scope.shipGalleryView = api;

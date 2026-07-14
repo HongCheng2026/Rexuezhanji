@@ -9,38 +9,31 @@
     normal: { displayName: "脉冲弹", shape: "bolt", color: "#bffcff", trailColor: "rgba(191,252,255,0.24)", radius: 4, width: 13, height: 6 },
     spread: { displayName: (POWERUPS.spread && POWERUPS.spread.name) || "裂星霰翼", shape: "bolt", color: "#ffd166", trailColor: "rgba(255,209,102,0.24)", radius: 4, width: 14, height: 6 },
     laser: { displayName: (POWERUPS.laser && POWERUPS.laser.name) || "苍蓝贯星炮", shape: "beam", color: "#5ee7ff", trailColor: "rgba(94,231,255,0.2)", radius: 5, width: 34, height: 5 },
-    missile: { displayName: (POWERUPS.missile && POWERUPS.missile.name) || "灵蜂追猎弹", shape: "lance", color: "#ffb347", trailColor: "rgba(255,159,67,0.22)", radius: 7, width: 20, height: 10 },
-    nova: { displayName: "星链超载", shape: "orb", color: "#82f7ff", trailColor: "rgba(130,247,255,0.28)", radius: 10 },
-    cluster: { displayName: "暗核重爆", shape: "lance", color: "#b889ff", trailColor: "rgba(184,137,255,0.22)", radius: 9, width: 22, height: 12 },
-    stellarBeam: { displayName: "星链贯星炮", shape: "beam", color: "#82f7ff", trailColor: "rgba(130,247,255,0.34)", radius: 10, width: 130, height: 10 },
-    darkCore: { displayName: "暗核坍缩弹", shape: "orb", color: "#b889ff", trailColor: "rgba(184,137,255,0.28)", radius: 13 },
-    goldenLance: { displayName: "金矢裁决阵", shape: "lance", color: "#ffd166", trailColor: "rgba(255,209,102,0.3)", radius: 8, width: 30, height: 12 }
+    missile: { displayName: (POWERUPS.missile && POWERUPS.missile.name) || "灵蜂追猎弹", shape: "lance", color: "#ffb347", trailColor: "rgba(255,159,67,0.22)", radius: 7, width: 20, height: 10 }
   };
 
-  var WEAPON_LEVEL_TABLE = {
-    spread: {
-      count: [0, 3, 5, 6, 7, 9, 10, 11, 13, 15, 17],
-      angleStep: [0, 0.055, 0.06, 0.064, 0.067, 0.07, 0.072, 0.074, 0.076, 0.078, 0.08]
-    },
-    laser: {
-      offsets: [
-        [],
-        [0],
-        [-10, 10],
-        [-14, 0, 14],
-        [-18, -6, 6, 18],
-        [-22, -11, 0, 11, 22],
-        [-26, -13, 0, 13, 26],
-        [-30, -18, -6, 6, 18, 30],
-        [-32, -19, -6, 6, 19, 32],
-        [-36, -24, -12, 0, 12, 24, 36],
-        [-42, -31, -20, -10, 0, 10, 20, 31, 42]
-      ]
-    },
-    missile: {
-      count: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    }
-  };
+  var WEAPON_LEVEL_TABLE = balanceConfig.PLAYER_WEAPON_LEVELS || {};
+
+  function getWeaponLevelStats(type, level) {
+    if (balanceConfig.getWeaponLevelStats) return balanceConfig.getWeaponLevelStats(type, level);
+    var table = WEAPON_LEVEL_TABLE[type] || [];
+    return table[Math.max(1, Math.min(10, Math.floor(Number(level) || 1)))] || {
+      damageMultiplier: 1,
+      projectileCount: 1,
+      offsets: [0],
+      angleStep: 0
+    };
+  }
+
+  function getEquippedModule(loadout, weaponType) {
+    var module = loadout && loadout.equippedWeaponModule;
+    return module && module.weaponType === weaponType ? module : null;
+  }
+
+  function getModuleEffects(loadout, weaponType) {
+    var module = getEquippedModule(loadout, weaponType);
+    return module && module.effects ? module.effects : {};
+  }
 
   function getActiveWeapons(weapons) {
     weapons = weapons || {};
@@ -104,6 +97,26 @@
     );
   }
 
+  function getWeaponPierce(loadout, state, type) {
+    var slots = (loadout && loadout.weaponPierceSlots) ||
+      (state && state.player && state.player.weaponPierceSlots) ||
+      { spread: 0, laser: 0, missile: 0 };
+    return Math.max(0, Math.floor(Number(slots[type]) || 0));
+  }
+
+  function getReferenceVolleyDamage(loadout, level) {
+    var referenceLevel = Math.max(1, Math.min(10, Math.floor(Number(level) || 8)));
+    var total = 0;
+    ["spread", "laser", "missile"].forEach(function addWeapon(type) {
+      var stats = getWeaponLevelStats(type, referenceLevel);
+      var count = Array.isArray(stats.offsets)
+        ? stats.offsets.length
+        : Math.max(1, Math.floor(Number(stats.projectileCount) || 1));
+      total += getPlayerDamage(loadout, type, referenceLevel) * count;
+    });
+    return Math.max(1, Math.round(total));
+  }
+
   function createBullet(x, y, angle, type, damage, speed, radius, color, options) {
     var visual = WEAPON_VISUALS[type] || {};
     var opts = typeof options === "object" && options !== null
@@ -125,7 +138,11 @@
       width: opts.width || visual.width || Math.max(8, (radius || 4) * 2),
       height: opts.height || visual.height || Math.max(8, (radius || 4) * 2),
       splashRadius: Math.max(0, Number(opts.splashRadius) || 0),
+      splashExcludesDirect: opts.splashExcludesDirect === true,
       armorPierceRatio: Math.max(0, Math.min(1, Number(opts.armorPierceRatio) || 0)),
+      armorBreakRatio: Math.max(0, Math.min(1, Number(opts.armorBreakRatio) || 0)),
+      armorBreakDuration: Math.max(0, Number(opts.armorBreakDuration) || 0),
+      armorBreakTargetId: opts.armorBreakTargetId || "",
       bulletVisualId: opts.bulletVisualId || "",
       pierceRemaining: Math.max(0, Math.floor(Number(opts.pierceRemaining) || 0)),
       hitIds: new (typeof Set !== "undefined" ? Set : Array)(),
@@ -160,51 +177,87 @@
       fireWeapon(state, loadout, bullets, activeWeapons[w][0], activeWeapons[w][1], x, y);
     }
     fireFusionWeapons(state, loadout, bullets, x, y);
-    fireExclusiveSkill(state, loadout, bullets, x, y);
+    if (scope.abilitySystem && scope.abilitySystem.onVolleyFired) {
+      scope.abilitySystem.onVolleyFired(state, loadout, bullets, { x: x, y: y });
+    }
   }
 
   function fireWeapon(state, loadout, bullets, weapon, level, x, y) {
-    var pierce = getPierceBudget(loadout, state);
     level = Math.max(1, Math.min(balanceConfig.MAX_WEAPON_LEVEL || 5, Math.floor(Number(level) || 1)));
+    var stats = getWeaponLevelStats(weapon, level);
+    var effects = getModuleEffects(loadout, weapon);
+    var damageMultiplier = Math.max(0, Number(effects.damageMultiplier) || 1);
+    var baseDamage = Math.round(getPlayerDamage(loadout, weapon, level) * damageMultiplier);
     if (weapon === "spread") {
-      var count = WEAPON_LEVEL_TABLE.spread.count[level] || WEAPON_LEVEL_TABLE.spread.count[10];
-      var step = WEAPON_LEVEL_TABLE.spread.angleStep[level] || WEAPON_LEVEL_TABLE.spread.angleStep[10];
+      var count = Math.max(1, Math.floor(Number(stats.projectileCount) || 1));
+      count += Math.max(0, Math.floor(Number(effects.projectileBonus) || 0));
+      if (Number(effects.projectileCap) > 0) count = Math.min(count, Math.floor(Number(effects.projectileCap)));
+      var step = Math.max(0, Number(stats.angleStep) || 0.055) * Math.max(0.1, Number(effects.angleMultiplier) || 1);
       var start = -step * (count - 1) / 2;
       for (var i = 0; i < count; i++) {
         bullets.push(createBullet(
           x + 32, y, start + step * i, "spread",
-          getPlayerDamage(loadout, "spread", level),
+          baseDamage,
           610 + level * 5, 4, WEAPON_VISUALS.spread.color,
-          { owner: "player", shape: "bolt", width: WEAPON_VISUALS.spread.width, height: WEAPON_VISUALS.spread.height, pierceRemaining: pierce, trailColor: WEAPON_VISUALS.spread.trailColor }
+          { owner: "player", shape: "bolt", width: WEAPON_VISUALS.spread.width, height: WEAPON_VISUALS.spread.height, pierceRemaining: getWeaponPierce(loadout, state, "spread"), trailColor: WEAPON_VISUALS.spread.trailColor }
         ));
       }
       return;
     }
 
     if (weapon === "laser") {
-      var offsets = WEAPON_LEVEL_TABLE.laser.offsets[level] || WEAPON_LEVEL_TABLE.laser.offsets[10];
+      var offsets = Array.isArray(stats.offsets) ? stats.offsets : [0];
+      var laserPierce = getWeaponPierce(loadout, state, "laser") + Math.max(0, Math.floor(Number(effects.pierceBonus) || 0));
       for (var j = 0; j < offsets.length; j++) {
         bullets.push(createBullet(
           x + 38, y + offsets[j], 0, "laser",
-          getPlayerDamage(loadout, "laser", level),
+          baseDamage,
           920 + level * 6, 5, WEAPON_VISUALS.laser.color,
-          { owner: "player", shape: "beam", width: 38 + Math.floor(level / 2), height: 5 + (level >= 8 ? 1 : 0), pierceRemaining: pierce, trailColor: WEAPON_VISUALS.laser.trailColor }
+          { owner: "player", shape: "beam", width: 38 + Math.floor(level / 2), height: 5 + (level >= 8 ? 1 : 0), pierceRemaining: laserPierce, trailColor: WEAPON_VISUALS.laser.trailColor }
         ));
+      }
+      if (Number(effects.triggerEvery) > 0) {
+        state.player.weaponVolleyCounts = state.player.weaponVolleyCounts || {};
+        var laserVolley = (state.player.weaponVolleyCounts.laser || 0) + 1;
+        state.player.weaponVolleyCounts.laser = laserVolley;
+        if (laserVolley % Math.floor(Number(effects.triggerEvery)) === 0) {
+          bullets.push(createBullet(
+            x + 42, y, 0, "laser",
+            Math.round(getPlayerDamage(loadout, "laser", level) * Math.max(1, Number(effects.bonusBeamDamageMultiplier) || 2)),
+            980 + level * 6, 7, "#bff8ff",
+            { owner: "player", shape: "beam", width: 62, height: 9, pierceRemaining: laserPierce + 1, trailColor: "rgba(191,248,255,0.34)" }
+          ));
+        }
       }
       return;
     }
 
     if (weapon === "missile") {
-      var mCount = WEAPON_LEVEL_TABLE.missile.count[level] || WEAPON_LEVEL_TABLE.missile.count[10];
+      var mCount = Math.max(1, Math.floor(Number(stats.projectileCount) || 1));
+      mCount += Math.max(0, Math.floor(Number(effects.projectileBonus) || 0));
+      if (Number(effects.projectileCap) > 0) mCount = Math.min(mCount, Math.floor(Number(effects.projectileCap)));
       var mOffsets = createCenteredOffsets(mCount, 14, 52);
+      var missileLocks = getMissileLocks(state);
       for (var k = 0; k < mOffsets.length; k++) {
-        var angle = mOffsets.length === 1 ? 0 : (k - (mOffsets.length - 1) / 2) * 0.05;
-        bullets.push(createBullet(
+        var normalizedSlot = mOffsets.length === 1 ? 0 : (k / (mOffsets.length - 1)) * 2 - 1;
+        var angle = normalizedSlot * 0.22;
+        var launchSpeed = (460 + level * 12) * Math.max(0.1, Number(effects.speedMultiplier) || 1);
+        var missile = createBullet(
           x + 28, y + mOffsets[k], angle, "missile",
-          getPlayerDamage(loadout, "missile", level),
-          460 + level * 12, 7, WEAPON_VISUALS.missile.color,
-          { owner: "player", shape: "lance", width: 20, height: 10, pierceRemaining: pierce, trailColor: WEAPON_VISUALS.missile.trailColor }
-        ));
+          baseDamage,
+          launchSpeed, 7, WEAPON_VISUALS.missile.color,
+          { owner: "player", shape: "lance", width: 20, height: 10, pierceRemaining: getWeaponPierce(loadout, state, "missile"), trailColor: WEAPON_VISUALS.missile.trailColor, splashRadius: Math.max(0, Number(effects.splashRadius) || 0), splashExcludesDirect: Number(effects.splashRadius) > 0 }
+        );
+        missile.homingStartAge = 0.08;
+        missile.homingTurnRate = 6 * Math.max(0.1, Number(effects.turnMultiplier) || 1);
+        missile.homingSteerGain = 9;
+        missile.launchSpeed = launchSpeed;
+        missile.maxSpeed = launchSpeed * 1.3;
+        missile.accelerationDuration = 0.35;
+        var target = selectMissileTarget(state, missile, missileLocks);
+        missile.targetId = target && target.id ? target.id : "";
+        if (missile.targetId) missileLocks[missile.targetId] = (missileLocks[missile.targetId] || 0) + 1;
+        bullets.push(missile);
       }
     }
   }
@@ -255,161 +308,41 @@
     queueSfx(selected);
   }
 
-  function fireExclusiveSkill(state, loadout, bullets, x, y) {
-    var skill = loadout && loadout.ship ? (loadout.ship.passiveSkill || loadout.ship.exclusiveSkill) : null;
-    if (!skill || !skill.id || skill.id === "golden-pierce") return;
-    state.player.exclusiveSkillLastAt = state.player.exclusiveSkillLastAt || {};
-    var now = Math.max(0, Number(state.elapsed) || 0);
-    var cooldown = Math.max(0.6, Number(skill.cooldown) || 2.4);
-    var lastAt = state.player.exclusiveSkillLastAt[skill.id];
-    if (lastAt != null && now - lastAt < cooldown) return;
-    state.player.exclusiveSkillLastAt[skill.id] = now;
-
-    if (skill.id === "stellar-overload") {
-      bullets.push(createBullet(
-        x + 42, y, 0, "nova",
-        Math.round(getPlayerDamage(loadout, "laser", 2) * (Number(skill.damageMultiplier) || 2.2)),
-        760, 10, WEAPON_VISUALS.nova.color,
-        { owner: "player", shape: "circle", pierceRemaining: 0, trailColor: WEAPON_VISUALS.nova.trailColor }
-      ));
-      return;
-    }
-
-    if (skill.id === "dark-cluster") {
-      var offsets = [-0.08, 0, 0.08];
-      for (var i = 0; i < offsets.length; i++) {
-        bullets.push(createBullet(
-          x + 34, y + (i - 1) * 12, offsets[i], "cluster",
-          Math.round(getPlayerDamage(loadout, "missile", 2) * (Number(skill.damageMultiplier) || 1.45)),
-          560, 9, WEAPON_VISUALS.cluster.color,
-          { owner: "player", shape: "lance", width: 22, height: 12, pierceRemaining: 0, trailColor: WEAPON_VISUALS.cluster.trailColor }
-        ));
-      }
-    }
-  }
-
-  function updateActiveSkill(state, dt) {
-    updateSkillEffects(state, dt);
-    var runtime = state && state.player ? state.player.activeSkill : null;
-    if (!runtime || runtime.maxCharges <= 0) return;
-    runtime.charges = Math.max(0, Math.min(runtime.maxCharges, Math.floor(Number(runtime.charges) || 0)));
-    if (runtime.charges >= runtime.maxCharges) {
-      runtime.rechargeTimer = 0;
-      return;
-    }
-    runtime.rechargeTimer = Math.max(0, Number(runtime.rechargeTimer) || 0);
-    if (runtime.rechargeTimer <= 0) runtime.rechargeTimer = runtime.rechargeSeconds || 18;
-    runtime.rechargeTimer -= dt;
-    if (runtime.rechargeTimer <= 0) {
-      runtime.charges += 1;
-      runtime.rechargeTimer = runtime.charges < runtime.maxCharges ? (runtime.rechargeSeconds || 18) : 0;
-      if (state.notices) state.notices.push({ text: runtime.name + " 充能完成", color: "#82f7ff", x: 960 / 2, y: 112, life: 1.3 });
-    }
-  }
-
-  function updateSkillEffects(state, dt) {
-    var list = state && state.skillEffects ? state.skillEffects : [];
-    for (var i = 0; i < list.length; i++) list[i].life -= dt;
-    if (state) state.skillEffects = list.filter(function (item) { return item.life > 0; });
-  }
-
-  function tryCastActiveSkill(state, loadout) {
-    if (!state || !state.player) return false;
-    var runtime = state.player.activeSkill;
-    var skill = (loadout && loadout.activeSkill) || (loadout && loadout.ship && loadout.ship.activeSkill) || null;
-    if (!runtime || !skill || runtime.charges <= 0) return false;
-    runtime.charges = Math.max(0, runtime.charges - 1);
-    if (runtime.charges < runtime.maxCharges && runtime.rechargeTimer <= 0) {
-      runtime.rechargeTimer = runtime.rechargeSeconds || 18;
-    }
-    if (scope.collisionSystem && scope.collisionSystem.clearForActiveSkill) {
-      scope.collisionSystem.clearForActiveSkill(state, loadout);
-    }
-    castActiveSkillPattern(state, loadout, skill);
-    state.shake = Math.max(state.shake || 0, 0.4);
-    if (state.notices) state.notices.push({ text: skill.name || runtime.name || "主动技能", color: "#ffd166", x: 960 / 2, y: 86, life: 1.2 });
-    return true;
-  }
-
-  function addSkillEffect(state, effect) {
-    if (!state || !effect) return;
-    state.skillEffects = state.skillEffects || [];
-    effect.duration = effect.duration || effect.life || 0.8;
-    state.skillEffects.push(effect);
-  }
-
-  function castActiveSkillPattern(state, loadout, skill) {
-    var x = state.player.x;
-    var y = state.player.y;
-    var bullets = state.bullets || [];
-    var damageMultiplier = Number(skill.damageMultiplier) || 3.5;
-
-    if (skill.id === "stellar-beam") {
-      addSkillEffect(state, { type: "stellar-beam", x: x + 70, y: y, width: 850, height: 86, life: 0.55, duration: 0.55, color: "#82f7ff" });
-      for (var i = 0; i < 5; i++) {
-        var offset = (i - 2) * 10;
-        bullets.push(createBullet(
-          x + 54, y + offset, 0, "stellarBeam",
-          Math.round(getPlayerDamage(loadout, "laser", 10) * damageMultiplier),
-          1120, 12, WEAPON_VISUALS.stellarBeam.color,
-          { owner: "player", shape: "beam", width: 138, height: 10, pierceRemaining: 999, trailColor: WEAPON_VISUALS.stellarBeam.trailColor, armorPierceRatio: 0.35 }
-        ));
-      }
-      return;
-    }
-
-    if (skill.id === "dark-core") {
-      addSkillEffect(state, { type: "dark-core", x: x + 260, y: y, radius: 132, life: 0.95, duration: 0.95, color: "#b86cff" });
-      bullets.push(createBullet(
-        x + 44, y, 0, "darkCore",
-        Math.round(getPlayerDamage(loadout, "missile", 10) * damageMultiplier),
-        520, 13, WEAPON_VISUALS.darkCore.color,
-        { owner: "player", shape: "circle", pierceRemaining: 0, trailColor: WEAPON_VISUALS.darkCore.trailColor, splashRadius: 112 }
-      ));
-      return;
-    }
-
-    if (skill.id === "golden-lances") {
-      var lanes = [-42, -26, -10, 10, 26, 42];
-      addSkillEffect(state, { type: "golden-lances", x: x + 76, y: y, lanes: lanes.slice(), width: 830, life: 0.62, duration: 0.62, color: "#ffd166" });
-      for (var j = 0; j < lanes.length; j++) {
-        var angle = (j - (lanes.length - 1) / 2) * 0.025;
-        bullets.push(createBullet(
-          x + 46, y + lanes[j], angle, "goldenLance",
-          Math.round(getPlayerDamage(loadout, "spread", 10) * damageMultiplier),
-          880, 8, WEAPON_VISUALS.goldenLance.color,
-          { owner: "player", shape: "lance", width: 30, height: 12, pierceRemaining: 8, trailColor: WEAPON_VISUALS.goldenLance.trailColor, armorPierceRatio: 0.7 }
-        ));
-      }
-    }
-  }
-
   function updateBullets(state, dt) {
     var missileLocks = getMissileLocks(state);
     for (var i = 0; i < state.bullets.length; i++) {
       var bullet = state.bullets[i];
       bullet.age += dt;
-      if (bullet.type === "missile" && bullet.age > 0.15) {
-        var target = selectMissileTarget(state, bullet, missileLocks);
-        if (target) {
-          bullet.targetId = target.id;
+      if (bullet.type === "missile") {
+        var accelerationDuration = Math.max(0.01, Number(bullet.accelerationDuration) || 0.35);
+        var launchSpeed = Math.max(1, Number(bullet.launchSpeed) || Number(bullet.speed) || 1);
+        var maxSpeed = Math.max(launchSpeed, Number(bullet.maxSpeed) || launchSpeed);
+        var accelerationProgress = Math.min(1, bullet.age / accelerationDuration);
+        bullet.speed = launchSpeed + (maxSpeed - launchSpeed) * accelerationProgress;
+
+        var target = findMissileTarget(state, bullet.targetId);
+        if (!target) {
+          target = selectMissileTarget(state, bullet, missileLocks);
+          bullet.targetId = target && target.id ? target.id : "";
+          if (bullet.targetId) missileLocks[bullet.targetId] = (missileLocks[bullet.targetId] || 0) + 1;
+        }
+        if (target && bullet.age > Math.max(0, Number(bullet.homingStartAge) || 0.08)) {
           var aim = Math.atan2(target.y - bullet.y, target.x - bullet.x);
           var diff = aim - bullet.angle;
           while (diff > Math.PI) diff -= Math.PI * 2;
           while (diff < -Math.PI) diff += Math.PI * 2;
-          bullet.angle += Math.max(-2.9 * dt, Math.min(2.9 * dt, diff * 4.2 * dt));
-        } else {
-          bullet.targetId = "";
+          var maxTurn = Math.max(0.1, Number(bullet.homingTurnRate) || 6) * dt;
+          var steer = diff * Math.max(0.1, Number(bullet.homingSteerGain) || 9) * dt;
+          bullet.angle += Math.max(-maxTurn, Math.min(maxTurn, steer));
         }
       }
-      if (bullet.type === "darkCore") {
-        pullTargetsToDarkCore(state, bullet, dt);
-      }
+      if (scope.abilitySystem && scope.abilitySystem.updateBullet) scope.abilitySystem.updateBullet(state, bullet, dt);
       bullet.x += Math.cos(bullet.angle) * bullet.speed * dt;
       bullet.y += Math.sin(bullet.angle) * bullet.speed * dt;
     }
+    var field = getField(state);
     state.bullets = state.bullets.filter(function (b) {
-      return !b.dead && b.x < 1000 && b.x > -40 && b.y > -40 && b.y < 580;
+      return !b.dead && b.x < field.width + field.cullPadding && b.x > -field.cullPadding && b.y > -field.cullPadding && b.y < field.height + field.cullPadding;
     });
   }
 
@@ -426,25 +359,11 @@
       bullet.x += Math.cos(bullet.angle) * bullet.speed * dt;
       bullet.y += Math.sin(bullet.angle) * bullet.speed * dt;
     }
+    var field = getField(state);
     state.enemyBullets = state.enemyBullets.filter(function (b) {
-      return !b.dead && b.x > -40 && b.x < 1000 && b.y > -40 && b.y < 580;
+      return !b.dead && b.x > -field.cullPadding && b.x < field.width + field.cullPadding && b.y > -field.cullPadding && b.y < field.height + field.cullPadding;
     });
     updateEnemyTelegraphs(state, dt);
-  }
-
-  function pullTargetsToDarkCore(state, bullet, dt) {
-    var enemies = state.enemies || [];
-    for (var i = 0; i < enemies.length; i++) {
-      var enemy = enemies[i];
-      if (!enemy || enemy.dead || enemy.canTakeDamage === false) continue;
-      var dx = bullet.x - enemy.x;
-      var dy = bullet.y - enemy.y;
-      var d = Math.sqrt(dx * dx + dy * dy) || 1;
-      if (d > 170) continue;
-      var pull = (1 - d / 170) * 95 * dt;
-      enemy.x += (dx / d) * pull;
-      enemy.y += (dy / d) * pull;
-    }
   }
 
   function splitEnemyBurst(state, source) {
@@ -486,28 +405,41 @@
     return locks;
   }
 
-  function isValidMissileTarget(target) {
+  function isValidMissileTarget(target, state) {
     if (!target || target.dead) return false;
     if (target.spawnState && target.spawnState !== "active") return false;
-    return target.x > 0 && target.x < 970 && target.y > 20 && target.y < 520;
+    if (target.canTakeDamage === false || Number(target.hp) <= 0) return false;
+    var field = getField(state);
+    return target.x > 0 && target.x < field.width + 10 && target.y > 20 && target.y < field.height - 20;
+  }
+
+  function findMissileTarget(state, targetId) {
+    if (!targetId) return null;
+    var enemies = state && state.enemies ? state.enemies : [];
+    for (var i = 0; i < enemies.length; i++) {
+      if (enemies[i] && enemies[i].id === targetId && isValidMissileTarget(enemies[i], state)) return enemies[i];
+    }
+    return state && state.boss && state.boss.id === targetId && isValidMissileTarget(state.boss, state)
+      ? state.boss
+      : null;
   }
 
   function selectMissileTarget(state, bullet, locks) {
-    var targets = state.boss ? [state.boss].concat(state.enemies) : state.enemies;
+    var enemies = state && state.enemies ? state.enemies.filter(function (target) { return isValidMissileTarget(target, state); }) : [];
+    var targets = enemies.length ? enemies : (isValidMissileTarget(state && state.boss, state) ? [state.boss] : []);
     var nearest = null;
     var bestScore = Infinity;
     for (var i = 0; i < targets.length; i++) {
       var target = targets[i];
-      if (!isValidMissileTarget(target)) continue;
+      if (!isValidMissileTarget(target, state)) continue;
       var dx = bullet.x - target.x;
       var dy = bullet.y - target.y;
       var d = Math.sqrt(dx * dx + dy * dy);
       var lockPenalty = (locks && target.id ? (locks[target.id] || 0) : 0) * 180;
       var forwardBonus = target.x >= bullet.x ? -140 : 160;
       var threatBonus = target.enemyType === "elite" ? -90 : target.enemyType === "shooter" ? -50 : target.enemyType === "shield" ? -20 : 0;
-      var bossPenalty = target === state.boss && state.enemies && state.enemies.length ? 260 : -80;
       var hpPenalty = Math.min(180, Math.max(0, (target.hp || 0) / Math.max(1, target.maxHp || target.hp || 1) * 60));
-      var score = d + lockPenalty + forwardBonus + threatBonus + (target === state.boss ? bossPenalty : 0) + hpPenalty;
+      var score = d + lockPenalty + forwardBonus + threatBonus + hpPenalty;
       if (score < bestScore) {
         bestScore = score;
         nearest = target;
@@ -518,6 +450,12 @@
 
   function nearestTarget(state, bullet) {
     return selectMissileTarget(state, bullet, {});
+  }
+
+  function getField(state) {
+    return scope.battleGeometry && scope.battleGeometry.getField
+      ? scope.battleGeometry.getField(state)
+      : (state && state.field) || { width: 960, height: 473, cullPadding: 40 };
   }
 
   var api = {
@@ -532,13 +470,13 @@
     shoot: shoot,
     fireWeapon: fireWeapon,
     fireFusionWeapons: fireFusionWeapons,
-    fireExclusiveSkill: fireExclusiveSkill,
-    updateActiveSkill: updateActiveSkill,
-    tryCastActiveSkill: tryCastActiveSkill,
     updateBullets: updateBullets,
     updateEnemyBullets: updateEnemyBullets,
+    getReferenceVolleyDamage: getReferenceVolleyDamage,
     nearestTarget: nearestTarget,
-    selectMissileTarget: selectMissileTarget
+    selectMissileTarget: selectMissileTarget,
+    findMissileTarget: findMissileTarget,
+    isValidMissileTarget: isValidMissileTarget
   };
 
   scope.weaponSystem = api;

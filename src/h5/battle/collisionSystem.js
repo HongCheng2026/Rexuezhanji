@@ -193,7 +193,15 @@
         hitIds.push(target.id);
       }
 
-      target.hp -= bullet.damage * getBulletDamageTakenMultiplier(target, bullet);
+      target.hp -= bullet.damage * getBulletDamageTakenMultiplier(state, target, bullet);
+      if (bullet.armorBreakRatio > 0 && bullet.armorBreakDuration > 0 &&
+        (!bullet.armorBreakTargetId || bullet.armorBreakTargetId === target.id)) {
+        target.armorBreakRatio = Math.max(Number(target.armorBreakRatio) || 0, bullet.armorBreakRatio);
+        target.armorBreakUntil = Math.max(
+          Number(target.armorBreakUntil) || 0,
+          (Number(state.elapsed) || 0) + bullet.armorBreakDuration
+        );
+      }
       if (target === state.boss || (target.audioHitCount = (target.audioHitCount || 0) + 1) >= 3) {
         target.audioHitCount = 0;
         queueSfx("enemyHit");
@@ -237,7 +245,8 @@
       var enemy = state.enemies[i];
       if (enemy.canTakeDamage === false) continue;
       if (enemy.dead || distance(source, enemy) > radius + enemy.radius) continue;
-      enemy.hp -= damage * getBulletDamageTakenMultiplier(enemy, source);
+      if (source.splashExcludesDirect && hasBulletHitTarget(source, enemy.id)) continue;
+      enemy.hp -= damage * getBulletDamageTakenMultiplier(state, enemy, source);
       if (enemy.hp <= 0) {
         enemy.dead = true;
         recordKill(state, enemy, null);
@@ -247,8 +256,8 @@
         shockwave(state, enemy.x, enemy.y, "#ff9f43", 0.28, 145);
       }
     }
-    if (state.boss && targetIntersectsCircle(state.boss, { x: source.x, y: source.y, radius: radius })) {
-      state.boss.hp -= damage * getBulletDamageTakenMultiplier(state.boss, source);
+    if (state.boss && !(source.splashExcludesDirect && hasBulletHitTarget(source, state.boss.id)) && targetIntersectsCircle(state.boss, { x: source.x, y: source.y, radius: radius })) {
+      state.boss.hp -= damage * getBulletDamageTakenMultiplier(state, state.boss, source);
       if (state.boss.hp <= 0 && !state.boss.dead) {
         state.boss.dead = true;
         recordKill(state, state.boss, null);
@@ -257,6 +266,38 @@
         shockwave(state, state.boss.x, state.boss.y, "#ff6b8a", 0.5, 260);
       }
     }
+  }
+
+  function hasBulletHitTarget(bullet, targetId) {
+    var hitIds = bullet && bullet.hitIds;
+    if (!hitIds || !targetId) return false;
+    if (typeof hitIds.has === "function") return hitIds.has(targetId);
+    return Array.isArray(hitIds) && hitIds.indexOf(targetId) >= 0;
+  }
+
+  /** Damage every valid target in a world-space circle. */
+  function damageArea(state, source, radius, damage, rewardSource) {
+    if (!state || !source) return { hits: 0, kills: 0 };
+    var result = { hits: 0, kills: 0 };
+    var targets = Array.isArray(state.enemies) ? state.enemies.slice() : [];
+    if (state.boss) targets.push(state.boss);
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i];
+      if (!target || target.dead || target.canTakeDamage === false) continue;
+      if (distance(source, target) > Math.max(0, Number(radius) || 0) + (Number(target.radius) || 0)) continue;
+      target.hp -= Math.max(0, Number(damage) || 0) * getBulletDamageTakenMultiplier(state, target, source);
+      result.hits += 1;
+      burst(state, target.x, target.y, source.color || "#b86cff", 8);
+      if (target.hp > 0) continue;
+      target.dead = true;
+      result.kills += 1;
+      recordKill(state, target, rewardSource);
+      if (target !== state.boss) maybeDropPowerup(state, target);
+      queueSfx(target === state.boss ? "bossExplosion" : (target.maxHp > 5 ? "explosionHeavy" : "explosionSmall"));
+      burst(state, target.x, target.y, target === state.boss ? "#ff6b8a" : "#b86cff", target === state.boss ? 34 : 20);
+      shockwave(state, target.x, target.y, target === state.boss ? "#ff6b8a" : "#b86cff", target === state.boss ? 0.5 : 0.28, target === state.boss ? 260 : 145);
+    }
+    return result;
   }
 
   function targetIntersectsCircle(target, circle) {
@@ -271,10 +312,13 @@
     return dx * dx + dy * dy < 1;
   }
 
-  function getBulletDamageTakenMultiplier(target, bullet) {
+  function getBulletDamageTakenMultiplier(state, target, bullet) {
     var base = target && target.damageTakenMultiplier != null ? target.damageTakenMultiplier : 1;
     var pierce = Math.max(0, Math.min(1, Number(bullet && bullet.armorPierceRatio) || 0));
-    return Math.max(base, base + (1 - base) * pierce);
+    var breakActive = target && Number(target.armorBreakUntil) > (Number(state && state.elapsed) || 0);
+    var armorBreak = breakActive ? Math.max(0, Math.min(1, Number(target.armorBreakRatio) || 0)) : 0;
+    var combinedPierce = 1 - (1 - pierce) * (1 - armorBreak);
+    return Math.max(base, base + (1 - base) * combinedPierce);
   }
 
   /**
@@ -406,6 +450,7 @@
     checkCollisions: checkCollisions,
     hitTargetWithBullets: hitTargetWithBullets,
     splashDamage: splashDamage,
+    damageArea: damageArea,
     damagePlayer: damagePlayer,
     applyPowerup: applyPowerup,
     clearForActiveSkill: clearForActiveSkill,

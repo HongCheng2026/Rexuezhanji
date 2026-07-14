@@ -28,6 +28,39 @@
   var lastActiveSkillDisabled = null;
   var lastActiveSkillReady = null;
   var lastActiveSkillCharging = null;
+  var mountedRoot = null;
+
+  function mount(rootElement) {
+    var target = rootElement || (root.document && root.document.querySelector("#battleHudRoot"));
+    if (!target) return null;
+    if (target !== mountedRoot || !target.querySelector("#pauseButton")) {
+      target.innerHTML =
+        '<section class="hud battle-cockpit-hud" aria-label="\u6e38\u620f\u72b6\u6001">' +
+          '<div class="hud-compact-cell"><span class="label">\u5173\u5361</span><strong id="levelLabel">1-1</strong></div>' +
+          '<div class="hud-compact-cell"><span class="label">\u65f6\u95f4</span><strong id="timeLabel">90</strong></div>' +
+          '<div class="hud-hp-cell"><span class="label">\u751f\u547d</span><strong id="lives">3</strong><span class="hud-bar player" aria-hidden="true"><span id="playerHpBar"></span></span></div>' +
+          '<div class="hud-boss-cell"><span class="label">BOSS</span><strong id="weapon">\u672a\u63a5\u654c</strong><span class="hud-bar boss" aria-hidden="true"><span id="bossHpBar"></span></span></div>' +
+          '<div class="hud-status-cell"><span class="label">\u51fb\u843d</span><strong id="coins">0</strong><button id="pauseButton" class="hud-pause-button" type="button">\u6682\u505c</button></div>' +
+        '</section>' +
+        '<aside id="battleSidePanel" class="battle-side-panel" aria-label="\u6218\u6597\u6b66\u5668\u4e0e\u9053\u5177">' +
+          '<section class="weapon-panel"><span class="panel-kicker">WEAPONS</span><div id="battleWeaponSlots" class="weapon-slots"></div></section>' +
+          '<section class="item-panel"><span class="panel-kicker">SUPPLY</span><div id="battleItemSlots" class="item-slots"></div></section>' +
+          '<section class="active-skill-panel"><span class="panel-kicker">ACTIVE SKILL</span><button id="activeSkillButton" class="active-skill-button" type="button" disabled><strong>\u672a\u642d\u8f7d</strong><span>NO SKILL</span><em></em></button></section>' +
+        '</aside>';
+      mountedRoot = target;
+      barNodes = {};
+      barWidths = {};
+    }
+    return {
+      levelLabelEl: target.querySelector("#levelLabel"),
+      timeLabelEl: target.querySelector("#timeLabel"),
+      livesEl: target.querySelector("#lives"),
+      weaponEl: target.querySelector("#weapon"),
+      coinsEl: target.querySelector("#coins"),
+      pauseButton: target.querySelector("#pauseButton"),
+      activeSkillButton: target.querySelector("#activeSkillButton")
+    };
+  }
 
   function setText(node, value) {
     if (!node) return;
@@ -193,6 +226,8 @@
     }
 
     if (dom.weaponEl) {
+      var bossCell = dom.weaponEl.closest ? dom.weaponEl.closest(".hud-boss-cell") : null;
+      if (bossCell) bossCell.classList.toggle("is-active", Boolean(state.boss));
       if (state.boss) {
         var bossRatio = Math.max(0, Math.min(1, state.boss.hp / Math.max(1, state.boss.maxHp || 1)));
         setText(dom.weaponEl, "BOSS " + Math.ceil(bossRatio * 100) + "%");
@@ -223,6 +258,7 @@
   }
 
   var api = {
+    mount: mount,
     updateHud: updateHud
   };
 
