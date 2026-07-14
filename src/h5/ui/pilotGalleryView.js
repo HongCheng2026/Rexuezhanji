@@ -6,7 +6,7 @@
   var combatStats = scope.combatStats || {};
   var rosterEconomy = scope.rosterEconomy || {};
   var PILOT_ASSETS = assetsConfig.PILOT_ASSETS || [];
-  var DEFAULT_PILOT_ID = assetsConfig.DEFAULT_PILOT_ID || "pilot-s-lingyan";
+  var DEFAULT_PILOT_ID = assetsConfig.DEFAULT_PILOT_ID || "pilot-b-linzhihan";
   var LOCAL_TEST_UNLOCK_ALL_PILOTS = false;
 
   function renderPilotGallery(container, profile, callbacks) {

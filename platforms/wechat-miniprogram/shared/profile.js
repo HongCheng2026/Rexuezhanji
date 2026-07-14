@@ -30,13 +30,13 @@
       lastEnergyAt: Date.now()
     },
     scene: {
-      pilotId: assets.DEFAULT_PILOT_ID || "pilot-s-lingyan",
-      shipId: assets.DEFAULT_SHIP_ID || "ship-a-06",
+      pilotId: assets.DEFAULT_PILOT_ID || "pilot-b-linzhihan",
+      shipId: assets.DEFAULT_SHIP_ID || "ship-b-01",
       backgroundId: assets.DEFAULT_BACKGROUND_ID || "bg-hangar-01"
     },
     owned: {
-      pilots: [assets.DEFAULT_PILOT_ID || "pilot-s-lingyan"],
-      ships: [assets.DEFAULT_SHIP_ID || "ship-a-06"],
+      pilots: [assets.DEFAULT_PILOT_ID || "pilot-b-linzhihan"],
+      ships: [assets.DEFAULT_SHIP_ID || "ship-b-01"],
       backgrounds: [assets.DEFAULT_BACKGROUND_ID || "bg-hangar-01"]
     }
   };
@@ -130,9 +130,16 @@
       ? incomingModules.equippedId
       : null;
 
+    const starterRosterVersion = Math.max(0, Math.floor(Number(nextProfile.starterRosterVersion) || 0));
+    const incomingOwnedPilots = uniqueList((nextProfile.owned && nextProfile.owned.pilots) || []).filter(function migrateLegacyStarterPilot(id) {
+      return starterRosterVersion >= 2 || id !== "pilot-s-lingyan";
+    });
+    const incomingOwnedShips = uniqueList((nextProfile.owned && nextProfile.owned.ships) || []).filter(function migrateLegacyStarterShip(id) {
+      return starterRosterVersion >= 2 || id !== "ship-a-06";
+    });
     const owned = {
-      pilots: uniqueList([...(LOBBY_DEFAULTS.owned.pilots || []), ...((nextProfile.owned && nextProfile.owned.pilots) || [])]),
-      ships: uniqueList([...(LOBBY_DEFAULTS.owned.ships || []), ...((nextProfile.owned && nextProfile.owned.ships) || [])]),
+      pilots: uniqueList([...(LOBBY_DEFAULTS.owned.pilots || []), ...incomingOwnedPilots]),
+      ships: uniqueList([...(LOBBY_DEFAULTS.owned.ships || []), ...incomingOwnedShips]),
       backgrounds: uniqueList([...(LOBBY_DEFAULTS.owned.backgrounds || []), ...((nextProfile.owned && nextProfile.owned.backgrounds) || [])])
     };
 
@@ -144,6 +151,7 @@
     const normalized = {
       ...nextProfile,
       saveVersion: SAVE_VERSION,
+      starterRosterVersion: 2,
       coins: resources.gold,
       completed: Array.isArray(nextProfile.completed) ? nextProfile.completed : [],
       upgrades,

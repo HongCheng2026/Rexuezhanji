@@ -4,7 +4,6 @@
   var shared = root.RXGame || {};
   var canvas = document.querySelector("#game");
   var ctx = canvas ? canvas.getContext("2d") : null;
-
   if (shared.battleHudView && shared.battleHudView.mount) shared.battleHudView.mount(document.querySelector("#battleHudRoot"));
 
   if (!canvas || !ctx || !shared.levels || !shared.assets || !shared.profile) {
@@ -306,6 +305,7 @@
     upgradeFighterStat: function upgradeFighterStat(statType) { return fighterUpgradeController.upgrade(statType); },
     buyWeaponModule: function buyWeaponModule(moduleId) { return fighterUpgradeController.buyWeaponModule(moduleId); },
     equipWeaponModule: function equipWeaponModule(moduleId) { return fighterUpgradeController.equipWeaponModule(moduleId); },
+    redeemCode: function redeemCode(rawCode) { return featurePanelController.redeemCode(rawCode); },
     handleProfilePanelClick: profileController.handleClick,
     handleAvatarUpload: profileController.handleAvatarUpload,
     openFeaturePanel: function openFeaturePanel(key) { return featurePanelController.open(key); },
@@ -333,7 +333,6 @@
     starWingsGacha: ["STAR WINGS", "星穹之翼", "限时抽取入口已独立接通。"],
     contact: ["CONTACT", "联系我们", "二维码联系入口为本地展示态。"],
     chat: ["CHAT", "世界频道", "频道消息为本地预览，发送功能未开放。"]  };
-
   applyRuntimeAssetCssVars();
   saveProfile();
   lobbyController.renderLobby();
@@ -388,7 +387,6 @@
     if (!gatewayReadyPromise) return initializeGameGateway();
     return gatewayReadyPromise;
   }
-
   function createLocalGatewayAdapter() {
     return {
       bootstrap: function bootstrapLocal() { return { profile: profile }; },
@@ -460,6 +458,13 @@
       },
       buyPilot: function buyPilotLocal(pilotId) { var result = shared.rosterEconomy.purchase(profile, "pilot", pilotId); saveProfile(); return result; },
       buyShip: function buyShipLocal(shipId) { var result = shared.rosterEconomy.purchase(profile, "ship", shipId); saveProfile(); return result; },
+      redeem: function redeemLocal(rawCode) {
+        var result = shared.redeemCodeSystem.redeemCode({ rawCode: rawCode, profile: profile });
+        var messages = { EMPTY_CODE: "请输入兑换码。", CODE_NOT_FOUND: "兑换码不存在。", CODE_ALREADY_USED: "该兑换码已经使用。", PLAYER_LEVEL_NOT_ENOUGH: "指挥官等级不足。" };
+        if (!result || !result.success) { var error = new Error(messages[result && result.status] || "兑换失败。"); error.code = result && result.status || "REDEEM_FAILED"; throw error; }
+        profile = result.profile; saveProfile();
+        return { profile: profile, code: result.code, rewards: result.rewards };
+      },
       buyWeaponModule: function buyWeaponModuleLocal(moduleId) { var result = shared.weaponModuleSystem.buy(profile, moduleId); saveProfile(); return result; },
       equipWeaponModule: function equipWeaponModuleLocal(moduleId) { var result = shared.weaponModuleSystem.equip(profile, moduleId, getShipAsset()); saveProfile(); return result; },
       saveCosmetics: function saveLocalCosmetics(nextProfile) {

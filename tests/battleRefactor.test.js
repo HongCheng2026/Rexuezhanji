@@ -13,6 +13,7 @@ const profileSystem = require("../src/shared/profile.js");
 const combatStats = require("../src/h5/meta/combatStats.js");
 const weaponModuleSystem = require("../src/h5/meta/weaponModuleSystem.js");
 const weaponSystem = require("../src/h5/battle/weaponSystem.js");
+const abilitySystem = require("../src/h5/battle/abilitySystem.js");
 
 function makeProfileForShip(ship) {
   return profileSystem.normalizeProfile({
@@ -149,16 +150,16 @@ test("three S-rank automatic skills create distinct combat effects", () => {
   const enemy = { id: "enemy", enemyType: "elite", x: 600, y: 250, hp: 1000, maxHp: 1000, radius: 24 };
   function cast(skillId) {
     const ship = assets.SHIP_ASSETS.find((item) => item.passiveSkill && item.passiveSkill.id === skillId);
+    const loadout = combatStats.generateBattleLoadout(makeProfileForShip(ship));
     const state = {
       elapsed: 2,
-      player: { exclusiveSkillLastAt: {} },
+      player: { passiveLastAt: {} },
       bullets: [],
       skillEffects: [],
       enemies: [{ ...enemy }],
       boss: null
     };
-    const loadout = { ship, finalStats: { attack: 100 }, weaponPierceSlots: {} };
-    weaponSystem.fireExclusiveSkill(state, loadout, state.bullets, 100, 250);
+    abilitySystem.onVolleyFired(state, loadout, state.bullets, { x: 100, y: 250 });
     return state;
   }
 

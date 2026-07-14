@@ -771,6 +771,7 @@
       '<section class="settings-control-row"><div><strong>战斗音效</strong><p>控制按钮、射击、拾取、技能和结算音效。</p></div><button type="button" class="' + (sfxOn ? "active" : "") + '" data-audio-toggle="sfx">' + (sfxOn ? "音效开" : "音效关") + '</button></section>' +
       '<section class="settings-control-row"><div><strong>音效音量</strong><p>当前 ' + sfxVolume + '%，影响所有 SFX。</p></div><input type="range" min="0" max="100" value="' + sfxVolume + '" data-audio-volume="sfx" /></section>' +
       '<section class="settings-control-row"><div><strong>BGM 试听</strong><p>重启大厅音乐，用于确认音量和循环。</p></div><button type="button" data-setting-action="restart-bgm">试听 / 重启</button></section>' +
+      '<section class="settings-control-row settings-redeem-row"><div><strong>兑换码</strong><p>兑换奖励会保存到当前玩家的云存档，每个兑换码只能使用一次。</p></div><form class="settings-redeem-form" data-redeem-form><input type="text" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="请输入兑换码" aria-label="兑换码" data-redeem-code /><button type="submit">兑换</button><output data-redeem-status aria-live="polite"></output></form></section>' +
       '<section class="settings-control-row muted-row"><div><strong>画面表现</strong><p>星港玻璃 UI、扫描线、能量边框已启用；性能档位未开放。</p></div><button type="button" disabled>展示态</button></section>' +
       '</div>';
     return renderTerminalShell({

@@ -34,6 +34,7 @@
     var upgradeFighterStat = options.upgradeFighterStat;
     var buyWeaponModule = options.buyWeaponModule;
     var equipWeaponModule = options.equipWeaponModule;
+    var redeemCode = options.redeemCode;
     var handleProfilePanelClick = options.handleProfilePanelClick;
     var handleAvatarUpload = options.handleAvatarUpload;
     var openFeaturePanel = options.openFeaturePanel;
@@ -98,6 +99,35 @@
         var text = row.querySelector("p");
         if (text) text.textContent = "当前 " + Math.round(value * 100) + "%，拖动后即时生效。";
       }
+    }
+
+    function handleRedeemSubmission(event) {
+      var form = event.target && event.target.closest ? event.target.closest("[data-redeem-form]") : null;
+      if (!form) return false;
+      event.preventDefault();
+      var input = form.querySelector("[data-redeem-code]");
+      var submit = form.querySelector("button[type='submit']");
+      var status = form.querySelector("[data-redeem-status]");
+      var code = input ? String(input.value || "").trim() : "";
+      if (!code) {
+        if (status) status.textContent = "请输入兑换码。";
+        return true;
+      }
+      if (submit) submit.disabled = true;
+      if (status) status.textContent = "正在兑换…";
+      Promise.resolve().then(function submitRedeemCode() {
+        return redeemCode(code);
+      }).then(function showRedeemSuccess(result) {
+        var rewards = result && Array.isArray(result.rewards) ? result.rewards : [];
+        var goldReward = rewards.filter(function isGold(reward) { return reward && reward.type === "gold"; }).reduce(function sumGold(total, reward) { return total + (Number(reward.amount) || 0); }, 0);
+        if (status) status.textContent = "兑换成功，获得 " + Math.floor(goldReward).toLocaleString("zh-CN") + " 金币。";
+        if (input) input.value = "";
+      }).catch(function showRedeemError(error) {
+        if (status) status.textContent = error && error.message ? error.message : "兑换失败，请稍后重试。";
+      }).finally(function releaseRedeemButton() {
+        if (submit) submit.disabled = false;
+      });
+      return true;
     }
 
   function bindEvents() {
@@ -281,6 +311,7 @@
     });
     dom.featurePanel.addEventListener("input", handleSettingPanelInput);
     dom.featurePanel.addEventListener("change", handleSettingPanelInput);
+    dom.featurePanel.addEventListener("submit", handleRedeemSubmission);
     if (dom.avatarUpload) dom.avatarUpload.addEventListener("change", handleAvatarUpload);
     Array.prototype.forEach.call(document.querySelectorAll(".lobby-action"), function bind(button) {
       button.addEventListener("click", function openPanel() {

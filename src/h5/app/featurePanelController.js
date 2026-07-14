@@ -77,6 +77,26 @@
       });
     }
 
+    function redeemCode(rawCode) {
+      if (gatewayActionLock.busy) return Promise.reject(new Error("操作正在处理中，请稍候。"));
+      gatewayActionLock.busy = true;
+      return ensureGameGateway().then(function redeemWithGateway() {
+        var gateway = getGameGateway();
+        if (!gateway || typeof gateway.redeem !== "function") throw new Error("兑换服务尚未就绪。");
+        return gateway.redeem(rawCode);
+      }).then(function applyRedeemResult(result) {
+        if (!result || !result.profile) throw new Error("兑换结果无效。");
+        applyGatewayProfile(result.profile);
+        saveProfile();
+        renderLobby();
+        renderChapterSelect();
+        updateHud();
+        return result;
+      }).finally(function releaseRedeemLock() {
+        gatewayActionLock.busy = false;
+      });
+    }
+
   function renderPilotGalleryPanel() {
     syncProfile();
     dom.featurePanelKicker.textContent = "PILOT DOSSIER";
@@ -276,6 +296,7 @@
       close: closeFeaturePanel,
       setMode: setFeaturePanelMode,
       openShell: openFeaturePanelShell,
+      redeemCode: redeemCode,
       renderPilotGallery: renderPilotGalleryPanel,
       renderShipGallery: renderShipGalleryPanel,
       renderEnemyCodex: renderEnemyCodexPanel

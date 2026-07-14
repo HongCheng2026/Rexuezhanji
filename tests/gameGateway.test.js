@@ -25,6 +25,7 @@ function createAdapter(label, calls) {
     buyShip: record("buyShip"),
     buyWeaponModule: record("buyWeaponModule"),
     equipWeaponModule: record("equipWeaponModule"),
+    redeem: record("redeem"),
     saveCosmetics: record("saveCosmetics")
   };
 }
@@ -110,6 +111,7 @@ test("结算、升级和外观接口完整透传参数", async () => {
   await gateway.buyWeaponModule("spread-focus");
   await gateway.equipWeaponModule("spread-focus");
   await gateway.equipWeaponModule(null);
+  await gateway.redeem("svip0903");
   await gateway.saveCosmetics(profile);
 
   assert.deepEqual(calls.map((item) => [item.method, item.args]), [
@@ -121,6 +123,7 @@ test("结算、升级和外观接口完整透传参数", async () => {
     ["buyWeaponModule", ["spread-focus"]],
     ["equipWeaponModule", ["spread-focus"]],
     ["equipWeaponModule", [null]],
+    ["redeem", ["svip0903"]],
     ["saveCosmetics", [profile]]
   ]);
 });

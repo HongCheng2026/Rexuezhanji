@@ -86,6 +86,9 @@
       equipWeaponModule: function equipWeaponModule(moduleId) {
         return callAdapter(adapter, "equipWeaponModule", [moduleId], mode);
       },
+      redeem: function redeem(code) {
+        return callAdapter(adapter, "redeem", [code], mode);
+      },
       saveCosmetics: function saveCosmetics(profile) {
         return callAdapter(adapter, "saveCosmetics", [profile], mode);
       }

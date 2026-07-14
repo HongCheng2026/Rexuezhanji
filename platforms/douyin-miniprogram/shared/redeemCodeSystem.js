@@ -2,6 +2,7 @@
   const scope = root.RXGame || (root.RXGame = {});
   const REDEEM_CODE_STATUS = { OK: "OK", EMPTY_CODE: "EMPTY_CODE", CODE_NOT_FOUND: "CODE_NOT_FOUND", CODE_ALREADY_USED: "CODE_ALREADY_USED", CODE_EXPIRED: "CODE_EXPIRED", PLAYER_LEVEL_NOT_ENOUGH: "PLAYER_LEVEL_NOT_ENOUGH" };
   const REDEEM_CODE_CONFIG = {
+    SVIP0903: { minCommanderLevel: 1, rewards: [{ type: "gold", amount: 5000000 }] },
     RXZJ666: { minCommanderLevel: 1, rewards: [{ type: "gold", amount: 30000 }, { type: "stamina", amount: 50 }] },
     SKY2026: { minCommanderLevel: 1, rewards: [{ type: "gold", amount: 50000 }] },
     FIGHTER888: { minCommanderLevel: 5, rewards: [{ type: "gold", amount: 80000 }, { type: "item", itemId: "fighter_upgrade_ticket", amount: 1 }] },

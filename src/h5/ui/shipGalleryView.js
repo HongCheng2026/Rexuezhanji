@@ -6,7 +6,7 @@
   var combatStats = scope.combatStats || {};
   var rosterEconomy = scope.rosterEconomy || {};
   var SHIP_ASSETS = assetsConfig.SHIP_ASSETS || [];
-  var DEFAULT_SHIP_ID = assetsConfig.DEFAULT_SHIP_ID || "ship-a-06";
+  var DEFAULT_SHIP_ID = assetsConfig.DEFAULT_SHIP_ID || "ship-b-01";
   var LOCAL_TEST_UNLOCK_ALL_SHIPS = false;
 
   function renderShipGallery(container, profile, callbacks) {

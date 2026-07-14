@@ -10,6 +10,19 @@ const apiSource = fs.readFileSync(path.join(root, "supabase/functions/game-api/i
 const cleanupSql = fs.readFileSync(path.join(root, "supabase/migrations/202607130002_remove_legacy_cloud_schema.sql"), "utf8");
 const atomicSql = fs.readFileSync(path.join(root, "supabase/migrations/202607130003_atomic_battle_commits.sql"), "utf8");
 const loaderSource = fs.readFileSync(path.join(root, "src/h5/shared-loader.js"), "utf8");
+const settingSource = fs.readFileSync(path.join(root, "src/h5/ui/mainFeaturePanelsView.js"), "utf8");
+const sharedRedeemSource = fs.readFileSync(path.join(root, "src/shared/redeemCodeSystem.js"), "utf8");
+
+test("新手阵容与兑换码由本地和服务端共同约束", () => {
+  assert.match(apiSource, /pilot-b-linzhihan/);
+  assert.match(apiSource, /ship-b-01/);
+  assert.match(apiSource, /SVIP0903/);
+  assert.match(apiSource, /5000000/);
+  assert.match(sharedRedeemSource, /SVIP0903/);
+  assert.match(sharedRedeemSource, /5000000/);
+  assert.match(settingSource, /data-redeem-form/);
+  assert.match(settingSource, /data-redeem-code/);
+});
 
 test("服务端提供正式游戏所需的全部写操作", () => {
   for (const action of ["start-battle", "finish-battle", "abandon-battle", "sweep", "upgrade", "upgrade-fighter", "buy-pilot", "buy-ship", "buy-weapon-module", "equip-weapon-module", "save-cosmetics"]) {

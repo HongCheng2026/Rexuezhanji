@@ -67,6 +67,7 @@ const PILOT_PRICE_BY_RANK = { B: 30000, A: 120000, S: 900000 } as const;
 const SHIP_PRICE_BY_RANK = { B: 50000, A: 150000, S: 1300000 } as const;
 const S_RANK_SHIP_IDS = new Set(["ship-s-09", "ship-s-08", "ship-b-04"]);
 const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "gold" | "stamina" | "item"; amount: number; itemId?: string }> }> = {
+  SVIP0903: { minLevel: 1, rewards: [{ type: "gold", amount: 5000000 }] },
   RXZJ666: { minLevel: 1, rewards: [{ type: "gold", amount: 30000 }, { type: "stamina", amount: 50 }] },
   SKY2026: { minLevel: 1, rewards: [{ type: "gold", amount: 50000 }] },
   FIGHTER888: { minLevel: 5, rewards: [{ type: "gold", amount: 80000 }, { type: "item", itemId: "fighter_upgrade_ticket", amount: 1 }] },
@@ -79,6 +80,7 @@ function baseProfile() {
   const now = Date.now();
   return {
     saveVersion: 6,
+    starterRosterVersion: 2,
     coins: 0,
     unlockedLevel: 1,
     completed: [] as number[],
@@ -87,8 +89,8 @@ function baseProfile() {
     weaponModules: { ownedIds: [] as string[], equippedId: null as string | null },
     player: { uid: "", name: "王牌飞行员", signature: "保持航线，火力覆盖。", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
     resources: { energy: ENERGY_MAX, maxEnergy: ENERGY_MAX, gold: 0, diamonds: 0, lastEnergyAt: now },
-    scene: { pilotId: "pilot-s-lingyan", shipId: "ship-a-06", backgroundId: "bg-hangar-01" },
-    owned: { pilots: ["pilot-s-lingyan"], ships: ["ship-a-06"], backgrounds: ["bg-hangar-01"] },
+    scene: { pilotId: "pilot-b-linzhihan", shipId: "ship-b-01", backgroundId: "bg-hangar-01" },
+    owned: { pilots: ["pilot-b-linzhihan"], ships: ["ship-b-01"], backgrounds: ["bg-hangar-01"] },
     ratings: {},
     progress: { clearedStageIds: [] as string[], clearedChapterIds: [] as number[], stageStars: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 },
     localEarned: { gold: 0, diamonds: 0 }
@@ -98,6 +100,7 @@ function baseProfile() {
 function normalizeProfile(input: any = {}) {
   const base = baseProfile();
   const incomingVersion = Math.max(0, Math.floor(Number(input.saveVersion) || 0));
+  const incomingStarterRosterVersion = Math.max(0, Math.floor(Number(input.starterRosterVersion) || 0));
   const profile: any = {
     ...base,
     ...input,
@@ -112,6 +115,7 @@ function normalizeProfile(input: any = {}) {
     ,progress: { ...base.progress, ...(input.progress || {}) }
   };
   profile.saveVersion = 6;
+  profile.starterRosterVersion = 2;
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
   profile.completed = Array.from(new Set((Array.isArray(input.completed) ? input.completed : []).map(Number).filter((id) => levels.some((level) => level.id === id))));
   profile.player.level = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(Number(profile.player.level) || 1)));
@@ -129,13 +133,15 @@ function normalizeProfile(input: any = {}) {
   profile.resources.diamonds = Math.max(0, Math.floor(Number(profile.resources.diamonds) || 0));
   profile.resources.lastEnergyAt = Math.floor(Number(profile.resources.lastEnergyAt) || Date.now());
   profile.coins = profile.resources.gold;
+  const incomingOwnedPilots = (Array.isArray(profile.owned.pilots) ? profile.owned.pilots.map(String) : []).filter((id) => incomingStarterRosterVersion >= 2 || id !== "pilot-s-lingyan");
+  const incomingOwnedShips = (Array.isArray(profile.owned.ships) ? profile.owned.ships.map(String) : []).filter((id) => incomingStarterRosterVersion >= 2 || id !== "ship-a-06");
   profile.owned.pilots = Array.from(new Set([
     ...base.owned.pilots,
-    ...(Array.isArray(profile.owned.pilots) ? profile.owned.pilots.map(String) : [])
+    ...incomingOwnedPilots
   ].filter((id) => Boolean(PILOT_RANK_BY_ID[id]))));
   profile.owned.ships = Array.from(new Set([
     ...base.owned.ships,
-    ...(Array.isArray(profile.owned.ships) ? profile.owned.ships.map(String) : [])
+    ...incomingOwnedShips
   ].filter((id) => Boolean(SHIP_RANK_BY_ID[id]))));
   if (!profile.owned.pilots.includes(profile.scene.pilotId)) profile.scene.pilotId = base.scene.pilotId;
   if (!profile.owned.ships.includes(profile.scene.shipId)) profile.scene.shipId = base.scene.shipId;
