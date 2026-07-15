@@ -11,6 +11,7 @@ const lobbyController = require(path.join(root, "src/h5/app/lobbyController.js")
 const featurePanelController = require(path.join(root, "src/h5/app/featurePanelController.js"));
 const battleUiController = require(path.join(root, "src/h5/app/battleUiController.js"));
 const battleFlowController = require(path.join(root, "src/h5/app/battleFlowController.js"));
+const economyFeatureController = require(path.join(root, "src/h5/app/economyFeatureController.js"));
 
 test("拆分后的控制器都提供统一工厂入口", () => {
   assert.equal(typeof profileController.create, "function");
@@ -20,6 +21,7 @@ test("拆分后的控制器都提供统一工厂入口", () => {
   assert.equal(typeof featurePanelController.create, "function");
   assert.equal(typeof battleUiController.create, "function");
   assert.equal(typeof battleFlowController.create, "function");
+  assert.equal(typeof economyFeatureController.create, "function");
 });
 
 test("gameApp 只调度拆分控制器，不再定义对应大块业务函数", () => {
@@ -44,6 +46,7 @@ test("控制器在 gameApp 之前按依赖顺序加载", () => {
     '"app/gameEventRouter.js"',
     '"app/lobbyController.js"',
     '"app/featurePanelController.js"',
+    '"app/economyFeatureController.js"',
     '"app/battleUiController.js"',
     '"app/battleFlowController.js"',
     '"battle/activeSkillPreferences.js"',
@@ -56,6 +59,16 @@ test("控制器在 gameApp 之前按依赖顺序加载", () => {
     assert.ok(moduleIndex >= 0, `${modulePath} 应注册到加载器`);
     assert.ok(moduleIndex < appIndex, `${modulePath} 应先于 gameApp 加载`);
   }
+});
+
+test("社交和无尽面板从总视图拆成独立模块", () => {
+  const loader = fs.readFileSync(path.join(root, "src/h5/shared-loader.js"), "utf8");
+  const main = fs.readFileSync(path.join(root, "src/h5/ui/mainFeaturePanelsView.js"), "utf8");
+  assert.match(loader, /ui\/socialFeaturePanelsView\.js/);
+  assert.match(loader, /ui\/endlessModePanelView\.js/);
+  assert.doesNotMatch(main, /function renderFriendPanel|function renderRankingPanel|function renderChatPanel|function renderEventPanel/);
+  assert.match(main, /scope\.socialFeaturePanelsView/);
+  assert.match(main, /scope\.endlessModePanelView/);
 });
 
 test("gameApp 只桥接战斗 UI，不再拼装 HUD 或技能规则", () => {
@@ -164,7 +177,7 @@ test("暂停和恢复重复触发时只恢复一个战斗循环", () => {
 test("云端写操作继续共用同一把锁", () => {
   const app = fs.readFileSync(path.join(root, "src/h5/app/gameApp.js"), "utf8");
   assert.match(app, /var gatewayActionLock = \{ busy: false \}/);
-  assert.equal((app.match(/gatewayActionLock: gatewayActionLock/g) || []).length, 4);
+  assert.equal((app.match(/gatewayActionLock: gatewayActionLock/g) || []).length, 5);
 
   for (const modulePath of [
     "src/h5/app/lobbyController.js",

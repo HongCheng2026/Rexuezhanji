@@ -214,7 +214,7 @@ test("三个 S 专属技能按各自持续时间运行且不能叠加", () => {
     armorPierceBonus: 0.25
   });
   weaponSystem.fireWeapon(gold.state, gold.loadout, gold.state.bullets, "spread", 3, 100, 250);
-  assert.equal(gold.state.bullets[0].armorPierceRatio, 0.25);
+  assert.equal(gold.state.bullets[0].armorPierceRatio, gold.loadout.finalStats.armorPenetration + 0.25);
 });
 
 test("主动技能自动开关按技能独立记忆，且没有目标时不空放", () => {
