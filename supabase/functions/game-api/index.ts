@@ -1,4 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createSocialService } from "./services/social.ts";
+import { createEndlessService } from "./services/endless.ts";
+import { createEconomyService } from "./services/economy.ts";
+import { createProfileTransactionService } from "./services/profileTransaction.ts";
 
 type Json = Record<string, unknown>;
 type Context = { userId: string; admin: ReturnType<typeof createClient> };
@@ -137,8 +141,6 @@ const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "go
   PILOT888: { minLevel: 3, rewards: [{ type: "gold", amount: 60000 }, { type: "item", itemId: "pilot_training_chip", amount: 3 }] },
   ACE2026: { minLevel: 10, rewards: [{ type: "gold", amount: 100000 }, { type: "stamina", amount: 100 }] }
 };
-const shopItems: Record<string, { priceDiamond: number; gold: number }> = { gold_200: { priceDiamond: 1, gold: 200 } };
-
 function baseProfile() {
   const now = Date.now();
   return {
@@ -427,6 +429,32 @@ function publicProfile(profile: any) {
   return normalize(profile);
 }
 
+const profileTransaction = createProfileTransactionService(normalizeProfile);
+const socialService = createSocialService({
+  reply,
+  error,
+  loadProfile,
+  readHonorTier,
+  pilotRankById: PILOT_RANK_BY_ID,
+  shipRankById: SHIP_RANK_BY_ID
+});
+const endlessService = createEndlessService({ reply, error, sha256 });
+const economyService = createEconomyService({
+  reply,
+  error,
+  loadProfile,
+  commitProfileOperation: profileTransaction.commit,
+  publicProfile,
+  refreshLeaderboard: socialService.refreshLeaderboard,
+  getGold: game.profile.getGold,
+  setGold: game.profile.setGold,
+  getStageAliases,
+  levels,
+  readHonorTier,
+  pilotRankById: PILOT_RANK_BY_ID,
+  shipRankById: SHIP_RANK_BY_ID
+});
+
 async function bootstrap(ctx: Context) {
   const { profile, revision, uid } = await loadProfile(ctx);
   const saved = await saveProfile(ctx, profile, revision);
@@ -565,8 +593,8 @@ async function upgradeFighter(ctx: Context, body: Json) {
   game.profile.setGold(profile, game.profile.getGold(profile) - cost);
   profile.fighterUpgrades = profile.fighterUpgrades || {};
   profile.fighterUpgrades[statType] = targetLevel;
-  const saved = await saveProfile(ctx, profile, revision);
-  await ledger(ctx, "upgrade-fighter", -cost, 0, { statType, level: targetLevel });
+  const saved = await profileTransaction.commit(ctx, profile, revision, body, "upgrade-fighter", -cost, 0, { statType, level: targetLevel });
+  await socialService.refreshLeaderboard(ctx, saved);
   return reply({ profile: publicProfile(saved), cost, statType, level: targetLevel });
 }
 
@@ -673,18 +701,6 @@ async function redeem(ctx: Context, body: Json) {
   return reply({ profile: publicProfile(saved), code, rewards: definition.rewards });
 }
 
-async function buyShopItem(ctx: Context, body: Json) {
-  const item = shopItems[String(body.itemId || "")];
-  if (!item) return error("商品不存在。", 404);
-  const { profile, revision } = await loadProfile(ctx);
-  if (profile.resources.diamonds < item.priceDiamond) return error("钻石不足。", 409);
-  profile.resources.diamonds -= item.priceDiamond;
-  game.profile.setGold(profile, game.profile.getGold(profile) + item.gold);
-  const saved = await saveProfile(ctx, profile, revision);
-  await ledger(ctx, "shop", item.gold, 0, { itemId: body.itemId, diamonds: -item.priceDiamond });
-  return reply({ profile: publicProfile(saved), itemId: body.itemId, gold: item.gold, priceDiamond: item.priceDiamond });
-}
-
 async function migrateAnonymous(ctx: Context, request: Request) {
   const sourceToken = request.headers.get("x-rexuezhanji-source-token") || "";
   if (!sourceToken) return error("缺少游客账号凭据。", 401);
@@ -728,8 +744,23 @@ Deno.serve(async (request) => {
         else if (action === "equip-weapon-module") response = await equipWeaponModule(ctx, body);
         else if (action === "save-cosmetics") response = await saveCosmetics(ctx, body);
         else if (action === "redeem") response = await redeem(ctx, body);
-        else if (action === "shop-buy") response = await buyShopItem(ctx, body);
+        else if (action === "shop-buy") response = await economyService.buyShopItem(ctx, body);
         else if (action === "migrate-anonymous") response = await migrateAnonymous(ctx, request);
+        else if (action === "leaderboard-submit") response = await socialService.leaderboardSubmit(ctx, body);
+        else if (action === "leaderboard-fetch") response = await socialService.leaderboardFetch(ctx, body);
+        else if (action === "friend-search") response = await socialService.friendSearch(ctx, body);
+        else if (action === "friend-request") response = await socialService.friendRequest(ctx, body);
+        else if (action === "friend-respond") response = await socialService.friendRespond(ctx, body);
+        else if (action === "friend-list") response = await socialService.friendList(ctx);
+        else if (action === "friend-remove") response = await socialService.friendRemove(ctx, body);
+        else if (action === "chat-send") response = await socialService.chatSend(ctx, body);
+        else if (action === "chat-poll") response = await socialService.chatPoll(ctx, body);
+        else if (action === "start-endless") response = await endlessService.start(ctx);
+        else if (action === "finish-endless") response = await endlessService.finish(ctx, body);
+        else if (action === "get-endless-record") response = await endlessService.getRecord(ctx);
+        else if (action === "claim-task") response = await economyService.claimTask(ctx, body);
+        else if (action === "claim-achievement") response = await economyService.claimAchievement(ctx, body);
+        else if (action === "claim-activity-reward") response = await economyService.claimActivityReward(ctx, body);
         else response = error("未知操作。", 404);
       }
     }

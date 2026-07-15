@@ -91,6 +91,56 @@
       },
       saveCosmetics: function saveCosmetics(profile) {
         return callAdapter(adapter, "saveCosmetics", [profile], mode);
+      },
+      buyShopItem: function buyShopItem(itemId) {
+        return callAdapter(adapter, "buyShopItem", [itemId], mode);
+      },
+      // Social features
+      leaderboardRefresh: function leaderboardRefresh() {
+        return callAdapter(adapter, "leaderboardRefresh", [], mode);
+      },
+      leaderboardFetch: function leaderboardFetch(category, season) {
+        return callAdapter(adapter, "leaderboardFetch", [category, season], mode);
+      },
+      friendSearch: function friendSearch(publicUid) {
+        return callAdapter(adapter, "friendSearch", [publicUid], mode);
+      },
+      friendRequest: function friendRequest(toPublicUid) {
+        return callAdapter(adapter, "friendRequest", [toPublicUid], mode);
+      },
+      friendRespond: function friendRespond(requestId, action) {
+        return callAdapter(adapter, "friendRespond", [requestId, action], mode);
+      },
+      friendList: function friendList() {
+        return callAdapter(adapter, "friendList", [], mode);
+      },
+      friendRemove: function friendRemove(friendPublicUid) {
+        return callAdapter(adapter, "friendRemove", [friendPublicUid], mode);
+      },
+      chatSend: function chatSend(channel, message) {
+        return callAdapter(adapter, "chatSend", [channel, message], mode);
+      },
+      chatPoll: function chatPoll(channel, since) {
+        return callAdapter(adapter, "chatPoll", [channel, since], mode);
+      },
+      startEndless: function startEndless() {
+        return callAdapter(adapter, "startEndless", [], mode);
+      },
+      finishEndless: function finishEndless(ticket, kills, survivalSeconds) {
+        return callAdapter(adapter, "finishEndless", [ticket, kills, survivalSeconds], mode);
+      },
+      getEndlessRecord: function getEndlessRecord() {
+        return callAdapter(adapter, "getEndlessRecord", [], mode);
+      },
+      // Task / Achievement / Activity claims
+      claimTask: function gatewayClaimTask(taskId) {
+        return callAdapter(adapter, "claimTask", [taskId], mode);
+      },
+      claimAchievement: function gatewayClaimAchievement(achievementId) {
+        return callAdapter(adapter, "claimAchievement", [achievementId], mode);
+      },
+      claimActivityReward: function gatewayClaimActivityReward(points) {
+        return callAdapter(adapter, "claimActivityReward", [points], mode);
       }
     };
   }

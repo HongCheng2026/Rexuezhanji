@@ -22,18 +22,33 @@
     return Boolean(config?.url && config?.publishableKey);
   }
 
-  async function request(path, { method = "GET", body, token = session?.access_token, extraHeaders = {} } = {}) {
+  async function request(path, { method = "GET", body, token = session?.access_token, extraHeaders = {}, timeoutMs = 12000 } = {}) {
     if (!configured()) throw new Error("云存档尚未配置。");
-    const response = await fetch(`${config.url}${path}`, {
-      method,
-      headers: {
-        apikey: config.publishableKey,
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...extraHeaders
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || 12000));
+    let response;
+    try {
+      response = await fetch(`${config.url}${path}`, {
+        method,
+        headers: {
+          apikey: config.publishableKey,
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...extraHeaders
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal
+      });
+    } catch (requestError) {
+      if (requestError && requestError.name === "AbortError") {
+        const timeoutError = new Error("云端响应超时，请重新同步后再试。");
+        timeoutError.code = "REQUEST_TIMEOUT";
+        throw timeoutError;
+      }
+      throw requestError;
+    } finally {
+      clearTimeout(timer);
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || payload.message || "云端请求失败。");
     return payload;
@@ -64,6 +79,14 @@
       method: "POST",
       body: payload,
       ...options
+    });
+  }
+
+  function createOperationId() {
+    if (root.crypto && typeof root.crypto.randomUUID === "function") return root.crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (value) => {
+      const random = Math.floor(Math.random() * 16);
+      return (value === "x" ? random : (random & 3) | 8).toString(16);
     });
   }
 
@@ -113,16 +136,33 @@
     abandonBattle: (ticket) => api("abandon-battle", { ticket }),
     sweep: (levelId) => api("sweep", { levelId }),
     upgrade: (key) => api("upgrade", { key }),
-    upgradeFighter: (statType) => api("upgrade-fighter", { statType }),
+    upgradeFighter: (statType, operationId = createOperationId()) => api("upgrade-fighter", { statType, operationId }, { timeoutMs: 8000 }),
     buyPilot: (pilotId) => api("buy-pilot", { pilotId }),
     buyShip: (shipId) => api("buy-ship", { shipId }),
     buyWeaponModule: (moduleId) => api("buy-weapon-module", { moduleId }),
     equipWeaponModule: (moduleId) => api("equip-weapon-module", { moduleId: moduleId || null }),
     redeem: (code) => api("redeem", { code }),
-    buyShopItem: (itemId) => api("shop-buy", { itemId }),
+    buyShopItem: (itemId, operationId = createOperationId()) => api("shop-buy", { itemId, operationId }),
     saveCosmetics: (profile) => api("save-cosmetics", { profile }),
     sendEmailCode,
     verifyEmailCode,
-    accountLabel
+    accountLabel,
+    // Social features
+    leaderboardRefresh: () => api("leaderboard-submit", { category: "power" }),
+    leaderboardFetch: (category, season) => api("leaderboard-fetch", { category, season }),
+    friendSearch: (publicUid) => api("friend-search", { publicUid }),
+    friendRequest: (toPublicUid) => api("friend-request", { toPublicUid }),
+    friendRespond: (requestId, action) => api("friend-respond", { requestId, action }),
+    friendList: () => api("friend-list"),
+    friendRemove: (friendPublicUid) => api("friend-remove", { friendPublicUid }),
+    chatSend: (_channel, message) => api("chat-send", { channel: "world", message }),
+    chatPoll: (_channel, since) => api("chat-poll", { channel: "world", since }),
+    startEndless: () => api("start-endless"),
+    finishEndless: (ticket, kills, survivalSeconds) => api("finish-endless", { ticket, kills, survivalSeconds }),
+    getEndlessRecord: () => api("get-endless-record"),
+    // Task / Achievement / Activity claims
+    claimTask: (taskId, operationId = createOperationId()) => api("claim-task", { taskId, operationId }),
+    claimAchievement: (achievementId, operationId = createOperationId()) => api("claim-achievement", { achievementId, operationId }),
+    claimActivityReward: (points, operationId = createOperationId()) => api("claim-activity-reward", { points, operationId })
   };
 })(window);
