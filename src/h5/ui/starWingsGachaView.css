@@ -304,11 +304,36 @@
   z-index: 1;
 }
 
-.feature-panel.star-wings-gacha-panel .qr-placeholder-art {
-  background: var(--rx-a-qr-placeholder) center / contain no-repeat;
+.feature-panel.contact-panel .contact-qr-frame {
+  align-items: center;
+  background: #fff;
+  border: 1px solid rgba(142, 230, 255, 0.72);
+  border-radius: 12px;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.34);
+  display: flex;
+  justify-content: center;
   min-height: 310px;
+  padding: 12px;
   position: relative;
   z-index: 1;
+}
+
+.feature-panel.contact-panel .contact-qr-frame img {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  width: 320px;
+}
+
+.feature-panel.contact-panel .contact-qr-frame p {
+  color: #9b2335;
+  margin: 0;
+  text-align: center;
+}
+
+.feature-panel.contact-panel .contact-copy > em {
+  color: rgba(142, 230, 255, 0.84);
+  font-style: normal;
 }
 
 .feature-panel.contact-panel .contact-shell footer {
@@ -358,6 +383,12 @@
 
   .feature-panel.contact-panel .contact-card-art {
     display: none;
+  }
+
+  .feature-panel.contact-panel .contact-qr-frame {
+    justify-self: center;
+    min-height: 0;
+    width: min(100%, 340px);
   }
 
   .feature-panel.contact-panel .contact-shell footer {

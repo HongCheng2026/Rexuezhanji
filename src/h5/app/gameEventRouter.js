@@ -41,7 +41,33 @@
     var handleAvatarUpload = options.handleAvatarUpload;
     var openFeaturePanel = options.openFeaturePanel;
     var updatePointer = options.updatePointer;
+    var startEndlessMode = options.startEndlessMode;
+    var gatewayActionLock = options.gatewayActionLock || { busy: false };
+    var ensureGameGateway = options.ensureGameGateway;
+    var getGameGateway = options.getGameGateway;
+    var applyGatewayProfile = options.applyGatewayProfile;
+    var updateHud = options.updateHud;
     var bound = false;
+    var economyController = shared.economyFeatureController && shared.economyFeatureController.create({
+      shared: shared,
+      dom: dom,
+      levels: levels,
+      audioSystem: audioSystem,
+      gatewayActionLock: gatewayActionLock,
+      calculateTotalPower: calculateTotalPower,
+      getProfile: options.getProfile,
+      ensureGameGateway: ensureGameGateway,
+      getGameGateway: getGameGateway,
+      applyGatewayProfile: applyGatewayProfile,
+      saveProfile: saveProfile,
+      renderLobby: renderLobby,
+      updateHud: updateHud,
+      playSfx: playSfx
+    });
+
+    function runCloudEconomyAction(button, method, value, panel) {
+      return economyController && economyController.run(button, method, value, panel);
+    }
 
     function unlockAudio() {
       if (!audioSystem || !audioSystem.unlock) return;
@@ -145,6 +171,8 @@
     });
     dom.startButton.addEventListener("click", function onStart() {
       if (options.getState().mode === "settlement-error") settlePendingBattle();
+      else if (options.getState().mode === "endless-settlement-error") abortBattle("endless-retry");
+      else if (options.getState().mode === "endless-result") abortBattle("lobby");
       else if (options.getState().mode === "paused") resumeGame();
       else startSelectedLevel();
     });
@@ -208,6 +236,17 @@
     });
     dom.featurePanel.addEventListener("click", function onFighterUpgradeClick(event) {
       if (handleSettingPanelClick(event)) return;
+      var endlessStart = event.target && event.target.closest ? event.target.closest("[data-endless-start]") : null;
+      if (endlessStart && !endlessStart.disabled && startEndlessMode) {
+        endlessStart.disabled = true;
+        endlessStart.textContent = "正在申请票据…";
+        Promise.resolve(startEndlessMode()).catch(function showEndlessStartError(error) {
+          endlessStart.disabled = false;
+          endlessStart.textContent = "开始挑战";
+          dom.featurePanelBody.textContent = error && error.message ? error.message : "暂时无法开始无尽模式。";
+        });
+        return;
+      }
       if (shared.starWingsGachaView && shared.starWingsGachaView.handleEvent && shared.starWingsGachaView.handleEvent(event, dom)) {
         playSfx("button");
         return;
@@ -224,7 +263,7 @@
       var activityClaim = event.target && event.target.closest ? event.target.closest("[data-activity-claim]") : null;
       if (activityClaim && !activityClaim.disabled && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimActivityReward) {
         if (isCloudMode()) {
-          dom.featurePanelBody.textContent = "正式服活动奖励将在服务端活动接口开放后领取。";
+          runCloudEconomyAction(activityClaim, "claimActivityReward", Number(activityClaim.dataset.activityClaim), "task");
           return;
         }
         var activityResult = shared.mainFeaturePanelsView.claimActivityReward(options.getProfile(), activityClaim.dataset.activityClaim, { levels: levels });
@@ -244,7 +283,7 @@
       var achievementClaim = event.target && event.target.closest ? event.target.closest("[data-achievement-claim]") : null;
       if (achievementClaim && !achievementClaim.disabled && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimAchievement) {
         if (isCloudMode()) {
-          dom.featurePanelBody.textContent = "正式服成就奖励将在服务端成就接口开放后领取。";
+          runCloudEconomyAction(achievementClaim, "claimAchievement", achievementClaim.dataset.achievementClaim, "achievement");
           return;
         }
         var achievementResult = shared.mainFeaturePanelsView.claimAchievement(options.getProfile(), achievementClaim.dataset.achievementClaim, { levels: levels });
@@ -264,7 +303,7 @@
       var taskClaim = event.target && event.target.closest ? event.target.closest("[data-task-claim]") : null;
       if (taskClaim && !taskClaim.disabled && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimTask) {
         if (isCloudMode()) {
-          dom.featurePanelBody.textContent = "正式服任务奖励将在服务端任务接口开放后领取。";
+          runCloudEconomyAction(taskClaim, "claimTask", taskClaim.dataset.taskClaim, "task");
           return;
         }
         var claimResult = shared.mainFeaturePanelsView.claimTask(options.getProfile(), taskClaim.dataset.taskClaim, { levels: levels });
@@ -279,6 +318,15 @@
             audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
           });
         }
+        return;
+      }
+      var shopBuy = event.target && event.target.closest ? event.target.closest("[data-shop-buy]") : null;
+      if (shopBuy && !shopBuy.disabled) {
+        if (!isCloudMode()) {
+          dom.featurePanelBody.textContent = "商店购买仅在云端正式服开放。";
+          return;
+        }
+        runCloudEconomyAction(shopBuy, "buyShopItem", shopBuy.dataset.shopBuy, "shop");
         return;
       }
       var back = event.target && event.target.closest ? event.target.closest("[data-feature-back]") : null;

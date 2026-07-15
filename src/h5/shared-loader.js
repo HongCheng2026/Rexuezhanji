@@ -3,11 +3,11 @@
   const isLocalServer = /^(127\.0\.0\.1|localhost|\[::1\])$/i.test(location.hostname);
   const isReleasePackage = /(?:^|\/)release\/netlify-h5(?:\/|$)/i.test(pagePath);
   const isSourceH5 = !isReleasePackage && (isLocalServer || /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath) || /(?:^|\/)H5(?:\/|$)/.test(pagePath) || /(?:^|\/)h5\//i.test(pagePath));
-  const cacheVersion = "20260714-stage-honor-v1";
+  const cacheVersion = "20260715-cloud-endless-v4";
   // Netlify manual ZIP uploads may omit nested folders. Production therefore loads
   // the mirrored root copies, while source-H5 keeps using the canonical shared folder.
   const base = isSourceH5 ? "../shared/" : "";
-  const files = ["balance.js", "levels.js", "combatCodexConfig.js", "enemyStageBalance.js", "campaignStoryFramework.js", "stageStoryConfig.js", "battleStorySystem.js", "chapterMapSystem.js", "battleSettlementSystem.js", "failGuideSystem.js", "taskSystem.js", "achievementSystem.js", "sRankPriceConfig.js", "redeemCodeSystem.js", "shopConfig.js", "featurePanelContent.js", "mainUiConfig.js", "runtimeCore.js", "shipSkills.js", "assets.js", "stageHonorSystem.js", "profile.js", "rosterEconomy.js", "battleRules.js"];
+  const files = ["balance.js", "levels.js", "combatCodexConfig.js", "enemyStageBalance.js", "endlessModeConfig.js", "campaignStoryFramework.js", "stageStoryConfig.js", "battleStorySystem.js", "chapterMapSystem.js", "battleSettlementSystem.js", "failGuideSystem.js", "taskSystem.js", "achievementSystem.js", "sRankPriceConfig.js", "redeemCodeSystem.js", "shopConfig.js", "featurePanelContent.js", "mainUiConfig.js", "runtimeCore.js", "shipSkills.js", "assets.js", "stageHonorSystem.js", "profile.js", "rosterEconomy.js", "battleRules.js"];
   for (const file of files) {
     document.write(`<script src="${base}${file}?v=${cacheVersion}"><\/script>`);
   }
@@ -32,6 +32,7 @@
     "battle/activeSkills/goldJudgementBuff.js",
     "battle/enemySystem.js",
     "battle/bossSystem.js",
+    "battle/endlessModeDirector.js",
     "battle/collisionSystem.js",
     "battle/dropSystem.js",
     "battle/settlementSystem.js",
@@ -46,11 +47,14 @@
     "ui/pilotGalleryView.js",
     "ui/shipGalleryView.js",
     "ui/mainFeaturePanelsView.js",
+    "ui/socialFeaturePanelsView.js",
+    "ui/endlessModePanelView.js",
     "ui/starWingsGachaView.js",
     "app/lobbyController.js",
     "app/profileController.js",
     "app/fighterUpgradeController.js",
     "app/featurePanelController.js",
+    "app/economyFeatureController.js",
     "app/battleUiController.js",
     "app/battleFlowController.js",
     "app/gameEventRouter.js",

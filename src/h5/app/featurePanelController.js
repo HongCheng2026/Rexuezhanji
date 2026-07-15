@@ -26,6 +26,18 @@
     var renderFighterUpgradePanel = options.renderFighterUpgradePanel;
     var calculateTotalPower = options.calculateTotalPower;
 
+    // Social click delegation
+    var socialClickState = { options: null };
+    if (dom.featurePanelSlots && !dom.featurePanelSlots._socialDelegate) {
+      dom.featurePanelSlots._socialDelegate = true;
+      dom.featurePanelSlots.addEventListener("click", function (e) {
+        if (!socialClickState.options) return;
+        if (shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.handleSocialClick) {
+          shared.mainFeaturePanelsView.handleSocialClick(e, dom, socialClickState.options);
+        }
+      });
+    }
+
     function syncProfile() {
       profile = options.getProfile();
       featurePanels = options.getFeaturePanels();
@@ -201,12 +213,17 @@
       }
     }
     if (shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.renderPanel) {
-      if (shared.mainFeaturePanelsView.renderPanel(key, dom, {
+      var socialPanelOptions = {
         profile: profile,
         levels: levels,
         combatPower: calculateTotalPower(),
-        audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
-      })) {
+        audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null,
+        getGameGateway: getGameGateway,
+        startEndlessMode: options.startEndlessMode,
+        dom: dom
+      };
+      if (shared.mainFeaturePanelsView.renderPanel(key, dom, socialPanelOptions)) {
+        socialClickState.options = socialPanelOptions;
         var isFeatureV3Panel = dom.featurePanelSlots && dom.featurePanelSlots.classList.contains("feature-v3-content");
         openFeaturePanelShell(isFeatureV3Panel ? "main-feature-panel feature-v3-panel" : "main-feature-panel");
         return;
@@ -361,6 +378,10 @@
   }
 
   function closeFeaturePanel() {
+    if (shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.stopChatPolling) {
+      shared.mainFeaturePanelsView.stopChatPolling(dom);
+    }
+    socialClickState.options = null;
     if (dom.featurePanel) dom.featurePanel.classList.add("hidden");
     if (dom.lobbyScreen) dom.lobbyScreen.classList.remove("panel-open");
   }

@@ -95,7 +95,31 @@
     });
   }
 
-  function beginAuthorizedBattle(level, ticket) {
+  function startEndlessMode() {
+    syncContext();
+    if (gatewayActionLock.busy) return Promise.reject(new Error("操作正在处理中，请稍候。"));
+    gatewayActionLock.busy = true;
+    return ensureGameGateway().then(function requestEndlessTicket() {
+      var gateway = options.getGameGateway();
+      if (!gateway || typeof gateway.startEndless !== "function") throw new Error("无尽模式云端接口尚未就绪。");
+      return gateway.startEndless();
+    }).then(function beginEndless(response) {
+      var level = { id: 93, code: "ENDLESS", chapterIndex: 1, stageInChapter: 10, name: "BOSS 无尽模式" };
+      if (dom.featurePanel) dom.featurePanel.classList.add("hidden");
+      if (dom.lobbyScreen) dom.lobbyScreen.classList.remove("panel-open");
+      beginAuthorizedBattle(level, response && response.ticket || "", "endless");
+      if (battleSession) {
+        battleSession.energyCost = 0;
+        battleSession.isEndless = true;
+        battleSession.endlessRecord = response && response.record || {};
+      }
+      return response;
+    }).finally(function releaseEndlessStart() {
+      gatewayActionLock.busy = false;
+    });
+  }
+
+  function beginAuthorizedBattle(level, ticket, battleMode) {
     syncContext();
     if (battleContext) cancelAnimationFrame(battleContext.animationId);
     battleContext = assignBattleContext(null);
@@ -116,6 +140,7 @@
     battleContext = assignBattleContext(shared.battleRuntime.startLevelBattle(level, profile, options.getGameGateway(), {
       onBattleStart: function onBattleStart(nextState) {
         state = assignState(nextState);
+        if (battleMode === "endless" && shared.endlessModeDirector) shared.endlessModeDirector.start(state);
         state.player.x = safeLeft;
         state.player.y = height / 2;
       },
@@ -153,12 +178,60 @@
     syncContext();
     if (finished || !state || state.mode !== "fight") return;
     if (state.player && (state.player.hp != null ? state.player.hp <= 0 : state.player.lives <= 0)) {
+      if (state.battleMode === "endless") {
+        finishEndlessRun("defeat", false);
+        return;
+      }
       completeBattle(false);
       return;
     }
+    if (state.battleMode === "endless") return;
     if (state.boss && state.boss.hp <= 0) {
       completeBattle(true);
     }
+  }
+
+  function finishEndlessRun(reason, retry) {
+    syncContext();
+    if (gatewayActionLock.busy) return Promise.reject(new Error("结算正在处理中。"));
+    if (!retry) {
+      finished = assignFinished(true);
+      if (battleContext) cancelAnimationFrame(battleContext.animationId);
+      var run = state && state.endless || {};
+      if (battleSession) battleSession.endlessResult = {
+        kills: Math.max(0, Math.floor(Number(run.kills) || 0)),
+        survivalSeconds: Math.max(0, Math.floor(Number(state && state.elapsed) || 0)),
+        reason: reason || "quit"
+      };
+    }
+    var result = battleSession && battleSession.endlessResult;
+    var ticket = battleSession && battleSession.ticket || "";
+    if (!result || !ticket) return Promise.reject(new Error("无尽模式结算信息缺失。"));
+    state.mode = "settling";
+    gatewayActionLock.busy = true;
+    if (lobby.showBusyOverlay) lobby.showBusyOverlay("正在保存无尽纪录", "击破 " + result.kills + " 只 · 生存 " + result.survivalSeconds + " 秒");
+    return ensureGameGateway().then(function finishThroughGateway() {
+      return options.getGameGateway().finishEndless(ticket, result.kills, result.survivalSeconds);
+    }).then(function showEndlessResult(response) {
+      var record = response && response.record || {};
+      battleContext = assignBattleContext(null);
+      battleSession = assignBattleSession(null);
+      state.mode = "endless-result";
+      lobby.showBattleScreen();
+      lobby.showOverlay(
+        "无尽模式结束",
+        "本局击破 " + result.kills + " 只，生存 " + result.survivalSeconds + " 秒。最高击杀 " + Math.max(0, Number(record.bestKills) || 0) + " 只。",
+        "返回大厅"
+      );
+      return response;
+    }).catch(function showEndlessSettlementError(error) {
+      state.mode = "endless-settlement-error";
+      lobby.showBattleScreen();
+      lobby.showOverlay("纪录尚未保存", error && error.message ? error.message : "云端结算失败，票据有效期内可重试。", "重试保存");
+      return { error: error };
+    }).finally(function releaseEndlessSettlement() {
+      gatewayActionLock.busy = false;
+    });
   }
 
   function completeBattle(isWin) {
@@ -210,6 +283,11 @@
       battleSession = assignBattleSession(null);
       state.mode = "shop";
       presentSettlement(settlement.isWin, settlement.level, settlement.result);
+      // Ask the server to refresh all categories from the authoritative profile.
+      if (options.getGameGateway() && options.getGameGateway().isCloud) {
+        var gw = options.getGameGateway();
+        if (gw.leaderboardRefresh) gw.leaderboardRefresh().catch(function () {});
+      }
     }).catch(function onSettlementError(error) {
       state.mode = "settlement-error";
       lobby.showBattleScreen();
@@ -417,6 +495,9 @@
 
   function abortBattle(target) {
     syncContext();
+    if (state && (state.battleMode === "endless" || state.mode === "endless-settlement-error") && battleSession) {
+      return finishEndlessRun(target === "endless-retry" ? "retry" : "quit", target === "endless-retry");
+    }
     if (!battleContext && !battleSession) {
       if (target === "chapter") lobby.openBattleSelect();
       else lobby.showLobby();
@@ -456,6 +537,7 @@
 
     return {
       startSelectedLevel: startSelectedLevel,
+      startEndlessMode: startEndlessMode,
       settlePendingBattle: settlePendingBattle,
       isCloudMode: isCloudMode,
       persistProfileMetadata: persistProfileMetadata,

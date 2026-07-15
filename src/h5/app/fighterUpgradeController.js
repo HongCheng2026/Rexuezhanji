@@ -20,6 +20,7 @@
     var renderChapterSelect = options.renderChapterSelect || function noopChapter() {};
     var updateHud = options.updateHud || function noopHud() {};
     var gatewayActionLock = options.gatewayActionLock || { busy: false };
+    var pendingStat = "";
 
     function escapeHtml(value) {
       return String(value == null ? "" : value)
@@ -208,6 +209,7 @@
         ? formatFighterStatDelta(item.key, item.level, targetLevel)
         : "0";
       var status = getFighterUpgradeStatus(item.level, levelCap, maxLevel, check);
+      if (pendingStat === item.key) status = { disabled: true, label: "强化中…" };
       var costText = check && check.cost ? formatResource(check.cost) + " 金币" : "-";
       return '<article class="fighter-upgrade-row ' + (status.disabled ? "disabled" : "ready") + '">' +
         '<div class="fighter-upgrade-icon" aria-hidden="true">' + item.icon + '</div>' +
@@ -258,23 +260,45 @@
 
   function upgradeFighterStat(statType) {
     profile = options.getProfile();
-    if (gatewayActionLock.busy) return;
-    gatewayActionLock.busy = true;
+    if (pendingStat) return;
+    pendingStat = statType;
+    var pendingButton = dom.featurePanel && dom.featurePanel.querySelector('[data-fighter-upgrade="' + statType + '"]');
+    if (pendingButton) {
+      pendingButton.disabled = true;
+      pendingButton.textContent = "强化中…";
+    }
+    dom.featurePanelBody.textContent = "强化请求已发出，其他功能仍可正常查看。";
     ensureGameGateway().then(function upgradeFighterThroughGateway() {
       return options.getGameGateway().upgradeFighter(statType);
     }).then(function onFighterUpgradeComplete(response) {
       if (response && response.profile) applyGatewayProfile(response.profile);
       profile = options.getProfile();
       saveProfile();
-      renderLobby();
-      renderChapterSelect();
-      updateHud();
+      updateHud(true);
+      pendingStat = "";
       renderFighterUpgradePanel();
+      dom.featurePanelBody.textContent = "强化成功，资源和属性已同步到云端。";
     }).catch(function onFighterUpgradeError(error) {
-      dom.featurePanelBody.textContent = error && error.message ? error.message : "强化失败，请稍后重试。";
+      var message = error && error.message ? error.message : "强化失败，请稍后重试。";
+      if (error && error.code === "REQUEST_TIMEOUT" && options.getGameGateway() && options.getGameGateway().bootstrap) {
+        return options.getGameGateway().bootstrap().then(function resyncAfterTimeout(response) {
+          if (response && response.profile) applyGatewayProfile(response.profile);
+          profile = options.getProfile();
+          saveProfile();
+        }).catch(function ignoreResyncFailure() {}).then(function showTimeout() {
+          pendingStat = "";
+          renderFighterUpgradePanel();
+          dom.featurePanelBody.textContent = message;
+        });
+      }
+      pendingStat = "";
       renderFighterUpgradePanel();
+      dom.featurePanelBody.textContent = message;
     }).finally(function releaseFighterUpgrade() {
-      gatewayActionLock.busy = false;
+      if (pendingStat) {
+        pendingStat = "";
+        renderFighterUpgradePanel();
+      }
     });
   }
 

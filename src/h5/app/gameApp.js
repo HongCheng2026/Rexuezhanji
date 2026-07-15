@@ -231,7 +231,8 @@
     updateHud: renderBattleUi,
     renderProfilePanel: profileController.render,
     renderFighterUpgradePanel: fighterUpgradeController.render,
-    calculateTotalPower: profileController.calculateTotalPower
+    calculateTotalPower: profileController.calculateTotalPower,
+    startEndlessMode: function startEndlessMode() { return battleFlowController && battleFlowController.startEndlessMode(); }
   });
   if (!featurePanelController) throw new Error("H5 game bootstrap failed: missing feature panel controller.");
 
@@ -320,6 +321,12 @@
     handleProfilePanelClick: profileController.handleClick,
     handleAvatarUpload: profileController.handleAvatarUpload,
     openFeaturePanel: function openFeaturePanel(key) { return featurePanelController.open(key); },
+    startEndlessMode: function startEndlessMode() { return battleFlowController.startEndlessMode(); },
+    gatewayActionLock: gatewayActionLock,
+    ensureGameGateway: ensureGameGateway,
+    getGameGateway: function getGameGateway() { return gameGateway; },
+    applyGatewayProfile: applyGatewayProfile,
+    updateHud: renderBattleUi,
     updatePointer: updatePointer
   });
   if (!gameEventRouter) throw new Error("H5 game bootstrap failed: missing event router.");
@@ -332,18 +339,18 @@
     pilotGallery: ["PILOT", "战姬", "战姬出战属性会通过 BattleLoadout 快照进入战斗。"],
     shipGallery: ["HANGAR", "战机", "战机与战机强化会影响攻击、生命和破甲。"],
     upgrade: ["UPGRADE", "战机强化", "强化后的数值会重新生成出战属性快照。"],
-    task: ["TASK", "任务", "任务会读取本地通关、强化和收集进度。"],
-    event: ["EVENT", "活动", "活动排程以本地展示态呈现。"],
-    achievement: ["ACHIEVEMENT", "成就", "成就根据本地存档计算进度。"],
-    shop: ["SHOP", "商店", "补给商品为展示态，不执行本地扣费。"],
-    friend: ["FRIEND", "好友", "好友与助战为本地预览，真实社交服务未开放。"],
-    ranking: ["RANKING", "排行榜", "榜单会插入本地玩家记录，不上传云端。"],
+    task: ["TASK", "任务", "任务奖励通过云端验证发放，请保持网络连接。"],
+    event: ["EVENT", "活动", "活动排程展示当前可参与的事件和奖励。"],
+    achievement: ["ACHIEVEMENT", "成就", "成就奖励通过云端验证发放，请保持网络连接。"],
+    shop: ["SHOP", "商店", "补给商品通过云端完成购买，请保持网络连接。"],
+    friend: ["FRIEND", "好友", "云好友系统已开放，搜索玩家 ID 添加好友。"],
+    ranking: ["RANKING", "排行榜", "云端实时榜单，通关后自动提交成绩。"],
     mail: ["MAIL", "邮件", "邮件展示公告、补给、活动和维护信息。"],
     signin: ["SIGN IN", "签到", "七日航线奖励为本地展示态。"],
     setting: ["SETTING", "设置", "音乐和音效设置可即时生效并保存到本地。"],
     starWingsGacha: ["STAR WINGS", "星穹之翼", "限时抽取入口已独立接通。"],
     contact: ["CONTACT", "联系我们", "二维码联系入口为本地展示态。"],
-    chat: ["CHAT", "世界频道", "频道消息为本地预览，发送功能未开放。"]  };
+    chat: ["CHAT", "世界频道", "世界频道已上线，与其他指挥官实时交流。"]  };
   applyRuntimeAssetCssVars();
   saveProfile();
   lobbyController.renderLobby();
@@ -482,6 +489,21 @@
         profile = shared.profile.normalizeProfile(nextProfile || profile);
         saveProfile();
         return { profile: profile };
+      },
+      startEndless: function startLocalEndless() {
+        return { ticket: "local-endless-" + Date.now(), record: profile.endlessRecord || { bestKills: 0, bestSurvivalSeconds: 0 } };
+      },
+      finishEndless: function finishLocalEndless(_ticket, kills, survivalSeconds) {
+        var previous = profile.endlessRecord || {};
+        profile.endlessRecord = {
+          bestKills: Math.max(Number(previous.bestKills) || 0, Number(kills) || 0),
+          bestSurvivalSeconds: Math.max(Number(previous.bestSurvivalSeconds) || 0, Number(survivalSeconds) || 0)
+        };
+        saveProfile();
+        return { record: profile.endlessRecord, kills: kills, survivalSeconds: survivalSeconds };
+      },
+      getEndlessRecord: function getLocalEndlessRecord() {
+        return { record: profile.endlessRecord || { bestKills: 0, bestSurvivalSeconds: 0 } };
       }
     };
   }

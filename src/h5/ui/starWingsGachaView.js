@@ -101,13 +101,14 @@
   }
 
   function renderContactPanel(dom) {
+    var qrSrc = scope.assets && scope.assets.FEATURE_PANEL_ASSETS && scope.assets.FEATURE_PANEL_ASSETS.contactQr || "";
     var html = '<section class="contact-shell">' +
       '<div class="contact-card-art" aria-hidden="true"></div>' +
-      '<div class="contact-copy"><span>CONTACT LINK</span><strong>联系我们</strong><p>官方社群 / 客服支持 / 商务联系入口预留。二维码图片接入后会替换右侧占位框。</p><button type="button" disabled>二维码待替换</button></div>' +
-      '<div class="qr-placeholder-art" aria-label="二维码占位"></div>' +
-      '<footer><span>当前为本地展示态</span><em>不上传图片，不连接后端。</em></footer>' +
+      '<div class="contact-copy"><span>CONTACT LINK</span><strong>联系我们</strong><p>使用微信扫描右侧二维码，联系官方客服与项目团队。</p><em>若图片未显示，请刷新页面后重试。</em></div>' +
+      '<div class="contact-qr-frame">' + (qrSrc ? '<img src="' + escapeHtml(qrSrc) + '" alt="热血战姬官方微信二维码" data-contact-qr onerror="this.hidden=true;this.nextElementSibling.hidden=false"><p hidden>二维码加载失败，请刷新后重试。</p>' : '<p>二维码加载失败，请刷新后重试。</p>') + '</div>' +
+      '<footer><span>微信扫码联系</span><em>请使用另一台手机或保存后识别。</em></footer>' +
     '</section>';
-    setPanel(dom, "CONTACT", "联系我们", "二维码联系入口预留，后续替换为正式图片。", "contact-panel-content", html);
+    setPanel(dom, "CONTACT", "联系我们", "微信扫码联系官方团队。", "contact-panel-content", html);
     return true;
   }
 

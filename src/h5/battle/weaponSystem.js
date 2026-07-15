@@ -139,7 +139,7 @@
       height: opts.height || visual.height || Math.max(8, (radius || 4) * 2),
       splashRadius: Math.max(0, Number(opts.splashRadius) || 0),
       splashExcludesDirect: opts.splashExcludesDirect === true,
-      armorPierceRatio: Math.max(0, Math.min(1, Number(opts.armorPierceRatio) || 0)),
+      armorPierceRatio: Math.max(0, Number(opts.armorPierceRatio) || 0),
       armorBreakRatio: Math.max(0, Math.min(1, Number(opts.armorBreakRatio) || 0)),
       armorBreakDuration: Math.max(0, Number(opts.armorBreakDuration) || 0),
       armorBreakTargetId: opts.armorBreakTargetId || "",
@@ -188,7 +188,8 @@
       : { damageMultiplier: 1, armorPierceBonus: 0 };
     var damageMultiplier = Math.max(0, Number(effects.damageMultiplier) || 1)
       * Math.max(0, Number(activeModifiers.damageMultiplier) || 1);
-    var activeArmorPierce = Math.max(0, Math.min(1, Number(activeModifiers.armorPierceBonus) || 0));
+    var baseArmorPierce = Math.max(0, Number(loadout && loadout.finalStats && loadout.finalStats.armorPenetration) || 0);
+    var activeArmorPierce = baseArmorPierce + Math.max(0, Number(activeModifiers.armorPierceBonus) || 0);
     var baseDamage = Math.round(getPlayerDamage(loadout, weapon, level) * damageMultiplier);
     if (weapon === "spread") {
       var count = Math.max(1, Math.floor(Number(stats.projectileCount) || 1));

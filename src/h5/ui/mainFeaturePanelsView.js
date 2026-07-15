@@ -5,19 +5,13 @@
   var content = scope.featurePanelContent || {};
   var panelState = {
     task: "每日",
-    event: "推荐",
     achievement: "通关",
-    shop: "资源",
-    friend: "助战推荐",
-    ranking: "战力榜"
+    shop: "资源"
   };
   var panelTabs = {
     task: ["每日", "成长", "强化", "作战", "收集"],
-    event: ["推荐", "每日", "试炼", "成长"],
     achievement: ["通关", "技巧", "养成", "收集", "荣誉"],
-    shop: ["每日", "资源", "强化", "战机/抽取"],
-    friend: ["助战推荐", "好友名册", "申请", "最近协作"],
-    ranking: ["战力榜", "通关榜", "荣誉榜"]
+    shop: ["每日", "资源", "强化", "战机/抽取"]
   };
 
   function escapeHtml(value) {
@@ -523,46 +517,6 @@
     return list;
   }
 
-  function renderEventPanel(profile) {
-    var cfg = getConfig();
-    var tabs = panelTabs.event;
-    var activeTab = ensureActiveTab("event", tabs, "推荐");
-    var events = cfg.EVENT_CONTENT || [];
-    var filtered = events.filter(function (item) {
-      if (activeTab === "推荐") return true;
-      if (activeTab === "每日") return item.id === "daily_supply";
-      if (activeTab === "试炼") return item.id === "obsidian_break" || item.id === "golden_judgement";
-      if (activeTab === "成长") return item.id === "chapter_push" || item.id === "rookie_7day";
-      return true;
-    }).sort(function (a, b) {
-      var weight = { "进行中": 3, "开放": 2, "预告": 1 };
-      return (weight[b.status] || 0) - (weight[a.status] || 0);
-    });
-    var focus = filtered[0] || events[0] || {};
-    var eventHero = scope.assets && scope.assets.FEATURE_PANEL_ASSETS && scope.assets.FEATURE_PANEL_ASSETS.eventHero || "";
-    var chapterProgress = Math.min(5, getClearCount(profile));
-    var list = '<section class="event-board board-page fp-v3">' +
-      renderV3Resources(profile) +
-      renderFeatureTabs("event", tabs, activeTab) +
-      '<article class="event-hero">' +
-        (eventHero ? '<img class="event-hero-art" src="' + escapeAttr(eventHero) + '" alt="">' : '') +
-        '<div class="event-hero-copy"><span>' + escapeHtml((focus.tag || "活动") + ' · ' + (focus.status || '开放')) + '</span><strong>' + escapeHtml(focus.title || "暂无活动") + '</strong><p>' + escapeHtml(focus.text || "当前分类暂无活动。") + '</p>' +
-        '<dl><div><dt>时间</dt><dd>' + escapeHtml(focus.time || "-") + '</dd></div><div><dt>条件</dt><dd>' + escapeHtml(focus.condition || "-") + '</dd></div></dl>' +
-        '<div class="event-hero-rewards"><small>主奖励</small>' + renderChipList(focus.reward || "") + '</div></div>' +
-        '<div class="event-hero-progress"><span>章节推进</span><strong>' + chapterProgress + '/5</strong>' + renderProgressBar(chapterProgress, 5) + '<button type="button" disabled>' + escapeHtml(focus.status === "预告" ? "查看预告" : "进入活动") + '</button></div>' +
-      '</article><section class="board-section-head"><div><strong>活动入口</strong><span>按当前状态排序</span></div><p>' + filtered.length + ' 个活动</p></section><div class="event-card-grid">';
-    for (var i = 0; i < filtered.length; i++) {
-      var item = filtered[i];
-      list += '<article class="event-card ' + (item.status === "预告" ? "is-preview" : item.status === "进行中" ? "is-running" : "is-open") + '">' +
-        '<div class="event-card-top"><span>' + escapeHtml(item.tag) + '</span><em>' + escapeHtml(item.status) + '</em></div>' +
-        '<strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml(item.condition) + '</p>' +
-        '<footer><div class="board-reward">' + renderChipList(item.reward) + '</div><button type="button" disabled>' + escapeHtml(item.status === "预告" ? "预告" : "查看") + '</button></footer>' +
-      '</article>';
-    }
-    list += '</div></section>';
-    return list;
-  }
-
   function getShopImage(item) {
     var assets = scope.assets && scope.assets.SHOP_ITEM_ASSETS || {};
     return assets[item.image] || "";
@@ -574,7 +528,7 @@
       '<div class="shop-item-art">' + (getShopImage(item) ? '<img src="' + escapeAttr(getShopImage(item)) + '" alt="">' : '<span></span>') + '</div>' +
       '<div class="shop-item-copy"><span>' + escapeHtml(item.category) + '</span><strong>' + escapeHtml(item.title) + '</strong><p>' + escapeHtml(item.reward) + '</p></div>' +
       '<div class="shop-item-price"><em>' + escapeHtml(item.price) + '</em></div>' +
-      '<button type="button" disabled>' + (item.id === "daily_free_supply" ? "领取" : "查看") + '</button>' +
+      '<button type="button" data-shop-buy="' + escapeAttr(item.id) + '">' + (item.id === "daily_free_supply" ? "领取" : "购买") + '</button>' +
     '</article>';
   }
 
@@ -584,6 +538,8 @@
     var activeTab = ensureActiveTab("shop", tabs, "每日");
     var items = cfg.SHOP_CONTENT || [];
     var resources = (profile && profile.resources) || {};
+    var dailyShop = profile && profile.claimedDailyShop || {};
+    var freeClaimed = dailyShop.date === localDateKey() && Array.isArray(dailyShop.ids) && dailyShop.ids.indexOf("daily_free_supply") >= 0;
     var freeItem = items.filter(function (item) { return item.id === "daily_free_supply"; })[0] || {};
     var filtered = items.filter(function (item) {
       if (item.id === "daily_free_supply") return false;
@@ -598,121 +554,13 @@
         '<div class="shop-free-art">' + (getShopImage(freeItem) ? '<img src="' + escapeAttr(getShopImage(freeItem)) + '" alt="">' : '<span></span>') + '</div>' +
         '<div><span>每日限定 · 1/1</span><strong>' + escapeHtml(freeItem.title || "每日补给") + '</strong><p>' + escapeHtml(freeItem.desc || "每日基础补给。") + '</p></div>' +
         '<div class="shop-free-reward"><span>补给内容</span><strong>' + escapeHtml(freeItem.reward || "") + '</strong></div>' +
-        '<button type="button" disabled>领取</button>' +
+        '<button type="button" data-shop-buy="daily_free_supply"' + (freeClaimed ? ' disabled' : '') + '>' + (freeClaimed ? '已领取' : '领取') + '</button>' +
       '</article><section class="board-section-head"><div><strong>' + escapeHtml(activeTab === "每日" ? "每日补给" : activeTab + "补给") + '</strong><span>当前显示：' + escapeHtml(activeTab) + '</span></div><p>' + filtered.length + ' 件商品</p></section>' +
       '<div class="shop-item-grid">';
     for (var i = 0; i < filtered.length; i++) grid += renderShopCard(filtered[i]);
     if (!filtered.length && activeTab !== "每日") grid += '<article class="board-empty">当前分类暂无商品。</article>';
     grid += '</div></section>';
     return grid;
-  }
-
-  function renderFriendPanel() {
-    var cfg = getConfig();
-    var friends = cfg.FRIEND_CONTENT || [];
-    var focus = friends[0] || {};
-    var pilots = scope.assets && scope.assets.PILOT_ASSETS || [];
-    var focusImage = pilots[0] && pilots[0].src || "";
-    var tabs = panelTabs.friend;
-    var activeTab = ensureActiveTab("friend", tabs, "助战推荐");
-    var list = '<section class="friend-board board-page fp-v3">' +
-      renderFeatureTabs("friend", tabs, activeTab) +
-      '<section class="friend-layout"><article class="support-profile">' +
-        (focusImage ? '<img class="support-pilot" src="' + escapeAttr(focusImage) + '" alt="">' : '') +
-        '<div class="support-skill"><span>助战技能</span><strong>赤焰覆盖</strong><p>入场后展开 8 秒重火力压制，对 Boss 额外造成破甲效果。</p></div>' +
-        '<div class="support-copy"><span>' + escapeHtml(focus.tag + ' · 推荐助战') + '</span><strong>' + escapeHtml(focus.title) + '</strong><p>' + escapeHtml(focus.role) + ' / 核心闸门压制</p>' +
-        '<div class="support-stats"><span>助战战力<b>' + formatNumber(focus.power) + '</b></span><span>火力增幅<b>+18%</b></span><span>今日次数<b>2/3</b></span></div>' +
-        '<button type="button" disabled>编入助战</button></div>' +
-      '</article><section class="friend-roster"><section class="board-section-head"><div><strong>助战名册</strong><span>在线成员优先</span></div><p>在线 3/' + friends.length + '</p></section><div class="friend-grid">';
-    for (var i = 0; i < friends.length; i++) {
-      var friend = friends[i];
-      var pilot = pilots[i] || pilots[0] || {};
-      var statusClass = friend.tag === "在线" ? "is-online" : friend.tag === "离线" ? "is-offline" : "is-busy";
-      list += '<article class="friend-card ' + statusClass + (i === 0 ? ' is-selected' : '') + '">' +
-        (pilot.src ? '<img src="' + escapeAttr(pilot.src) + '" alt="">' : '') +
-        '<div><span>' + escapeHtml(friend.tag) + '</span><strong>' + escapeHtml(friend.title) + '</strong><p>' + escapeHtml(friend.role) + '</p><em>' + formatNumber(friend.power) + '</em></div>' +
-        '<button type="button" disabled>' + escapeHtml(i === 0 ? '已选中' : friend.action) + '</button></article>';
-    }
-    return list + '</div></section></section></section>';
-  }
-
-  function buildRankingRows(rows, selfRow, formatter) {
-    var list = rows.slice();
-    list.push(selfRow);
-    list.sort(function (a, b) { return b.score - a.score; });
-    var html = '<div class="terminal-ranking-list">';
-    for (var i = 0; i < list.length; i++) {
-      html += '<article class="' + (list[i].tag === "我的" ? "is-self" : "") + '">' +
-        '<b>' + (i + 1) + '</b><div><strong>' + escapeHtml(list[i].title) + '</strong><p>' + escapeHtml(list[i].name) + '</p></div>' +
-        '<span>' + escapeHtml(list[i].tag) + '</span><em>' + escapeHtml(formatter(list[i].score)) + '</em></article>';
-    }
-    return html + '</div>';
-  }
-
-  function renderRankingPanel(profile, combatPower) {
-    var cfg = getConfig();
-    var rankings = cfg.RANKING_CONTENT || { power: [], clear: [], honor: [] };
-    var playerName = profile && profile.player && profile.player.name || "本地指挥官";
-    var clearCount = getClearCount(profile);
-    var bestHonor = getBestHonor(profile);
-    var tabs = panelTabs.ranking;
-    var activeTab = ensureActiveTab("ranking", tabs, "战力榜");
-    var key = activeTab === "通关榜" ? "clear" : activeTab === "荣誉榜" ? "honor" : "power";
-    var score = key === "clear" ? clearCount : key === "honor" ? bestHonor : combatPower;
-    var formatScore = key === "clear" ? function (value) { return formatNumber(value) + " 关"; } : key === "honor" ? function (value) { return value ? "Tier " + value : "未记录"; } : formatNumber;
-    var rows = (rankings[key] || []).slice();
-    rows.push({ title: "星港新锐", name: playerName, score: score, tag: "我的" });
-    rows.sort(function (a, b) { return b.score - a.score; });
-    var top = rows.slice(0, 3);
-    var rest = rows.slice(3);
-    var list = '<section class="ranking-board board-page fp-v3">' +
-      renderV3Resources(profile) + renderFeatureTabs("ranking", tabs, activeTab) +
-      '<section class="ranking-layout"><article class="ranking-podium"><div class="season-copy"><span>SEASON 01</span><strong>星港先锋赛季</strong><p>距离结算 12 天</p></div><div class="podium-grid">';
-    var order = [1, 0, 2];
-    for (var i = 0; i < order.length; i++) {
-      var rankIndex = order[i];
-      var item = top[rankIndex] || { name: "-", title: "暂无记录", score: 0 };
-      list += '<article class="podium-rank rank-' + (rankIndex + 1) + '"><span>' + (rankIndex + 1) + '</span>' + (rankIndex === 0 ? '<b class="podium-crown">♛</b>' : '') + '<i>' + escapeHtml((item.name || "-").slice(0, 2)) + '</i><strong>' + escapeHtml(item.name) + '</strong><p>' + escapeHtml(item.title) + '</p><em>' + escapeHtml(formatScore(item.score)) + '</em></article>';
-    }
-    list += '</div></article><section class="ranking-table"><section class="board-section-head"><div><strong>' + escapeHtml(activeTab) + '</strong><span>本地模拟榜单</span></div><p>每 10 分钟刷新</p></section><header><span>排名</span><span>玩家</span><span>称号</span><span>成绩</span></header><div class="ranking-rows">';
-    for (var j = 0; j < rest.length; j++) {
-      var row = rest[j];
-      var actualRank = j + 4;
-      list += '<article class="' + (row.tag === "我的" ? "is-self" : "") + '"><b>' + String(actualRank).padStart(2, "0") + '</b><i>' + escapeHtml((row.name || "-").slice(0, 1)) + '</i><strong>' + escapeHtml(row.name) + '</strong><span>' + escapeHtml(row.title) + '</span><em>' + escapeHtml(formatScore(row.score)) + '</em>' + (row.tag === "我的" ? '<u>你的位置</u>' : '') + '</article>';
-    }
-    list += '</div><footer><span>赛季奖励预览</span><strong>前 10 名：钻石 300 · 星链研究券 10</strong><button type="button" disabled>规则</button></footer></section></section></section>';
-    return list;
-  }
-
-  function getChannelLabel(key) {
-    return ({ system: "系统", world: "世界", guild: "公会", friend: "好友" })[key] || key;
-  }
-
-  function renderChatPanel() {
-    var cfg = getConfig();
-    var chat = cfg.CHAT_CONTENT || {};
-    var keys = ["world", "system", "guild", "friend"];
-    var list = '<div class="terminal-chat-flow">';
-    for (var i = 0; i < keys.length; i++) {
-      var channel = chat[keys[i]] || [];
-      list += '<section><h3>' + escapeHtml(getChannelLabel(keys[i])) + '频道</h3>';
-      for (var j = 0; j < channel.length; j++) {
-        var splitAt = channel[j].indexOf("]");
-        list += '<article><span>' + escapeHtml(channel[j].slice(0, splitAt + 1)) + '</span><p>' + escapeHtml(channel[j].slice(splitAt + 1).trim()) + '</p></article>';
-      }
-      list += '</section>';
-    }
-    list += '</div><footer class="terminal-chat-input"><input type="text" disabled value="频道预览，发送功能未开放" /><button type="button" disabled>发送</button></footer>';
-    return renderTerminalShell({
-      key: "chat",
-      kicker: "CHANNEL PREVIEW",
-      title: "星港通讯频道",
-      desc: "频道消息围绕活动、关卡建议、战机讨论和助战预告。",
-      rail: renderRail(["世界", "系统", "公会", "好友"], "世界", "频道为本地预览。"),
-      summary: renderStatusSummary([{ label: "频道", value: keys.length }, { label: "消息", value: keys.reduce(function (sum, key) { return sum + ((chat[key] || []).length); }, 0) }, { label: "发送", value: "未开放" }]),
-      list: list,
-      dock: renderDock({ kicker: "CHANNEL", reward: String(keys.reduce(function (sum, key) { return sum + ((chat[key] || []).length); }, 0)), note: "PREVIEW", action: "LOCAL", overviewTitle: "COMMS", stats: [{ label: "CHANNEL", value: keys.length }, { label: "MESSAGE", value: keys.reduce(function (sum, key) { return sum + ((chat[key] || []).length); }, 0) }, { label: "STATE", value: "LOCAL" }] })
-    });
   }
 
   function renderMailPanel() {
@@ -794,8 +642,13 @@
     dom.featurePanelSlots.innerHTML = html;
   }
 
+  function stopChatPolling(dom) {
+    if (scope.socialFeaturePanelsView) scope.socialFeaturePanelsView.stopChatPolling(dom);
+  }
+
   function renderPanel(key, dom, options) {
     options = options || {};
+    if (key !== "chat") stopChatPolling(dom);
     var profile = options.profile || {};
     var levels = options.levels || [];
     var combatPower = clampNumber(options.combatPower, 0, 9999999);
@@ -804,16 +657,17 @@
     if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "新兵七日航线奖励展示。", "terminal-panel-content signin-panel-content", renderSigninPanel());
     if (key === "setting") return setAndReport(dom, "SETTING", "设置", "音乐和音效设置会立即生效并保存到本地。", "terminal-panel-content setting-panel-content", renderSettingPanel(audioSettings));
     if (key === "task") return setAndReport(dom, "", "任务", "今日活跃正在累计", "terminal-panel-content task-panel-content feature-v3-content", renderTaskPanel(profile, levels));
-    if (key === "event") return setAndReport(dom, "", "活动", "推荐活动正在进行", "terminal-panel-content event-panel-content feature-v3-content", renderEventPanel(profile));
+    if (key === "event" && scope.endlessModePanelView) return setAndReport(dom, "", "无尽模式", "每 30 秒一个 BOSS 节点，只记录个人纪录", "terminal-panel-content event-panel-content feature-v3-content", scope.endlessModePanelView.render(profile, options));
     if (key === "achievement") return setAndReport(dom, "", "成就", countReady((getConfig().ACHIEVEMENT_CONTENT || []).map(function (item) { var current = getAchievementMetric(item, profile, levels); return { progress: { done: current >= item.target }, claimed: (profile.claimedAchievements || []).indexOf(item.id) >= 0 }; })) + " 项成就奖励可领取", "terminal-panel-content achievement-panel-content feature-v3-content", renderAchievementPanel(profile, levels));
     if (key === "shop") return setAndReport(dom, "", "商店", "每日补给已刷新", "terminal-panel-content shop-panel-content feature-v3-content", renderShopPanel(profile));
-    if (key === "friend") return setAndReport(dom, "", "好友", "3 名助战成员在线", "terminal-panel-content friend-panel-content feature-v3-content", renderFriendPanel());
-    if (key === "ranking") return setAndReport(dom, "", "排行榜", "星港先锋赛季 · 12 天后结算", "terminal-panel-content ranking-panel-content feature-v3-content", renderRankingPanel(profile, combatPower));
-    if (key === "chat") return setAndReport(dom, "CHAT", "世界频道", "系统、世界、公会和好友频道均为本地预览。", "terminal-panel-content chat-panel-content", renderChatPanel());
+    if (key === "friend" && scope.socialFeaturePanelsView) return setAndReport(dom, "", "好友", "连接星港好友网络...", "terminal-panel-content friend-panel-content feature-v3-content", scope.socialFeaturePanelsView.renderPanel(key, options));
+    if (key === "ranking" && scope.socialFeaturePanelsView) return setAndReport(dom, "", "排行榜", "星港先锋赛季 · 实时榜单", "terminal-panel-content ranking-panel-content feature-v3-content", scope.socialFeaturePanelsView.renderPanel(key, options));
+    if (key === "chat" && scope.socialFeaturePanelsView) return setAndReport(dom, "CHAT", "世界频道", "星港通讯已上线，与指挥官们实时交流。", "terminal-panel-content chat-panel-content", scope.socialFeaturePanelsView.renderPanel(key, options));
     return false;
   }
 
   function handleEvent(event, dom, options) {
+    if (scope.socialFeaturePanelsView && scope.socialFeaturePanelsView.handleEvent(event, dom, options || {})) return true;
     var tab = event.target && event.target.closest ? event.target.closest("[data-feature-tab]") : null;
     if (!tab || !tab.dataset) return false;
     var panel = tab.dataset.featurePanel || "";
@@ -873,6 +727,9 @@
     var progress = getTaskProgress(task, profile, options.levels || []);
     if (!progress.done) return { ok: false, reason: "TASK_NOT_COMPLETE" };
     if (isTaskClaimed(task, profile)) return { ok: false, reason: "TASK_ALREADY_CLAIMED" };
+    // Try cloud via gateway (fire-and-forget, doesn't block local)
+    tryCloudClaim(profile, "claimTask", taskId, options);
+    // Local fallback (always available)
     applyRewards(profile, task.rewards || []);
     if (task.bucket === "daily") {
       var today = localDateKey();
@@ -894,6 +751,7 @@
     var dailyRows = decorateTasks(getConfig().DAILY_TASKS || [], profile, options.levels || []);
     if (getActivity(dailyRows) < points) return { ok: false, reason: "ACTIVITY_REWARD_LOCKED" };
     if (isActivityRewardClaimed(profile, points)) return { ok: false, reason: "ACTIVITY_REWARD_CLAIMED" };
+    tryCloudClaim(profile, "claimActivityReward", points, options);
     applyRewards(profile, reward.rewards || []);
     profile.claimedDailyActivityRewards = { date: localDateKey(), points: getDailyActivityClaims(profile).concat([points]) };
     return { ok: true, rewards: reward.rewards || [] };
@@ -907,16 +765,44 @@
     profile.claimedAchievements = Array.isArray(profile.claimedAchievements) ? profile.claimedAchievements : [];
     if (profile.claimedAchievements.indexOf(item.id) >= 0) return { ok: false, reason: "ACHIEVEMENT_CLAIMED" };
     if (getAchievementMetric(item, profile, options.levels || []) < item.target) return { ok: false, reason: "ACHIEVEMENT_LOCKED" };
+    tryCloudClaim(profile, "claimAchievement", achievementId, options);
     applyRewards(profile, item.rewards || []);
     profile.claimedAchievements.push(item.id);
     return { ok: true, rewards: item.rewards || [] };
   }
 
+  // Fire-and-forget cloud claim helper
+  function tryCloudClaim(profile, method, param, options) {
+    options = options || {};
+    var gateway = options.gateway;
+    if (!gateway || typeof gateway[method] !== "function") return;
+    try {
+      var result = gateway[method](param);
+      if (result && typeof result.then === "function") {
+        result.then(function(res) {
+          if (res && res.profile) { Object.assign(profile, res.profile); }
+        }).catch(function() { /* silent */ });
+      }
+    } catch (e) { /* silent */ }
+  }
+
+  scope.mainFeaturePanelPrimitives = {
+    renderTerminalShell: renderTerminalShell,
+    renderRail: renderRail,
+    renderStatusSummary: renderStatusSummary,
+    renderDock: renderDock
+  };
+
   scope.mainFeaturePanelsView = {
     renderPanel: renderPanel,
     handleEvent: handleEvent,
+    handleSocialClick: function handleSocialClick(event, dom, options) {
+      return scope.socialFeaturePanelsView && scope.socialFeaturePanelsView.handleClick(event, dom, options || {});
+    },
     claimTask: claimTask,
     claimActivityReward: claimActivityReward,
-    claimAchievement: claimAchievement
+    claimAchievement: claimAchievement,
+    stopChatPolling: stopChatPolling
   };
+
 })(typeof globalThis !== "undefined" ? globalThis : this);

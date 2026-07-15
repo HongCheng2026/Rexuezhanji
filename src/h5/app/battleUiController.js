@@ -42,14 +42,14 @@
     var decisiveCommandRuntime = abilities.decisiveCommand || null;
     var decisiveCommandConfig = configuredAbilities.decisiveCommand || null;
     return {
-      level: level.code || String(level.id || "-"),
+      level: state.battleMode === "endless" ? "无尽 #" + Math.max(1, Number(state.endless && state.endless.round) || 1) : level.code || String(level.id || "-"),
       time: getTimeText(state),
       healthText: Math.ceil(hp) + "/" + Math.ceil(maxHp),
       healthRatio: hp / maxHp,
-      bossText: state.boss ? "BOSS " + Math.ceil(bossRatio * 100) + "%" : state.bossSpawned ? "BOSS 接近" : "BOSS 未接敌",
+      bossText: state.boss ? (state.battleMode === "endless" ? "第 " + state.boss.endlessRound + " 只 " : "BOSS ") + Math.ceil(bossRatio * 100) + "%" : state.bossSpawned ? "BOSS 接近" : "BOSS 未接敌",
       bossRatio: bossRatio,
       bossActive: Boolean(state.boss),
-      kills: String(state.killStats && state.killStats.total || 0),
+      kills: String(state.battleMode === "endless" ? state.endless && state.endless.kills || 0 : state.killStats && state.killStats.total || 0),
       paused: state.mode === "paused",
       activeSlots: createActiveSlotModels(abilities.activeSlots, configuredAbilities.activeSlots),
       decisiveCommand: createDecisiveCommandModel(decisiveCommandRuntime, decisiveCommandConfig),
@@ -59,6 +59,7 @@
 
   function getTimeText(state) {
     var levels = scope.levels || {};
+    if (state.battleMode === "endless") return Math.max(0, Math.floor(Number(state.elapsed) || 0)) + "s";
     if (state.mode === "fight" || state.mode === "paused") {
       if (state.boss) return "接敌";
       return String(Math.max(0, Math.ceil((levels.BOSS_SPAWN_TIME || 60) - (Number(state.elapsed) || 0))));

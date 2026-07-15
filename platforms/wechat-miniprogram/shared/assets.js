@@ -202,7 +202,8 @@
   };
 
   const FEATURE_PANEL_ASSETS = {
-    eventHero: runtimeAsset("ui/feature-panels", "event-starport-breakthrough.png")
+    eventHero: runtimeAsset("ui/feature-panels", "event-starport-breakthrough.png"),
+    contactQr: runtimeAsset("ui/contact", "wechat-qr.jpg")
   };
 
   const CHAPTER_COVER_ASSETS = Array.from({ length: 10 }, (_, index) => ({

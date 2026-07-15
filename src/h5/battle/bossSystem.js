@@ -12,21 +12,26 @@
 
   function spawnBossIfNeeded(state, level) {
     if (state.bossSpawned || state.elapsed < BOSS_SPAWN_TIME) return;
+    return spawnBoss(state, level);
+  }
+
+  function spawnBoss(state, level, options) {
+    options = options || {};
     state.bossSpawned = true;
     state.bossWarning = 3;
     var field = getField(state);
 
-    var bossStats = getBossStats(level);
+    var bossStats = options.bossStats || getBossStats(level);
     var waveConfig = bossStats.waveConfig || {};
-    var visual = assetsConfig.getBossVisual
+    var visual = options.visual || (assetsConfig.getBossVisual
       ? assetsConfig.getBossVisual(level.chapterIndex, level.stageInChapter)
-      : null;
+      : null);
     var drawWidth = visual ? visual.drawWidth : 168;
     var drawHeight = visual ? visual.drawHeight : 156;
     var hitRadiusX = visual ? visual.hitRadiusX : 78;
     var hitRadiusY = visual ? visual.hitRadiusY : 78;
-    var bossDef = null;
-    if (combatCodexConfig && combatCodexConfig.getStageBoss) {
+    var bossDef = options.bossDef || null;
+    if (!bossDef && combatCodexConfig && combatCodexConfig.getStageBoss) {
       bossDef = combatCodexConfig.getStageBoss(level.chapterIndex || 0, level.stageInChapter || 1);
     }
     if (bossDef && bossDef.cyclePatterns) {
@@ -55,13 +60,16 @@
       maxHp: bossStats.hp,
       damageTakenMultiplier: bossStats.damageTakenMultiplier,
       originalDamageTakenMultiplier: bossStats.damageTakenMultiplier,
+      damageReductionRate: bossStats.damageReductionRate != null ? bossStats.damageReductionRate : Math.max(0, 1 - Number(bossStats.damageTakenMultiplier || 1)),
+      originalDamageReductionRate: bossStats.damageReductionRate != null ? bossStats.damageReductionRate : Math.max(0, 1 - Number(bossStats.damageTakenMultiplier || 1)),
       attackDamage: bossStats.attackDamage || bossStats.baseDamage || 1000,
       bulletSpeed: (bossStats.bulletSpeed || 360) * (bossStats.bulletSpeedMultiplier || 1),
       fireInterval: bossStats.fireInterval || 0.55,
       bulletPattern: bossStats.bulletPattern || "boss_cycle",
       waveConfig: waveConfig,
       theme: bossStats.bossTheme || waveConfig.theme || "fan",
-      title: (bossDef && bossDef.name) || (visual && visual.title) || bossStats.title || waveConfig.title || "BOSS 接敌",
+      title: options.title || (bossDef && bossDef.name) || (visual && visual.title) || bossStats.title || waveConfig.title || "BOSS 接敌",
+      endlessRound: Math.max(0, Math.floor(Number(options.endlessRound) || 0)),
       spawnedAt: state.elapsed,
       fireTimer: 0,
       minFireInterval: waveConfig.minFireInterval || 0.32,
@@ -91,6 +99,7 @@
     state.shockwaves.push({ x: state.boss.targetX, y: field.height / 2, radius: 18, life: 0.9, maxLife: 0.9, color: "#ff6b6b" });
     addNotice(state, state.boss.title, "#ff6b6b", 2.4);
     playSfx("bossWarning");
+    return state.boss;
   }
 
   function playSfx(id) {
@@ -419,6 +428,7 @@
 
   var api = {
     spawnBossIfNeeded: spawnBossIfNeeded,
+    spawnBoss: spawnBoss,
     updateBoss: updateBoss
   };
 

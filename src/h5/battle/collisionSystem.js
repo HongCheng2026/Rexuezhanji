@@ -314,11 +314,17 @@
 
   function getBulletDamageTakenMultiplier(state, target, bullet) {
     var base = target && target.damageTakenMultiplier != null ? target.damageTakenMultiplier : 1;
-    var pierce = Math.max(0, Math.min(1, Number(bullet && bullet.armorPierceRatio) || 0));
+    var pierce = Math.max(0, Number(bullet && bullet.armorPierceRatio) || 0);
     var breakActive = target && Number(target.armorBreakUntil) > (Number(state && state.elapsed) || 0);
-    var armorBreak = breakActive ? Math.max(0, Math.min(1, Number(target.armorBreakRatio) || 0)) : 0;
-    var combinedPierce = 1 - (1 - pierce) * (1 - armorBreak);
-    return Math.max(base, base + (1 - base) * combinedPierce);
+    var armorBreak = breakActive ? Math.max(0, Number(target.armorBreakRatio) || 0) : 0;
+    var damageReduction = target && target.damageReductionRate != null
+      ? Math.max(0, Number(target.damageReductionRate) || 0)
+      : Math.max(0, 1 - Number(base || 0));
+    var multiplier = Math.max(0, 1 - Math.max(0, damageReduction - pierce - armorBreak));
+    var original = target && target.originalDamageTakenMultiplier != null ? Number(target.originalDamageTakenMultiplier) : Number(base);
+    if (Number(base) > original) multiplier = Math.max(multiplier, Number(base));
+    if (Number(base) < original) multiplier = Math.min(multiplier, Math.max(0, Number(base)));
+    return Math.max(0, multiplier);
   }
 
   /**
@@ -451,6 +457,7 @@
   var api = {
     checkCollisions: checkCollisions,
     hitTargetWithBullets: hitTargetWithBullets,
+    getBulletDamageTakenMultiplier: getBulletDamageTakenMultiplier,
     splashDamage: splashDamage,
     damageArea: damageArea,
     damagePlayer: damagePlayer,

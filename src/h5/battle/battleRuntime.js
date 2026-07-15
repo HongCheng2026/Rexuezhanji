@@ -130,14 +130,12 @@
       scope.weaponSystem.autoShoot(state, battleContext.loadout, state.bullets);
     }
 
-    // 刷怪
-    if (enemySys && enemySys.spawnEnemies) {
-      enemySys.spawnEnemies(state, state.level);
-    }
-
-    // BOSS
-    if (bossSys && bossSys.spawnBossIfNeeded) {
-      bossSys.spawnBossIfNeeded(state, state.level);
+    if (state.battleMode === "endless" && scope.endlessModeDirector) {
+      scope.endlessModeDirector.beforeUpdate(state);
+    } else {
+      // 普通关卡继续使用原导演和章节平衡。
+      if (enemySys && enemySys.spawnEnemies) enemySys.spawnEnemies(state, state.level);
+      if (bossSys && bossSys.spawnBossIfNeeded) bossSys.spawnBossIfNeeded(state, state.level);
     }
 
     // 道具生成
@@ -183,6 +181,9 @@
     // 碰撞检测
     if (collisionSys && collisionSys.checkCollisions) {
       collisionSys.checkCollisions(state, null, battleContext.loadout);
+    }
+    if (state.battleMode === "endless" && scope.endlessModeDirector) {
+      scope.endlessModeDirector.afterCollisions(state);
     }
 
     if (scope.audioSystem && scope.audioSystem.flushFrameAudio) {
