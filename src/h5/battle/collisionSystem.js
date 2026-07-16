@@ -26,8 +26,9 @@
       if (!state.enemies[i].dead &&
         state.player.invincible <= 0 &&
         distance(state.enemies[i], state.player) < state.enemies[i].radius + state.player.radius * 0.75) {
+        var collisionHp = Math.max(0, Number(state.enemies[i].hp) || 0);
         state.enemies[i].dead = true;
-        damagePlayer(state, profile, state.enemies[i].attackDamage || 10);
+        damagePlayerByEnemyCollision(state, collisionHp);
         burst(state, state.enemies[i].x, state.enemies[i].y, "#ff5555", 26);
         shockwave(state, state.enemies[i].x, state.enemies[i].y, "#ff5555", 0.42, 180);
       }
@@ -103,7 +104,8 @@
         if (!circlesOverlap(playerBullet, enemyBullet)) continue;
 
         var isRoadblock = isRoadblockBullet(enemyBullet);
-        if (!isRoadblock && Math.random() >= 0.1) continue;
+        var cancelRate = getProjectileCancelRate(playerBullet, enemyBullet);
+        if (!isRoadblock && (cancelRate <= 0 || Math.random() >= cancelRate)) continue;
 
         playerBullet.dead = true;
         enemyBullet.dead = true;
@@ -124,7 +126,23 @@
   }
 
   function canCancelEnemyBullet(bullet) {
-    return isRoadblockBullet(bullet) || bullet.sourceEnemyClass === "normal";
+    return isRoadblockBullet(bullet)
+      || bullet.sourceEnemyClass === "normal"
+      || bullet.sourceEnemyType === "elite";
+  }
+
+  function getProjectileCancelRate(playerBullet, enemyBullet) {
+    if (isRoadblockBullet(enemyBullet)) return 1;
+    if (enemyBullet && enemyBullet.sourceEnemyType === "elite") {
+      return Math.max(0, Math.min(1, Number(playerBullet && playerBullet.eliteBulletCancelRate) || 0));
+    }
+    if (enemyBullet && enemyBullet.sourceEnemyClass === "normal") {
+      if (playerBullet && playerBullet.normalBulletCancelRate != null) {
+        return Math.max(0, Math.min(1, Number(playerBullet.normalBulletCancelRate) || 0));
+      }
+      return 0.1;
+    }
+    return 0;
   }
 
   function circlesOverlap(a, b) {
@@ -331,6 +349,7 @@
    * 玩家受伤
    */
   function damagePlayer(state, profile, damage) {
+    if (Number(state.player.phaseShieldRemaining) > 0) return;
     if (state.player.shield > 0) {
       state.player.shield = 0;
       state.player.invincible = 0.8;
@@ -341,9 +360,25 @@
     var fallbackHp = (state.player.lives != null ? state.player.lives : 1) * 100;
     if (state.player.maxHp == null) state.player.maxHp = Math.max(100, fallbackHp);
     if (state.player.hp == null) state.player.hp = Math.min(state.player.maxHp, fallbackHp);
+    var hpBeforeHit = state.player.hp;
     state.player.hp = Math.max(0, state.player.hp - hitDamage);
+    state.damageTakenAmount = (Number(state.damageTakenAmount) || 0) + Math.max(0, hpBeforeHit - state.player.hp);
     state.player.lives = Math.max(0, Math.ceil(state.player.hp / 100));
     state.damageTaken += 1;
+    state.player.invincible = 1.25;
+  }
+
+  function damagePlayerByEnemyCollision(state, enemyCurrentHp) {
+    if (Number(state.player.phaseShieldRemaining) > 0) return;
+    var collisionDamage = Math.max(0, Number(enemyCurrentHp) || 0);
+    var fallbackHp = (state.player.lives != null ? state.player.lives : 1) * 100;
+    if (state.player.maxHp == null) state.player.maxHp = Math.max(100, fallbackHp);
+    if (state.player.hp == null) state.player.hp = Math.min(state.player.maxHp, fallbackHp);
+    var hpBeforeCollision = state.player.hp;
+    state.player.hp = Math.max(0, state.player.hp - collisionDamage);
+    state.damageTakenAmount = (Number(state.damageTakenAmount) || 0) + Math.max(0, hpBeforeCollision - state.player.hp);
+    state.player.lives = Math.max(0, Math.ceil(state.player.hp / 100));
+    state.damageTaken = (Number(state.damageTaken) || 0) + 1;
     state.player.invincible = 1.25;
   }
 
@@ -370,6 +405,9 @@
     }
     var maxWpn = (scope.balance && scope.balance.MAX_WEAPON_LEVEL) || 10;
     state.player.weapons[type] = Math.min(maxWpn, (state.player.weapons[type] || 0) + 1);
+    if (scope.battleState && scope.battleState.refreshFixedWeaponSkill) {
+      scope.battleState.refreshFixedWeaponSkill(state.player, type);
+    }
     if (pw && pw[type]) addNotice(state, pw[type].name + " Lv." + state.player.weapons[type], pw[type].color, 1.5);
   }
 
@@ -457,10 +495,12 @@
   var api = {
     checkCollisions: checkCollisions,
     hitTargetWithBullets: hitTargetWithBullets,
+    getProjectileCancelRate: getProjectileCancelRate,
     getBulletDamageTakenMultiplier: getBulletDamageTakenMultiplier,
     splashDamage: splashDamage,
     damageArea: damageArea,
     damagePlayer: damagePlayer,
+    damagePlayerByEnemyCollision: damagePlayerByEnemyCollision,
     applyPowerup: applyPowerup,
     clearForDecisiveCommand: clearForDecisiveCommand,
     maybeDropPowerup: maybeDropPowerup,

@@ -2,12 +2,12 @@
   var scope = root.RXGame || (root.RXGame = {});
   var levelsConfig = scope.levels || {};
   var assets = scope.assets || {};
+  var battleRules = scope.battleRules || {};
   var settlementIcons = assets.SETTLEMENT_ICON_ASSETS || {};
   var stageHonorSystem = scope.stageHonorSystem || {};
   var storyConfig = scope.stageStoryConfig || {};
   var campaignStory = scope.campaignStoryFramework || {};
   var levels = levelsConfig.levels || [];
-  var ENERGY_COST = levelsConfig.ENERGY_COST || 5;
 
   var FALLBACK_CHAPTER_NAMES = [
     "序章：苍穹启动",
@@ -284,14 +284,24 @@
     }
 
     var sweepButton = document.createElement("button");
-    var canSweep = isCompleted(profile, level);
+    var sweepEligibility = battleRules.getSweepEligibility
+      ? battleRules.getSweepEligibility(profile, level)
+      : { canSweep: isCompleted(profile, level), reason: "NOT_COMPLETED" };
+    var canSweep = sweepEligibility.canSweep;
     sweepButton.type = "button";
     sweepButton.className = "campaign-map-action campaign-map-action-secondary";
-    sweepButton.disabled = !canSweep;
+    sweepButton.dataset.campaignAction = "sweep";
+    sweepButton.setAttribute("aria-disabled", canSweep ? "false" : "true");
     sweepButton.style.setProperty("--campaign-action-art", assetUrl(chapterAssets.buttons && (canSweep ? chapterAssets.buttons.secondary : chapterAssets.buttons.disabled)));
-    sweepButton.innerHTML = renderIcon("energy", chapterAssets) + '<span>' + (canSweep ? "扫荡 " + (level && level.code || "") + " -" + ENERGY_COST + " 体力" : "通关后可扫荡") + "</span>";
+    sweepButton.innerHTML = renderIcon("energy", chapterAssets) + '<span>' + (canSweep
+      ? "扫荡 " + (level && level.code || "")
+      : sweepEligibility.reason === "NOT_THREE_STAR" ? "三星后可扫荡" : "通关后可扫荡") + "</span>";
     sweepButton.addEventListener("click", function onSweep() {
-      if (callbacks.onSweepLevel && level) callbacks.onSweepLevel(level.id);
+      if (!canSweep) {
+        if (callbacks.onSweepUnavailable && level) callbacks.onSweepUnavailable(level, sweepEligibility.reason);
+        return;
+      }
+      if (callbacks.onOpenSweep && level) callbacks.onOpenSweep(level);
     });
     actions.appendChild(sweepButton);
     return actions;
@@ -442,6 +452,7 @@
 
   function isCompleted(profile, level) {
     if (!level) return false;
+    if (battleRules.isLevelCompleted) return battleRules.isLevelCompleted(profile, level);
     var completed = profile.completed || [];
     var cleared = profile.progress && profile.progress.clearedStageIds || [];
     var stageId = level.chapterIndex === 0 ? "prologue_" + level.stageInChapter : level.chapterIndex + "_" + level.stageInChapter;

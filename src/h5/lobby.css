@@ -833,7 +833,6 @@
 }
 
 .lobby-screen .contact-emblem {
-  background: var(--rx-a-contact-emblem-icon) center / contain no-repeat;
   display: block;
   height: 88px;
   justify-self: center;

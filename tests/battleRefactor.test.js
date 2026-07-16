@@ -11,11 +11,12 @@ global.RXGame = {};
 const balance = require("../src/shared/balance.js");
 require("../src/shared/levels.js");
 const shipSkills = require("../src/shared/shipSkills.js");
+const tacticalLoadoutConfig = require("../src/shared/tacticalLoadoutConfig.js");
 const assets = require("../src/shared/assets.js");
 require("../src/shared/battleRules.js");
 const profileSystem = require("../src/shared/profile.js");
 const combatStats = require("../src/h5/meta/combatStats.js");
-const weaponModuleSystem = require("../src/h5/meta/weaponModuleSystem.js");
+const tacticalLoadoutSystem = require("../src/h5/meta/tacticalLoadoutSystem.js");
 const battleGeometry = require("../src/h5/battle/battleGeometry.js");
 const weaponSystem = require("../src/h5/battle/weaponSystem.js");
 const activeSkillPreferences = require("../src/h5/battle/activeSkillPreferences.js");
@@ -24,6 +25,7 @@ const abilitySystem = require("../src/h5/battle/abilitySystem.js");
 require("../src/h5/battle/activeSkills/skyLockBeam.js");
 require("../src/h5/battle/activeSkills/obsidianGravityWell.js");
 require("../src/h5/battle/activeSkills/goldJudgementBuff.js");
+require("../src/h5/battle/activeSkills/phaseShield.js");
 const battleState = require("../src/h5/battle/battleState.js");
 
 function makeProfileForShip(ship) {
@@ -104,59 +106,6 @@ test("多枚追踪弹会分散锁定，场上无小怪时才锁 BOSS", () => {
   assert.ok(bullets.every((bullet) => bullet.targetId === "boss"));
 });
 
-test("all six weapon modules change only their matching base weapon", () => {
-  function makeState() {
-    return {
-      player: { weaponPierceSlots: {}, weaponVolleyCounts: {} },
-      bullets: [],
-      enemies: [{ id: "enemy", x: 520, y: 250, hp: 100, maxHp: 100, radius: 18 }],
-      boss: null
-    };
-  }
-  function fire(moduleId, type, level = 1, prepare) {
-    const state = makeState();
-    if (prepare) prepare(state);
-    const loadout = {
-      finalStats: { attack: 100 },
-      weaponPierceSlots: {},
-      equippedWeaponModule: balance.WEAPON_MODULES[moduleId]
-    };
-    weaponSystem.fireWeapon(state, loadout, state.bullets, type, level, 100, 250);
-    return state.bullets;
-  }
-
-  const focused = fire("spread-focus", "spread");
-  assert.equal(focused.length, 3);
-  assert.equal(focused[0].damage, 118);
-  assert.ok(Math.abs(focused[1].angle - focused[0].angle) < 0.04);
-
-  const storm = fire("spread-storm", "spread");
-  assert.equal(storm.length, 5);
-  assert.equal(storm[0].damage, 92);
-
-  const prism = fire("laser-prism", "laser");
-  assert.equal(prism[0].damage, 108);
-  assert.equal(prism[0].pierceRemaining, 1);
-
-  const capacitor = fire("laser-capacitor", "laser", 1, (state) => {
-    state.player.weaponVolleyCounts.laser = 4;
-  });
-  assert.equal(capacitor.length, 2);
-  assert.equal(capacitor[0].damage, 95);
-  assert.equal(capacitor[1].damage, 200);
-
-  const guidance = fire("missile-guidance", "missile");
-  assert.equal(guidance.length, 2);
-  assert.equal(guidance[0].damage, 92);
-  assert.ok(Math.abs(guidance[0].homingTurnRate - 8.1) < 1e-9);
-
-  const warhead = fire("missile-warhead", "missile");
-  assert.equal(warhead.length, 1);
-  assert.equal(warhead[0].damage, 120);
-  assert.equal(warhead[0].splashRadius, 64);
-  assert.ok(warhead[0].launchSpeed < 472);
-});
-
 test("三架 S 战机的专属技能只进入主动技能第 1 格", () => {
   const expectedIds = new Set(["sky-lock-beam", "obsidian-gravity-well", "gold-judgement-buff"]);
   for (const ship of assets.SHIP_ASSETS.filter((item) => item.rank === "S")) {
@@ -168,6 +117,48 @@ test("三架 S 战机的专属技能只进入主动技能第 1 格", () => {
     const loadout = combatStats.generateBattleLoadout(makeProfileForShip(ship));
     assert.deepEqual(loadout.abilities.activeSlots, [null, null, null, null]);
   }
+});
+
+test("相位护盾手动可随时释放，AUTO 只在半血以下触发并持续三秒", () => {
+  const ship = assets.SHIP_ASSETS.find((item) => item.rank === "B");
+  const profile = makeProfileForShip(ship);
+  profile.shipSkillLoadouts[ship.id] = {
+    activeSlots: [{ skillId: "phase-shield", autoEnabled: true }, null, null, null],
+    autoWeaponIds: [null, null, null]
+  };
+  const loadout = combatStats.generateBattleLoadout(profile);
+  const player = battleState.createPlayer(loadout, battleGeometry.createField());
+  const state = {
+    mode: "fight",
+    field: battleGeometry.createField(),
+    player,
+    bullets: [],
+    skillEffects: [],
+    enemies: [],
+    boss: null,
+    notices: []
+  };
+
+  player.hp = player.maxHp;
+  abilitySystem.update(state, loadout, 0.016);
+  assert.equal(player.abilities.activeSlots[0].cooldownTimer, 0);
+  assert.equal(player.phaseShieldRemaining, 0);
+
+  player.hp = player.maxHp * 0.5;
+  abilitySystem.update(state, loadout, 0.016);
+  assert.equal(player.abilities.activeSlots[0].activeRemaining, 3);
+  assert.equal(player.abilities.activeSlots[0].cooldownTimer, 18);
+  assert.equal(player.phaseShieldRemaining, 3);
+  assert.equal(state.skillEffects[0].activeSkillId, "phase-shield");
+
+  abilitySystem.update(state, loadout, 3.01);
+  assert.equal(player.abilities.activeSlots[0].activeRemaining, 0);
+  assert.equal(player.phaseShieldRemaining, 0);
+
+  player.abilities.activeSlots[0].cooldownTimer = 0;
+  player.hp = player.maxHp;
+  assert.equal(abilitySystem.tryCastActiveSlot(state, loadout, 0, "manual"), true);
+  assert.equal(player.phaseShieldRemaining, 3);
 });
 
 test("三个 S 专属技能按各自持续时间运行且不能叠加", () => {
@@ -217,7 +208,52 @@ test("三个 S 专属技能按各自持续时间运行且不能叠加", () => {
   assert.equal(gold.state.bullets[0].armorPierceRatio, gold.loadout.finalStats.armorPenetration + 0.25);
 });
 
-test("主动技能自动开关按技能独立记忆，且没有目标时不空放", () => {
+test("局外配置的四个主动技能都会进入战斗并可按槽位释放", () => {
+  const profile = profileSystem.normalizeProfile({
+    saveVersion: profileSystem.SAVE_VERSION,
+    starterRosterVersion: 2,
+    player: { level: 30 },
+    scene: { shipId: "ship-a-06" },
+    owned: { ships: ["ship-a-06", "ship-s-09", "ship-s-08", "ship-b-04"] },
+    migrationFlags: { weaponModulesV7Refunded: true }
+  });
+  tacticalLoadoutSystem.save(profile, "ship-a-06", {
+    activeSlots: [
+      { skillId: "sky-lock-beam", autoEnabled: false },
+      { skillId: "obsidian-gravity-well", autoEnabled: false },
+      { skillId: "gold-judgement-buff", autoEnabled: false },
+      { skillId: "phase-shield", autoEnabled: false }
+    ],
+    autoWeaponIds: [null, null, null]
+  });
+
+  const loadout = combatStats.generateBattleLoadout(profile);
+  const field = battleGeometry.createField();
+  const player = battleState.createPlayer(loadout, field);
+  player.x = 100;
+  player.y = 250;
+  const state = {
+    mode: "fight",
+    elapsed: 2,
+    field,
+    player,
+    bullets: [],
+    skillEffects: [],
+    enemies: [{ id: "target", enemyType: "elite", x: 600, y: 250, hp: 10000, maxHp: 10000, radius: 24 }],
+    boss: null,
+    notices: []
+  };
+
+  assert.deepEqual(loadout.abilities.activeSlots.map((skill) => skill && skill.id), [
+    "sky-lock-beam",
+    "obsidian-gravity-well",
+    "gold-judgement-buff",
+    "phase-shield"
+  ]);
+  assert.deepEqual([0, 1, 2, 3].map((slot) => abilitySystem.tryCastActiveSlot(state, loadout, slot)), [true, true, true, true]);
+});
+
+test("主动技能自动开关只影响本局，且没有目标时不空放", () => {
   activeSkillPreferences.resetForTests();
   const ship = assets.SHIP_ASSETS.find((item) => item.activeSkillId === "sky-lock-beam");
   const loadout = combatStats.generateBattleLoadout(makeProfileForShip(ship));
@@ -233,7 +269,7 @@ test("主动技能自动开关按技能独立记忆，且没有目标时不空�
     notices: []
   };
   assert.equal(abilitySystem.toggleActiveSlotAuto(state, loadout, 0), true);
-  assert.equal(activeSkillPreferences.isEnabled("sky-lock-beam"), true);
+  assert.equal(activeSkillPreferences.isEnabled("sky-lock-beam"), false);
   assert.equal(activeSkillPreferences.isEnabled("obsidian-gravity-well"), false);
   abilitySystem.update(state, loadout, 0.5);
   assert.equal(player.abilities.activeSlots[0].cooldownTimer, 0);
@@ -275,37 +311,6 @@ test("主动技能自动偏好写入独立本地设置并能重新读取", () =>
     "sky-lock-beam": true,
     "obsidian-gravity-well": true
   });
-});
-
-test("模块存档只保留合法ID，且只有 S 战机的出战快照生效", () => {
-  const normalized = profileSystem.normalizeProfile({
-    saveVersion: 6,
-    weaponModules: { ownedIds: ["spread-focus", "invalid", "spread-focus"], equippedId: "spread-focus" }
-  });
-  assert.deepEqual(normalized.weaponModules, { ownedIds: ["spread-focus"], equippedId: "spread-focus" });
-  const sShip = assets.SHIP_ASSETS.find((item) => item.rank === "S");
-  const aShip = assets.SHIP_ASSETS.find((item) => item.rank === "A");
-  const sProfile = makeProfileForShip(sShip);
-  sProfile.weaponModules = normalized.weaponModules;
-  assert.equal(combatStats.generateBattleLoadout(sProfile).equippedWeaponModule.id, "spread-focus");
-  const aProfile = makeProfileForShip(aShip);
-  aProfile.weaponModules = normalized.weaponModules;
-  assert.equal(combatStats.generateBattleLoadout(aProfile).equippedWeaponModule, null);
-});
-
-test("本地模块购买、重复购买、装备和卸下遵守同一套规则", () => {
-  const moduleProfile = profileSystem.normalizeProfile({ saveVersion: 6, resources: { gold: 100000 } });
-  const sShip = assets.SHIP_ASSETS.find((item) => item.rank === "S");
-  const aShip = assets.SHIP_ASSETS.find((item) => item.rank === "A");
-  const result = weaponModuleSystem.buy(moduleProfile, "missile-guidance");
-  assert.equal(result.cost, 50000);
-  assert.equal(profileSystem.getGold(moduleProfile), 50000);
-  assert.throws(() => weaponModuleSystem.buy(moduleProfile, "missile-guidance"), /已经购买/);
-  assert.throws(() => weaponModuleSystem.equip(moduleProfile, "missile-guidance", aShip), /只有 S 级/);
-  weaponModuleSystem.equip(moduleProfile, "missile-guidance", sShip);
-  assert.equal(moduleProfile.weaponModules.equippedId, "missile-guidance");
-  weaponModuleSystem.equip(moduleProfile, null, aShip);
-  assert.equal(moduleProfile.weaponModules.equippedId, null);
 });
 
 test("B/A/S 决胜指令开局 1 次、上限 2/3/4、18 秒恢复", () => {

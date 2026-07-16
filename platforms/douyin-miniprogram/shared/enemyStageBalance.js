@@ -1,6 +1,7 @@
 (function registerEnemyStageBalance(root) {
   const scope = root.RXGame || (root.RXGame = {});
   const codex = scope.combatCodexConfig || null;
+  const balance = scope.balance || null;
 
   const STAGE_STRUCTURE_CONFIG = {
     prologueChapterIndex: 0,
@@ -486,7 +487,6 @@
   const getStageDifficulty = (chapterIndex, stageInChapter) => chapterIndex === 0 ? (PROLOGUE_STAGE_CONFIG[stageInChapter]?.difficultyBonus || 0) : getChapterDifficultyBase(chapterIndex) + (STAGE_DIFFICULTY_TEMPLATE[stageInChapter] || 0);
   const getStageDamageReductionRate = (chapterIndex, stageInChapter) => chapterIndex === 0 ? 0 : chapterIndex === 7 ? (CHAPTER_7_STAGE_DAMAGE_REDUCTION[stageInChapter] || 0.45) : clamp(getStageDifficulty(chapterIndex, stageInChapter) * 0.5, 0, 0.65);
   const getStageEnemyHpMultiplier = (chapterIndex, stageInChapter) => 1 + getStageDifficulty(chapterIndex, stageInChapter);
-  const getBossHpMultiplier = (chapterIndex, stageInChapter) => stageInChapter === 10 ? 1 + getStageDifficulty(chapterIndex, stageInChapter) + 0.3 : 1;
   const getChapterFireIntervalBase = (chapterIndex) => chapterIndex === 0 ? 1.2 : (CHAPTER_ENEMY_FIRE_INTERVAL_BASE[chapterIndex] || 1);
 
   function getChapterContentConfig(chapterIndex) {
@@ -743,12 +743,22 @@
   function getEnemyFinalStats({ chapterIndex, stageInChapter, enemyType, unitId }) {
     const config = ENEMY_TYPE_CONFIG[enemyType];
     if (!config) throw new Error(`Unknown enemy type: ${enemyType}`);
-    const hpMultiplier = enemyType === "boss" ? getBossHpMultiplier(chapterIndex, stageInChapter) : getStageEnemyHpMultiplier(chapterIndex, stageInChapter);
-    const damageReductionRate = clamp(getStageDamageReductionRate(chapterIndex, stageInChapter) + (config.extraDamageReductionRate || 0), 0, 0.9);
+    const baseDamageReductionRate = clamp(
+      getStageDamageReductionRate(chapterIndex, stageInChapter) + (config.extraDamageReductionRate || 0),
+      0,
+      0.9
+    );
+    const bossScaling = enemyType === "boss" && balance && balance.getBossScaling
+      ? balance.getBossScaling(chapterIndex, stageInChapter, baseDamageReductionRate)
+      : null;
+    const hpMultiplier = bossScaling ? bossScaling.hpMultiplier : getStageEnemyHpMultiplier(chapterIndex, stageInChapter);
+    const damageReductionRate = bossScaling
+      ? bossScaling.damageReductionRate
+      : baseDamageReductionRate;
 
     var result = {
       ...config,
-      hp: Math.ceil(config.baseHp * hpMultiplier),
+      hp: bossScaling ? bossScaling.hp : Math.ceil(config.baseHp * hpMultiplier),
       attackDamage: config.baseDamage,
       bulletSpeedMultiplier: CHAPTER_BULLET_SPEED_MULTIPLIER[chapterIndex] || CHAPTER_BULLET_SPEED_MULTIPLIER[9],
       firstFireDelay: getEnemyFirstFireDelay(enemyType),
@@ -759,6 +769,7 @@
       title: enemyType === "boss" ? getBossThemeConfig(chapterIndex).title : config.name,
       damageReductionRate,
       damageTakenMultiplier: 1 - damageReductionRate,
+      armorPierceRatio: bossScaling ? bossScaling.armorPierceRatio : 0,
       waveConfig: getEnemyWaveConfig(chapterIndex, enemyType)
     };
 
@@ -845,7 +856,6 @@
     getStageDifficulty,
     getStageDamageReductionRate,
     getStageEnemyHpMultiplier,
-    getBossHpMultiplier,
     getChapterFireIntervalBase,
     getChapterContentConfig,
     getBossThemeConfig,

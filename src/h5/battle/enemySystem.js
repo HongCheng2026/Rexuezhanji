@@ -48,6 +48,62 @@
     state.enemyTimer = getWaveInterval(level, pressure, spawned);
   }
 
+  function spawnWave(state, level, options) {
+    options = options || {};
+    if (!state || !level) return 0;
+    state.enemies = Array.isArray(state.enemies) ? state.enemies : [];
+
+    var activeCap = Math.max(1, Math.floor(Number(options.activeCap) || 6));
+    var available = Math.max(0, activeCap - countLiveEnemies(state));
+    var waveSize = Math.min(
+      available,
+      Math.max(0, Math.floor(Number(options.waveSize) || 0))
+    );
+    if (waveSize <= 0) return 0;
+
+    var director = ensureDirector(state, level);
+    var phases = director.phases || [];
+    var basePhase = phases[phases.length - 1] || {};
+    var phase = Object.assign({}, basePhase, {
+      id: options.phaseId || "reinforcement",
+      activeCap: activeCap,
+      waveSize: waveSize,
+      eliteChance: options.allowElite === true ? Number(basePhase.eliteChance) || 0 : 0
+    });
+    var allowedTypes = Array.isArray(options.allowedTypes) && options.allowedTypes.length
+      ? options.allowedTypes.slice()
+      : ["small", "shooter", "charger", "shield", "bomber", "sniper", "rotor"];
+    var weights = phase.typeWeights || director.typeWeights || {};
+    var spawned = 0;
+
+    for (var i = 0; i < waveSize; i++) {
+      var enemyType = pickWaveEnemyType(allowedTypes, weights);
+      state.enemies.push(createEnemy(state, level, enemyType, i, waveSize, phase));
+      spawned += 1;
+    }
+
+    if (spawned > 0) director.waveIndex += 1;
+    return spawned;
+  }
+
+  function pickWaveEnemyType(allowedTypes, weights) {
+    var weighted = [];
+    var total = 0;
+    for (var i = 0; i < allowedTypes.length; i++) {
+      var type = allowedTypes[i];
+      var weight = Math.max(0, Number(weights[type]) || 0);
+      weighted.push({ type: type, weight: weight });
+      total += weight;
+    }
+    if (total <= 0) return allowedTypes.indexOf("small") >= 0 ? "small" : allowedTypes[0];
+    var roll = Math.random() * total;
+    for (var j = 0; j < weighted.length; j++) {
+      roll -= weighted[j].weight;
+      if (roll <= 0) return weighted[j].type;
+    }
+    return weighted[0].type;
+  }
+
   function pickBossGuardType(index, state) {
     var theme = state && state.boss ? state.boss.theme : "";
     if (theme === "mothership") {
@@ -658,6 +714,7 @@
 
   var api = {
     spawnEnemies: spawnEnemies,
+    spawnWave: spawnWave,
     updateEnemies: updateEnemies,
     fireEnemyShot: fireEnemyShot
   };

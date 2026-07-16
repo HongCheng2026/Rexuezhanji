@@ -38,6 +38,9 @@
     backToChapterButton: document.querySelector("#backToChapterButton"),
     lobbyScreen: document.querySelector("#lobbyScreen"),
     battleScreen: document.querySelector("#battleScreen"),
+    endlessBattleScreen: document.querySelector("#endlessBattleScreen"),
+    endlessBattleUiRoot: document.querySelector("#endlessBattleUiRoot"),
+    endlessSettlementRoot: document.querySelector("#endlessSettlementRoot"),
     battleEntryButton: document.querySelector("#battleEntryButton"),
     featurePanel: document.querySelector("#featurePanel"),
     closeFeaturePanel: document.querySelector("#closeFeaturePanel"),
@@ -54,6 +57,7 @@
     energyValue: document.querySelector("#energyValue"),
     goldValue: document.querySelector("#goldValue"),
     diamondValue: document.querySelector("#diamondValue"),
+    menuTiles: document.querySelectorAll("#lobbyScreen .menu-tile[data-panel]"),
     avatarUpload: document.querySelector("#avatarUpload"),
     lobbyBackgroundLayer: document.querySelector("#lobbyBackgroundLayer"),
     lobbyPilotLayer: document.querySelector("#lobbyPilotLayer"),
@@ -89,6 +93,8 @@
     "profile-dossier-panel",
     "main-feature-panel",
     "feature-v3-panel",
+    "shop-feature-panel",
+    "endless-feature-panel",
     "star-wings-gacha-panel",
     "contact-panel"
   ];
@@ -107,6 +113,7 @@
   var gatewayError = null;
   var gatewayActionLock = { busy: false };
   var pendingSettlement = null;
+  var endlessRoomController = null;
   var battleUiController = shared.battleUiController && shared.battleUiController.create({
     view: battleUiHandle,
     getState: function getStateForUi() { return state; },
@@ -232,7 +239,9 @@
     renderProfilePanel: profileController.render,
     renderFighterUpgradePanel: fighterUpgradeController.render,
     calculateTotalPower: profileController.calculateTotalPower,
-    startEndlessMode: function startEndlessMode() { return battleFlowController && battleFlowController.startEndlessMode(); }
+    startEndlessMode: function startEndlessMode() {
+      return endlessRoomController ? endlessRoomController.start() : Promise.reject(new Error("无尽战斗房间尚未就绪。"));
+    }
   });
   if (!featurePanelController) throw new Error("H5 game bootstrap failed: missing feature panel controller.");
 
@@ -277,6 +286,29 @@
   });
   if (!battleFlowController) throw new Error("H5 game bootstrap failed: missing battle flow controller.");
 
+  endlessRoomController = shared.endlessModeRoomController && shared.endlessModeRoomController.create({
+    shared: shared,
+    dom: dom,
+    assetsConfig: assetsConfig,
+    levelsConfig: levelsConfig,
+    audioSystem: audioSystem,
+    getProfile: function getProfileForEndless() { return profile; },
+    getGameGateway: function getGatewayForEndless() { return gameGateway; },
+    ensureGameGateway: ensureGameGateway,
+    saveProfile: saveProfile,
+    getShipAsset: getShipAsset,
+    playSfx: playSfx,
+    clamp: clamp,
+    clearCampaignInput: function clearCampaignInput() {
+      keys.clear();
+      pointer.active = false;
+    },
+    openActivityPanel: function openActivityPanel() {
+      if (featurePanelController) featurePanelController.open("event");
+    }
+  });
+  if (!endlessRoomController) throw new Error("H5 game bootstrap failed: missing endless battle room controller.");
+
   var gameEventRouter = shared.gameEventRouter && shared.gameEventRouter.create({
     root: root,
     shared: shared,
@@ -314,14 +346,13 @@
     isCloudMode: function isCloudMode() { return battleFlowController.isCloudMode(); },
     saveProfile: saveProfile,
     renderLobby: lobbyController.renderLobby,
-    upgradeFighterStat: function upgradeFighterStat(statType) { return fighterUpgradeController.upgrade(statType); },
-    buyWeaponModule: function buyWeaponModule(moduleId) { return fighterUpgradeController.buyWeaponModule(moduleId); },
-    equipWeaponModule: function equipWeaponModule(moduleId) { return fighterUpgradeController.equipWeaponModule(moduleId); },
+    handleFighterUpgradeClick: function handleFighterUpgradeClick(event) { return fighterUpgradeController.handleClick(event); },
     redeemCode: function redeemCode(rawCode) { return featurePanelController.redeemCode(rawCode); },
     handleProfilePanelClick: profileController.handleClick,
     handleAvatarUpload: profileController.handleAvatarUpload,
     openFeaturePanel: function openFeaturePanel(key) { return featurePanelController.open(key); },
-    startEndlessMode: function startEndlessMode() { return battleFlowController.startEndlessMode(); },
+    isExternalBattleActive: function isExternalBattleActive() { return endlessRoomController && endlessRoomController.isActive(); },
+    startEndlessMode: function startEndlessMode() { return endlessRoomController.start(); },
     gatewayActionLock: gatewayActionLock,
     ensureGameGateway: ensureGameGateway,
     getGameGateway: function getGameGateway() { return gameGateway; },
@@ -439,19 +470,33 @@
       abandonBattle: function abandonLocalBattle() {
         return { profile: profile, refundedEnergy: refundBattleEnergy() };
       },
-      sweep: function sweepLocal(levelId) {
+      sweep: function sweepLocal(levelId, count) {
         var level = getLevelById(levelId);
         var result = shared.progressionSystem && shared.progressionSystem.sweepLevel
-          ? shared.progressionSystem.sweepLevel(profile, level)
+          ? shared.progressionSystem.sweepLevel(profile, level, count)
           : { success: false, reason: "UNAVAILABLE" };
         if (!result.success) {
-          var error = new Error(result.reason === "NO_ENERGY" ? "体力不足。" : "该关卡尚未通关。");
+          var sweepErrorMessages = {
+            NO_ENERGY: "体力不足。",
+            NOT_COMPLETED: "该关卡尚未通关。",
+            NOT_THREE_STAR: "只有三星及以上关卡才能扫荡。"
+          };
+          var error = new Error(sweepErrorMessages[result.reason] || "当前无法扫荡。");
           error.code = result.reason;
           throw error;
         }
         profile = result.profile;
         saveProfile();
-        return { profile: profile, settlement: { gold: result.goldEarned, experience: result.expEarned } };
+        return {
+          profile: profile,
+          settlement: {
+            count: result.count,
+            energySpent: result.energySpent,
+            gold: result.goldEarned,
+            experience: result.expEarned,
+            energyGained: result.levelProgress && result.levelProgress.energyGained || 0
+          }
+        };
       },
       upgrade: function upgradeLocal(key) {
         var upgrade = upgrades[key];
@@ -483,8 +528,8 @@
         profile = result.profile; saveProfile();
         return { profile: profile, code: result.code, rewards: result.rewards };
       },
-      buyWeaponModule: function buyWeaponModuleLocal(moduleId) { var result = shared.weaponModuleSystem.buy(profile, moduleId); saveProfile(); return result; },
-      equipWeaponModule: function equipWeaponModuleLocal(moduleId) { var result = shared.weaponModuleSystem.equip(profile, moduleId, getShipAsset()); saveProfile(); return result; },
+      saveFighterSkillLoadout: function saveFighterSkillLoadoutLocal(shipId, loadout) { var result = shared.tacticalLoadoutSystem.save(profile, shipId, loadout); saveProfile(); return result; },
+      upgradeAutoWeapon: function upgradeAutoWeaponLocal(moduleId, operationId) { var result = shared.tacticalLoadoutSystem.upgradeAutoWeapon(profile, moduleId, operationId); saveProfile(); return result; },
       saveCosmetics: function saveLocalCosmetics(nextProfile) {
         profile = shared.profile.normalizeProfile(nextProfile || profile);
         saveProfile();

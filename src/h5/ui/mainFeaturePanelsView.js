@@ -353,6 +353,39 @@
     return getDailyActivityClaims(profile).indexOf(Number(points)) >= 0;
   }
 
+  function getLobbyClaimableState(profile, levels) {
+    profile = profile || {};
+    levels = levels || [];
+    var cfg = getConfig();
+    var dailyRows = decorateTasks(cfg.DAILY_TASKS || [], profile, levels);
+    var growthRows = decorateTasks(cfg.GROWTH_TASKS || [], profile, levels);
+    var activity = getActivity(dailyRows);
+    var taskReady = countReady(dailyRows) + countReady(growthRows) > 0;
+    var activityRewards = cfg.TASK_ACTIVITY_REWARDS || [];
+    for (var i = 0; i < activityRewards.length && !taskReady; i++) {
+      taskReady = activity >= Number(activityRewards[i].points) && !isActivityRewardClaimed(profile, activityRewards[i].points);
+    }
+
+    var claimedAchievements = Array.isArray(profile.claimedAchievements) ? profile.claimedAchievements : [];
+    var achievements = cfg.ACHIEVEMENT_CONTENT || [];
+    var achievementReady = achievements.some(function (item) {
+      return claimedAchievements.indexOf(item.id) < 0 && getAchievementMetric(item, profile, levels) >= item.target;
+    });
+
+    var dailyShop = profile.claimedDailyShop || {};
+    var hasDailySupply = (cfg.SHOP_CONTENT || []).some(function (item) { return item.id === "daily_free_supply"; });
+    var shopReady = hasDailySupply && (dailyShop.date !== localDateKey() || !Array.isArray(dailyShop.ids) || dailyShop.ids.indexOf("daily_free_supply") < 0);
+
+    return {
+      task: taskReady,
+      event: false,
+      achievement: achievementReady,
+      shop: shopReady,
+      ranking: false,
+      friend: false
+    };
+  }
+
   function renderV3Resources(profile, extra) {
     var resources = profile && profile.resources || {};
     var gold = resources.gold != null ? resources.gold : profile && profile.coins || 0;
@@ -636,6 +669,7 @@
 
   function setPanel(dom, kicker, title, body, className, html) {
     dom.featurePanelKicker.textContent = kicker;
+    dom.featurePanelTitle.classList.remove("event-mode-title");
     dom.featurePanelTitle.textContent = title;
     dom.featurePanelBody.textContent = body;
     dom.featurePanelSlots.className = className;
@@ -657,7 +691,7 @@
     if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "新兵七日航线奖励展示。", "terminal-panel-content signin-panel-content", renderSigninPanel());
     if (key === "setting") return setAndReport(dom, "SETTING", "设置", "音乐和音效设置会立即生效并保存到本地。", "terminal-panel-content setting-panel-content", renderSettingPanel(audioSettings));
     if (key === "task") return setAndReport(dom, "", "任务", "今日活跃正在累计", "terminal-panel-content task-panel-content feature-v3-content", renderTaskPanel(profile, levels));
-    if (key === "event" && scope.endlessModePanelView) return setAndReport(dom, "", "无尽模式", "每 30 秒一个 BOSS 节点，只记录个人纪录", "terminal-panel-content event-panel-content feature-v3-content", scope.endlessModePanelView.render(profile, options));
+    if (key === "event" && scope.eventModeHubView) return scope.eventModeHubView.renderPanel(dom, Object.assign({}, options, { profile: profile }));
     if (key === "achievement") return setAndReport(dom, "", "成就", countReady((getConfig().ACHIEVEMENT_CONTENT || []).map(function (item) { var current = getAchievementMetric(item, profile, levels); return { progress: { done: current >= item.target }, claimed: (profile.claimedAchievements || []).indexOf(item.id) >= 0 }; })) + " 项成就奖励可领取", "terminal-panel-content achievement-panel-content feature-v3-content", renderAchievementPanel(profile, levels));
     if (key === "shop") return setAndReport(dom, "", "商店", "每日补给已刷新", "terminal-panel-content shop-panel-content feature-v3-content", renderShopPanel(profile));
     if (key === "friend" && scope.socialFeaturePanelsView) return setAndReport(dom, "", "好友", "连接星港好友网络...", "terminal-panel-content friend-panel-content feature-v3-content", scope.socialFeaturePanelsView.renderPanel(key, options));
@@ -667,6 +701,7 @@
   }
 
   function handleEvent(event, dom, options) {
+    if (scope.eventModeHubView && scope.eventModeHubView.handleEvent && scope.eventModeHubView.handleEvent(event, dom, options || {})) return true;
     if (scope.socialFeaturePanelsView && scope.socialFeaturePanelsView.handleEvent(event, dom, options || {})) return true;
     var tab = event.target && event.target.closest ? event.target.closest("[data-feature-tab]") : null;
     if (!tab || !tab.dataset) return false;
@@ -771,6 +806,18 @@
     return { ok: true, rewards: item.rewards || [] };
   }
 
+  function claimDailyShopItem(profile, itemId) {
+    var item = (getConfig().SHOP_CONTENT || []).filter(function (entry) { return entry.id === itemId; })[0];
+    if (!item || item.id !== "daily_free_supply") return { ok: false, reason: "SHOP_ITEM_NOT_CLAIMABLE" };
+    var today = localDateKey();
+    var current = profile.claimedDailyShop;
+    var ids = current && current.date === today && Array.isArray(current.ids) ? current.ids : [];
+    if (ids.indexOf(item.id) >= 0) return { ok: false, reason: "SHOP_ITEM_ALREADY_CLAIMED" };
+    applyRewards(profile, item.rewards || []);
+    profile.claimedDailyShop = { date: today, ids: addUnique(ids, item.id) };
+    return { ok: true, item: item, rewards: item.rewards || [] };
+  }
+
   // Fire-and-forget cloud claim helper
   function tryCloudClaim(profile, method, param, options) {
     options = options || {};
@@ -802,6 +849,8 @@
     claimTask: claimTask,
     claimActivityReward: claimActivityReward,
     claimAchievement: claimAchievement,
+    claimDailyShopItem: claimDailyShopItem,
+    getLobbyClaimableState: getLobbyClaimableState,
     stopChatPolling: stopChatPolling
   };
 

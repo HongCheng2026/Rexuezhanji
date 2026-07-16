@@ -88,32 +88,48 @@
 
   function advance() {
     if (!playerState) return;
+    var keepAutoPlaying = playerState.auto;
+    clearAutoTimer();
     if (playerState.index >= playerState.scene.lines.length - 1) {
       closeStoryScene(true, false);
       return;
     }
     playerState.index += 1;
     render();
+    if (keepAutoPlaying) scheduleAuto();
   }
 
   function toggleAuto() {
     if (!playerState) return;
-    playerState.auto = !playerState.auto;
     if (playerState.auto) {
-      playerState.timer = root.setInterval(function autoAdvance() {
-        advance();
-      }, playerState.options.autoDelayMs || 2200);
-    } else {
       stopAuto();
+    } else {
+      playerState.auto = true;
+      scheduleAuto();
     }
     render();
   }
 
-  function stopAuto() {
+  function clearAutoTimer() {
     if (playerState && playerState.timer) {
-      root.clearInterval(playerState.timer);
+      root.clearTimeout(playerState.timer);
       playerState.timer = null;
     }
+  }
+
+  function scheduleAuto() {
+    if (!playerState || !playerState.auto) return;
+    clearAutoTimer();
+    var line = playerState.scene.lines[playerState.index] || {};
+    var delay = Number(playerState.options.autoDelayMs)
+      || Math.max(2200, 1200 + (Number(line.pauseMs) || 900));
+    playerState.timer = root.setTimeout(function autoAdvance() {
+      advance();
+    }, delay);
+  }
+
+  function stopAuto() {
+    clearAutoTimer();
     if (playerState) playerState.auto = false;
   }
 
@@ -122,8 +138,14 @@
     var scene = playerState.scene;
     var line = scene.lines[playerState.index] || {};
     var rootEl = playerState.root;
-    var speaker = resolveSpeaker(line);
+    var speaker = resolveSpeaker(line, scene);
+    var leftSpeaker = findPortraitSpeaker(scene, playerState.index, "left");
+    var rightSpeaker = findPortraitSpeaker(scene, playerState.index, "right");
     var chapterCover = getChapterCover(scene.chapterIndex);
+    rootEl.dataset.storyMode = line.mode || (line.narrator ? "system" : "character");
+    rootEl.dataset.storyEmotion = line.emotion || "normal";
+    rootEl.dataset.storyMood = scene.mood || "normal";
+    rootEl.dataset.activeSide = line.side || "center";
     rootEl.querySelector(".campaign-story-bg").style.backgroundImage = chapterCover ? "url('" + chapterCover + "')" : "";
     rootEl.querySelector(".campaign-story-title").textContent = scene.title || "主线剧情";
     rootEl.querySelector(".campaign-story-kicker").textContent = scene.trigger === "post_win" ? "AFTER ACTION STORY" : "PRE MISSION STORY";
@@ -132,8 +154,8 @@
       '<span>' + escapeHtml(speaker.name || "通讯") + '</span>' +
       '<strong>' + escapeHtml(line.text || "") + '</strong>';
 
-    renderPortrait(rootEl.querySelector(".campaign-story-portrait.left"), speaker, line.side !== "right");
-    renderPortrait(rootEl.querySelector(".campaign-story-portrait.right"), speaker, line.side === "right");
+    renderPortrait(rootEl.querySelector(".campaign-story-portrait.left"), leftSpeaker, line.side === "left");
+    renderPortrait(rootEl.querySelector(".campaign-story-portrait.right"), rightSpeaker, line.side === "right");
 
     var nextButton = rootEl.querySelector('[data-story-action="next"]');
     var autoButton = rootEl.querySelector('[data-story-action="auto"]');
@@ -146,20 +168,53 @@
 
   function renderPortrait(node, speaker, active) {
     if (!node) return;
+    speaker = speaker || { id: "", name: "", src: "" };
     var img = node.querySelector("img");
     node.classList.toggle("active", Boolean(active));
     node.classList.toggle("empty", !speaker.src);
+    node.dataset.speakerId = speaker.id || "";
     img.src = speaker.src || "";
     img.alt = speaker.name || "";
   }
 
-  function resolveSpeaker(line) {
+  function findPortraitSpeaker(scene, currentIndex, side) {
+    var lines = scene && Array.isArray(scene.lines) ? scene.lines : [];
+    var current = lines[currentIndex];
+    if (current && current.side === side) {
+      var currentSpeaker = resolveSpeaker(current, scene);
+      if (currentSpeaker.src) return currentSpeaker;
+    }
+    for (var before = currentIndex - 1; before >= 0; before -= 1) {
+      if (lines[before] && lines[before].side === side) {
+        var previousSpeaker = resolveSpeaker(lines[before], scene);
+        if (previousSpeaker.src) return previousSpeaker;
+      }
+    }
+    for (var after = currentIndex + 1; after < lines.length; after += 1) {
+      if (lines[after] && lines[after].side === side) {
+        var nextSpeaker = resolveSpeaker(lines[after], scene);
+        if (nextSpeaker.src) return nextSpeaker;
+      }
+    }
+    return { id: "", name: "", src: "" };
+  }
+
+  function resolveSpeaker(line, scene) {
     var speakerId = line && line.speakerId;
     var pilot = (assets.PILOT_ASSETS || []).find(function findPilot(item) {
       return item.id === speakerId;
     });
     if (pilot) return { id: pilot.id, name: line.speakerName || pilot.name, src: pilot.src };
-    if (speakerId === "messiah") return { id: "messiah", name: line.speakerName || "弥赛亚", src: assets.ASSET_PATHS && assets.ASSET_PATHS.boss || "" };
+    if (speakerId === "messiah") {
+      var bossVisual = typeof assets.getBossVisual === "function"
+        ? assets.getBossVisual(scene && scene.chapterIndex, scene && scene.stageInChapter)
+        : assets.BOSS_VISUALS && assets.BOSS_VISUALS[scene && scene.chapterIndex];
+      return {
+        id: "messiah",
+        name: line.speakerName || "弥赛亚",
+        src: bossVisual && bossVisual.src || assets.ASSET_PATHS && assets.ASSET_PATHS.boss || ""
+      };
+    }
     return { id: speakerId || "system", name: line && line.speakerName || "星港管制", src: "" };
   }
 

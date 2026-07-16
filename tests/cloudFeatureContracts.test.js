@@ -36,7 +36,8 @@ test("完整商店商品和全部成就奖励都在服务端登记", () => {
 
 test("无尽模式云端票据限制理论最大出怪数", () => {
   const server = read("supabase/functions/game-api/services/endless.ts");
-  assert.match(server, /Math\.floor\(elapsedSeconds \/ 30\) \+ 1/);
+  assert.match(server, /const BOSS_INTERVAL_SECONDS = 15/);
+  assert.match(server, /Math\.floor\(elapsedSeconds \/ BOSS_INTERVAL_SECONDS\) \+ 1/);
   assert.match(server, /kills > theoreticalMaximum/);
   assert.match(server, /commit_endless_result/);
 });

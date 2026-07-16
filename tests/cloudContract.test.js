@@ -25,6 +25,16 @@ test("新手阵容与兑换码由本地和服务端共同约束", () => {
   assert.match(settingSource, /data-redeem-code/);
 });
 
+test("云端三个局外武器都使用独立 1—9 级与统一升级费用", () => {
+  const costs = "0, 50000, 80000, 120000, 180000, 270000, 400000, 600000, 900000, 1350000";
+  for (const moduleId of ["weapon_module_04", "weapon_module_05", "weapon_module_06"]) {
+    assert.match(
+      apiSource,
+      new RegExp(`${moduleId}: \\{ defaultLevel: [01], maxLevel: 9, costs: \\[${costs}\\] \\}`)
+    );
+  }
+});
+
 test("云端体力规则与本地保持一致并记录升级返还", () => {
   assert.match(apiSource, /STAMINA_LEVEL_ONE_MAX\s*=\s*120/);
   assert.match(apiSource, /STAMINA_MAX_LEVEL_BONUS\s*=\s*5/);
@@ -32,6 +42,21 @@ test("云端体力规则与本地保持一致并记录升级返还", () => {
   assert.match(apiSource, /p_delta_energy:\s*levelProgress\.energyGained/);
   assert.match(staminaSql, /p_delta_energy integer/);
   assert.match(staminaSql, /'finish-battle', p_delta_gold, p_delta_energy/);
+});
+
+test("云端扫荡同时认可旧关卡记录和新关卡进度", () => {
+  assert.match(apiSource, /completedByLevel[\s\S]*completedByStage/);
+  assert.match(apiSource, /getStageKeyByLevelId\(level\.id\)/);
+  assert.match(apiSource, /!completedByLevel && !completedByStage/);
+});
+
+test("云端扫荡要求三星并原子结算多次消耗与奖励", () => {
+  assert.match(apiSource, /honorTier < 3/);
+  assert.match(apiSource, /const count = Math\.max\(1/);
+  assert.match(apiSource, /Math\.min\(currentEnergy, maxEnergy\)/);
+  assert.match(apiSource, /const energySpent = count \* ENERGY_COST/);
+  assert.match(apiSource, /const gold = singleGold \* count/);
+  assert.match(apiSource, /settlement: \{ count, energySpent, gold, experience/);
 });
 
 test("云端保存三星、金冠和彩冠，不会在刷新后丢失", () => {
@@ -43,7 +68,7 @@ test("云端保存三星、金冠和彩冠，不会在刷新后丢失", () => {
 });
 
 test("服务端提供正式游戏所需的全部写操作", () => {
-  for (const action of ["start-battle", "finish-battle", "abandon-battle", "sweep", "upgrade", "upgrade-fighter", "buy-pilot", "buy-ship", "buy-weapon-module", "equip-weapon-module", "save-cosmetics"]) {
+  for (const action of ["start-battle", "finish-battle", "abandon-battle", "sweep", "upgrade", "upgrade-fighter", "buy-pilot", "buy-ship", "save-fighter-skill-loadout", "upgrade-auto-weapon", "save-cosmetics"]) {
     assert.match(apiSource, new RegExp(`action === ["']${action}["']`), `缺少 ${action}`);
   }
 });
@@ -56,13 +81,16 @@ test("云端战姬战机购买由服务端定价并校验金币与重复购买",
   assert.match(apiSource, /type === "pilot" \? "buy-pilot" : "buy-ship"/);
 });
 
-test("云端模块接口校验ID、金币、重复购买、S级槽位并记录流水", () => {
-  assert.match(apiSource, /const WEAPON_MODULES/);
-  assert.match(apiSource, /ownedIds\.includes\(moduleId\)/);
-  assert.match(apiSource, /getGold\(profile\) < definition\.price/);
-  assert.match(apiSource, /S_RANK_SHIP_IDS\.has/);
-  assert.match(apiSource, /ledger\(ctx, "buy-weapon-module"/);
-  assert.match(apiSource, /ledger\(ctx, "equip-weapon-module"/);
+test("云端战术配装校验槽位、解锁和重复装备，自动武装升级使用原子操作", () => {
+  assert.match(apiSource, /const AUTO_WEAPON_MODULES/);
+  assert.match(apiSource, /activeSlots\.length !== 4/);
+  assert.match(apiSource, /autoWeaponIds\.length !== 3/);
+  assert.match(apiSource, /seenSkills\.has\(skillId\)/);
+  assert.match(apiSource, /seenWeapons\.has\(moduleId\)/);
+  assert.match(apiSource, /getGold\(profile\) < cost/);
+  assert.match(apiSource, /profileTransaction\.commit\(ctx, profile, revision, body, "upgrade-auto-weapon"/);
+  assert.doesNotMatch(apiSource, /action === "buy-weapon-module"/);
+  assert.doesNotMatch(apiSource, /action === "equip-weapon-module"/);
 });
 
 test("CORS 同时覆盖两个正式域名和本地预览", () => {

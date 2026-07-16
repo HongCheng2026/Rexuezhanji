@@ -7,7 +7,7 @@
   function mount(rootElement) {
     var target = rootElement || (root.document && root.document.querySelector("#battleUiRoot"));
     if (!target) return null;
-    if (target.querySelector("#game")) return createHandle(target);
+    if (target.querySelector('[data-ui="canvas"]')) return createHandle(target);
 
     var field = scope.battleGeometry.DEFAULT_FIELD;
     var frame = root.document.createElement("div");
@@ -21,7 +21,7 @@
         '<div class="battle-stat battle-stat-kills"><span>击落</span><strong data-ui="kills">0</strong></div>' +
         '<button class="battle-pause-button" type="button" data-battle-action="pause">暂停</button>' +
       '</header>' +
-      '<div class="battle-field" data-ui="field"><canvas id="game" aria-label="战斗区域"></canvas></div>' +
+      '<div class="battle-field" data-ui="field"><canvas data-ui="canvas" aria-label="战斗区域"></canvas></div>' +
       '<footer class="battle-rail battle-bottom-rail" aria-label="战斗技能">' +
         '<section class="battle-skill-group battle-active-group" aria-label="主动技能">' +
           '<strong class="battle-group-title">主动技能</strong>' +
@@ -35,16 +35,17 @@
             '<small data-ui="decisiveCommandCooldown">SPACE</small>' +
           '</button>' +
         '</section>' +
-        '<section class="battle-skill-group battle-in-battle-group" aria-label="局内技能">' +
-          '<strong class="battle-group-title">局内技能</strong>' +
+        '<section class="battle-skill-group battle-in-battle-group" aria-label="武器模块">' +
+          '<strong class="battle-group-title">武器模块</strong>' +
           '<div class="battle-slot-row" data-ui="inBattleSkills"></div>' +
         '</section>' +
       '</footer>';
     target.appendChild(frame);
 
-    var canvas = frame.querySelector("#game");
+    var canvas = frame.querySelector('[data-ui="canvas"]');
     canvas.width = field.width;
     canvas.height = field.height;
+    canvas.tabIndex = 0;
     createActiveSlots(frame.querySelector('[data-ui="activeSlots"]'));
     createInBattleSkillSlots(frame.querySelector('[data-ui="inBattleSkills"]'));
     if (scope.battlePauseView && scope.battlePauseView.mount) scope.battlePauseView.mount(target);
@@ -75,7 +76,7 @@
       var slot = root.document.createElement("span");
       slot.className = "battle-skill-slot battle-in-battle-slot is-empty";
       slot.dataset.inBattleIndex = String(i);
-      slot.innerHTML = '<span class="battle-slot-icon">+</span><small class="battle-slot-level"></small>';
+      slot.innerHTML = '<span class="battle-slot-icon">+</span><small class="battle-slot-level"></small><em class="battle-slot-status"></em>';
       container.appendChild(slot);
     }
   }
@@ -84,7 +85,7 @@
     var pause = scope.battlePauseView && scope.battlePauseView.mount ? scope.battlePauseView.mount(target) : null;
     var refs = {
       root: target,
-      canvas: target.querySelector("#game"),
+      canvas: target.querySelector('[data-ui="canvas"]'),
       level: target.querySelector('[data-ui="level"]'),
       time: target.querySelector('[data-ui="time"]'),
       healthText: target.querySelector('[data-ui="healthText"]'),
@@ -122,7 +123,7 @@
     var activeSlots = Array.isArray(model.activeSlots) ? model.activeSlots : [];
     for (var i = 0; i < refs.activeSlots.length; i += 1) renderActiveSlot(refs.activeSlots[i], activeSlots[i], i);
     renderDecisiveCommand(refs, model.decisiveCommand);
-    var inBattleSkills = Array.isArray(model.inBattleSkills) ? model.inBattleSkills : [];
+    var inBattleSkills = Array.isArray(model.weaponModules) ? model.weaponModules : Array.isArray(model.inBattleSkills) ? model.inBattleSkills : [];
     for (var j = 0; j < refs.inBattleSkills.length; j += 1) renderInBattleSkill(refs.inBattleSkills[j], inBattleSkills[j], j);
     if (pause) pause.render({ visible: Boolean(model.paused) });
   }
@@ -161,14 +162,23 @@
   }
 
   function renderInBattleSkill(node, skill, index) {
-    var reserved = index >= 4;
-    var configured = !reserved && Boolean(skill && skill.id && skill.level > 0);
-    node.classList.toggle("is-reserved", reserved);
+    var configured = Boolean(skill && skill.id && skill.level > 0);
     node.classList.toggle("is-empty", !configured);
     node.classList.toggle("is-active", configured);
-    node.title = reserved ? "预留局内技能槽" : configured ? skill.name + " Lv." + skill.level : "空局内技能槽";
+    node.classList.toggle("is-extension", configured && skill.source === "meta");
+    node.dataset.status = configured ? skill.status || "auto" : "empty";
+    node.title = configured ? skill.name + " Lv." + skill.level + "｜" + getWeaponStatusText(skill) : (index >= 3 ? "未配置扩展武器" : "空武器槽");
     setText(node.querySelector(".battle-slot-icon"), configured ? iconText(skill) : "+");
-    setText(node.querySelector(".battle-slot-level"), configured ? "Lv." + skill.level : (reserved ? "预留" : ""));
+    setText(node.querySelector(".battle-slot-level"), configured ? "Lv." + skill.level : "");
+    setText(node.querySelector(".battle-slot-status"), configured ? getWeaponStatusText(skill) : (index >= 3 ? "EMPTY" : ""));
+  }
+
+  function getWeaponStatusText(skill) {
+    if (!skill) return "";
+    if (skill.status === "waiting-target") return "待目标";
+    if (skill.status === "cooldown") return formatSeconds(skill.cooldownRemaining);
+    if (skill.status === "ready") return "就绪";
+    return "AUTO";
   }
 
   function iconText(item) {

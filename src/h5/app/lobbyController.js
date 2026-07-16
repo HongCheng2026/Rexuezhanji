@@ -199,7 +199,11 @@
           drawScene();
         },
         onBackLobby: showLobby,
-        onSweepLevel: sweepLevel,
+        onOpenSweep: openSweepSelection,
+        onSweepUnavailable: function onSweepUnavailable(levelRef, reason) {
+          var unavailableLevel = levelRef || getLevelById(selectedLevel);
+          showSweepUnavailable(unavailableLevel, reason);
+        },
         onReplayStory: function onReplayStory(levelRef) {
           playCampaignStoryReplay(typeof levelRef === "object" && levelRef ? levelRef : getLevelById(levelRef));
         }
@@ -211,23 +215,98 @@
       : "开始 " + getLevelById(selectedLevel).code;
   }
 
-  function sweepLevel(levelId) {
+  function getSweepAssets() {
+    return {
+      chapter: assetsConfig.CHAPTER_SELECT_ASSETS || {},
+      settlement: assetsConfig.SETTLEMENT_ICON_ASSETS || {}
+    };
+  }
+
+  function showSweepUnavailable(level, reason) {
+    if (!shared.sweepDialogView || !shared.sweepDialogView.showUnavailable) return;
+    var needsStars = reason === "NOT_THREE_STAR";
+    shared.sweepDialogView.showUnavailable(dom.chapterSelect, {
+      levelCode: level && level.code || "",
+      title: needsStars ? "需要三星通关" : "需要先完成关卡",
+      message: needsStars
+        ? "将本关荣誉评价提升到三星后，即可使用扫荡功能。"
+        : "完成本关后，再将荣誉评价提升到三星即可扫荡。",
+      assets: getSweepAssets()
+    });
+  }
+
+  function openSweepSelection(levelRef) {
     syncContext();
-    if (gatewayActionLock.busy) return;
-    var level = getLevelById(levelId);
+    var level = typeof levelRef === "object" && levelRef ? levelRef : getLevelById(levelRef || selectedLevel);
+    if (!level || !shared.sweepDialogView || !shared.sweepDialogView.openSelection) return;
+    var eligibility = shared.battleRules && shared.battleRules.getSweepEligibility
+      ? shared.battleRules.getSweepEligibility(profile, level)
+      : { canSweep: false, reason: "NOT_COMPLETED" };
+    if (!eligibility.canSweep) {
+      showSweepUnavailable(level, eligibility.reason);
+      return;
+    }
+    var resources = profile.resources || {};
+    var costPerRun = shared.levels && shared.levels.ENERGY_COST || 5;
+    var singleGold = shared.battleRules && shared.battleRules.getSweepReward
+      ? shared.battleRules.getSweepReward(level)
+      : Math.round((level.reward || 0) * 0.72);
+    var singleExperience = shared.battleRules && shared.battleRules.getSweepExperience
+      ? shared.battleRules.getSweepExperience(singleGold, level.id)
+      : Math.round(singleGold * 0.55);
+    var maxCount = shared.battleRules && shared.battleRules.getSweepMaxCount
+      ? shared.battleRules.getSweepMaxCount(profile)
+      : Math.floor(Math.max(0, Number(resources.energy) || 0) / costPerRun);
+    shared.sweepDialogView.openSelection(dom.chapterSelect, {
+      levelCode: level.code,
+      levelName: level.name,
+      currentEnergy: resources.energy,
+      maxEnergy: resources.maxEnergy,
+      costPerRun: costPerRun,
+      maxCount: maxCount,
+      singleGold: singleGold,
+      singleExperience: singleExperience,
+      assets: getSweepAssets()
+    }, {
+      onConfirm: function onConfirm(count, dialog) {
+        sweepLevel(level, count, dialog);
+      }
+    });
+  }
+
+  function sweepLevel(levelRef, count, dialog) {
+    syncContext();
+    var level = typeof levelRef === "object" && levelRef ? levelRef : getLevelById(levelRef);
     if (!level) return;
+    if (gatewayActionLock.busy) {
+      if (dialog && dialog.setError) dialog.setError("上一项操作仍在处理中，请稍候。");
+      return;
+    }
     gatewayActionLock.busy = true;
     ensureGameGateway().then(function sweepThroughGateway() {
-      return options.getGameGateway().sweep(level.id);
+      return options.getGameGateway().sweep(level.id, count);
     }).then(function onSweepComplete(response) {
       if (response && response.profile) applyGatewayProfile(response.profile);
       var settlement = response && response.settlement || {};
       saveProfile();
       renderLobby();
       renderChapterSelect();
-      showOverlay("扫荡完成", "金币 +" + Math.max(0, Math.floor(settlement.gold || 0)) + "，经验 +" + Math.max(0, Math.floor(settlement.experience || 0)) + "。", "开始 " + level.code);
+      syncContext();
+      shared.sweepDialogView.showSettlement(dom.chapterSelect, {
+        levelCode: level.code,
+        count: settlement.count || count,
+        energySpent: settlement.energySpent || count * (shared.levels && shared.levels.ENERGY_COST || 5),
+        gold: settlement.gold,
+        experience: settlement.experience,
+        energyGained: settlement.energyGained,
+        remainingEnergy: profile.resources && profile.resources.energy,
+        maxEnergy: profile.resources && profile.resources.maxEnergy,
+        assets: getSweepAssets()
+      }, {
+        onAgain: function onAgain() { openSweepSelection(level); }
+      });
     }).catch(function onSweepError(error) {
-      showOverlay("无法扫荡", error && error.message ? error.message : "扫荡失败，请稍后重试。", "返回关卡");
+      if (dialog && dialog.setError) dialog.setError(error && error.message ? error.message : "扫荡失败，请稍后重试。");
     }).finally(function releaseSweep() {
       gatewayActionLock.busy = false;
     });
@@ -262,6 +341,18 @@
     dom.energyValue.textContent = formatResource(resources.energy || 0) + "/" + formatResource(resources.maxEnergy || 0);
     dom.goldValue.textContent = formatResource(getGold());
     dom.diamondValue.textContent = formatResource(resources.diamonds || 0);
+    renderMenuAlerts();
+  }
+
+  function renderMenuAlerts() {
+    var tiles = dom.menuTiles || [];
+    var alerts = shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.getLobbyClaimableState
+      ? shared.mainFeaturePanelsView.getLobbyClaimableState(profile, levels)
+      : {};
+    for (var i = 0; i < tiles.length; i++) {
+      var panel = tiles[i].dataset ? tiles[i].dataset.panel : "";
+      tiles[i].classList.toggle("has-alert", alerts[panel] === true);
+    }
   }
 
   function renderShop(message) {

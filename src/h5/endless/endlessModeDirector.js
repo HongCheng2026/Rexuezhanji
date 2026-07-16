@@ -2,6 +2,7 @@
   "use strict";
 
   var scope = root.RXGame || (root.RXGame = {});
+  var NORMAL_TYPES = ["small", "shooter", "charger", "shield", "bomber", "sniper", "rotor"];
 
   function start(state) {
     state.battleMode = "endless";
@@ -12,7 +13,11 @@
     state.endless = {
       round: 0,
       kills: 0,
-      nextSpawnAt: 0,
+      nextBossAt: 0,
+      bossSpawnedAt: null,
+      nextEscortAt: null,
+      intermissionStartedAt: null,
+      reinforcementIndex: 0,
       startedAt: Number(state.elapsed) || 0
     };
     return state.endless;
@@ -52,7 +57,12 @@
       damageReductionRate: stats.damageReductionRate,
       damageTakenMultiplier: stats.damageTakenMultiplier
     });
+    var elapsed = Number(state.elapsed) || 0;
     state.endless.round = round;
+    state.endless.bossSpawnedAt = elapsed;
+    state.endless.nextEscortAt = elapsed + config.BOSS_ESCORT_FIRST_DELAY_SECONDS;
+    state.endless.intermissionStartedAt = null;
+    state.endless.reinforcementIndex = 0;
     return bossSystem.spawnBoss(state, level, {
       bossStats: bossStats,
       bossDef: bossDef,
@@ -62,20 +72,70 @@
     });
   }
 
+  function spawnWave(state, phase) {
+    var config = scope.endlessModeConfig;
+    var enemySystem = scope.enemySystem;
+    if (!config || !enemySystem || typeof enemySystem.spawnWave !== "function") return 0;
+    var isEscort = phase === "escort";
+    var round = isEscort
+      ? Math.max(1, Number(state.endless && state.endless.round) || 1)
+      : Math.max(1, Number(state.endless && state.endless.kills || 0) + 1);
+    var chapterIndex = config.getBossChapter(round);
+    return enemySystem.spawnWave(state, getBossLevel(chapterIndex, round), {
+      phaseId: isEscort ? "endless-boss-escort" : "endless-intermission",
+      waveSize: isEscort ? config.BOSS_ESCORT_WAVE_SIZE : config.INTERMISSION_REINFORCEMENT_WAVE_SIZE,
+      activeCap: isEscort ? config.BOSS_ESCORT_ACTIVE_CAP : config.INTERMISSION_REINFORCEMENT_ACTIVE_CAP,
+      allowElite: false,
+      allowedTypes: NORMAL_TYPES
+    });
+  }
+
+  function updateEscortWaves(state, elapsed) {
+    var config = scope.endlessModeConfig;
+    var nextAt = Number(state.endless.nextEscortAt);
+    if (!isFinite(nextAt)) return;
+    while (elapsed >= nextAt) {
+      spawnWave(state, "escort");
+      nextAt += config.BOSS_ESCORT_INTERVAL_SECONDS;
+    }
+    state.endless.nextEscortAt = nextAt;
+  }
+
+  function updateIntermissionWaves(state, elapsed) {
+    if (state.endless.intermissionStartedAt == null) return;
+    var offsets = scope.endlessModeConfig.INTERMISSION_REINFORCEMENT_OFFSETS_SECONDS || [];
+    var index = Math.max(0, Math.floor(Number(state.endless.reinforcementIndex) || 0));
+    while (index < offsets.length && elapsed >= state.endless.intermissionStartedAt + offsets[index]) {
+      spawnWave(state, "intermission");
+      index += 1;
+    }
+    state.endless.reinforcementIndex = index;
+  }
+
   function beforeUpdate(state) {
     if (!state || state.battleMode !== "endless" || !state.endless) return;
-    state.enemies = [];
-    if (!state.boss && Number(state.elapsed) >= Number(state.endless.nextSpawnAt || 0)) {
+    var elapsed = Number(state.elapsed) || 0;
+    if (!state.boss && elapsed >= Number(state.endless.nextBossAt || 0)) {
       state.bossSpawned = false;
       spawnNextBoss(state);
+      return;
     }
+    if (state.boss) {
+      updateEscortWaves(state, elapsed);
+      return;
+    }
+    updateIntermissionWaves(state, elapsed);
   }
 
   function afterCollisions(state) {
     if (!state || state.battleMode !== "endless" || !state.endless || !state.boss || state.boss.hp > 0) return false;
     state.endless.kills += 1;
     state.endless.round = state.endless.kills;
-    state.endless.nextSpawnAt = state.endless.kills * scope.endlessModeConfig.BOSS_INTERVAL_SECONDS;
+    state.endless.bossSpawnedAt = null;
+    state.endless.nextEscortAt = null;
+    state.endless.intermissionStartedAt = Number(state.elapsed) || 0;
+    state.endless.reinforcementIndex = 0;
+    state.endless.nextBossAt = state.endless.intermissionStartedAt + scope.endlessModeConfig.BOSS_INTERVAL_SECONDS;
     state.boss = null;
     state.bossSpawned = false;
     state.enemyBullets = [];
@@ -97,6 +157,7 @@
     beforeUpdate: beforeUpdate,
     afterCollisions: afterCollisions,
     spawnNextBoss: spawnNextBoss,
+    spawnWave: spawnWave,
     getBossLevel: getBossLevel
   };
 

@@ -41,6 +41,7 @@
     var bossRatio = state.boss ? Math.max(0, Math.min(1, Number(state.boss.hp) / Math.max(1, Number(state.boss.maxHp) || 1))) : 0;
     var decisiveCommandRuntime = abilities.decisiveCommand || null;
     var decisiveCommandConfig = configuredAbilities.decisiveCommand || null;
+    var weaponModules = createWeaponSkillModels(state, player);
     return {
       level: state.battleMode === "endless" ? "无尽 #" + Math.max(1, Number(state.endless && state.endless.round) || 1) : level.code || String(level.id || "-"),
       time: getTimeText(state),
@@ -53,7 +54,8 @@
       paused: state.mode === "paused",
       activeSlots: createActiveSlotModels(abilities.activeSlots, configuredAbilities.activeSlots),
       decisiveCommand: createDecisiveCommandModel(decisiveCommandRuntime, decisiveCommandConfig),
-      inBattleSkills: createInBattleSkillModels(player.weapons)
+      weaponModules: weaponModules,
+      inBattleSkills: weaponModules
     };
   }
 
@@ -111,23 +113,53 @@
     };
   }
 
-  function createInBattleSkillModels(weapons) {
-    var current = weapons || {};
-    return [
-      { id: "spread", name: "裂星霰翼", iconText: "散", level: Math.max(0, Math.floor(Number(current.spread) || 0)) },
-      { id: "laser", name: "苍蓝贯星炮", iconText: "贯", level: Math.max(0, Math.floor(Number(current.laser) || 0)) },
-      { id: "missile", name: "灵蜂追猎弹", iconText: "猎", level: Math.max(0, Math.floor(Number(current.missile) || 0)) },
-      null,
-      null,
-      null
+  function createWeaponSkillModels(state, player) {
+    var current = player.weapons || {};
+    var skills = player.weaponSkills || {};
+    var fixed = Array.isArray(skills.fixed) ? skills.fixed : [];
+    var extensions = Array.isArray(skills.extensions) ? skills.extensions : [];
+    var fixedFallbacks = [
+      { id: "weapon_fixed_01", weaponType: "laser", name: "脉冲光束", iconText: "光" },
+      { id: "weapon_fixed_02", weaponType: "spread", name: "星芒散射", iconText: "散" },
+      { id: "weapon_fixed_03", weaponType: "missile", name: "猎杀追踪", iconText: "猎" }
     ];
+    var result = fixedFallbacks.map(function createFixedModel(fallback, index) {
+      var runtime = fixed[index] || fallback;
+      var type = runtime.weaponType || fallback.weaponType;
+      return {
+        id: runtime.id || fallback.id,
+        name: runtime.name || fallback.name,
+        iconText: fallback.iconText,
+        source: "battle",
+        level: Math.max(0, Math.floor(Number(current[type]) || Number(runtime.level) || 0)),
+        status: "auto"
+      };
+    });
+    for (var i = 0; i < 3; i += 1) {
+      var extension = extensions[i];
+      if (!extension) {
+        result.push(null);
+        continue;
+      }
+      var remaining = Math.max(0, Number(extension.nextFireAt) - Math.max(0, Number(state.elapsed) || 0));
+      result.push({
+        id: extension.id,
+        name: extension.name,
+        iconText: extension.category === "sidewing" ? "翼" : extension.category === "orbital" ? "轨" : "蜂",
+        source: "meta",
+        level: Math.max(1, Math.floor(Number(extension.level) || 1)),
+        status: extension.waitingForTarget ? "waiting-target" : remaining > 0 ? "cooldown" : "ready",
+        cooldownRemaining: remaining
+      });
+    }
+    return result;
   }
 
   function currentTime() {
     return root.performance && root.performance.now ? root.performance.now() : Date.now();
   }
 
-  var api = { create: create, createModel: createModel };
+  var api = { create: create, createModel: createModel, createWeaponSkillModels: createWeaponSkillModels };
   scope.battleUiController = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : window);

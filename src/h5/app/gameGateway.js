@@ -65,8 +65,8 @@
       abandonBattle: function abandonBattle(ticket) {
         return callAdapter(adapter, "abandonBattle", [ticket], mode);
       },
-      sweep: function sweep(levelId) {
-        return callAdapter(adapter, "sweep", [levelId], mode);
+      sweep: function sweep(levelId, count) {
+        return callAdapter(adapter, "sweep", [levelId, count], mode);
       },
       upgrade: function upgrade(key) {
         return callAdapter(adapter, "upgrade", [key], mode);
@@ -80,11 +80,11 @@
       buyShip: function buyShip(shipId) {
         return callAdapter(adapter, "buyShip", [shipId], mode);
       },
-      buyWeaponModule: function buyWeaponModule(moduleId) {
-        return callAdapter(adapter, "buyWeaponModule", [moduleId], mode);
+      saveFighterSkillLoadout: function saveFighterSkillLoadout(shipId, loadout) {
+        return callAdapter(adapter, "saveFighterSkillLoadout", [shipId, loadout], mode);
       },
-      equipWeaponModule: function equipWeaponModule(moduleId) {
-        return callAdapter(adapter, "equipWeaponModule", [moduleId], mode);
+      upgradeAutoWeapon: function upgradeAutoWeapon(moduleId, operationId) {
+        return callAdapter(adapter, "upgradeAutoWeapon", [moduleId, operationId], mode);
       },
       redeem: function redeem(code) {
         return callAdapter(adapter, "redeem", [code], mode);

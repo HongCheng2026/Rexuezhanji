@@ -79,9 +79,6 @@
     var skill = getConfiguredSlots(loadout)[index];
     if (!runtime || !skill || runtime.id !== skill.id) return null;
     runtime.autoEnabled = !runtime.autoEnabled;
-    if (scope.activeSkillPreferences && scope.activeSkillPreferences.setEnabled) {
-      scope.activeSkillPreferences.setEnabled(skill.id, runtime.autoEnabled);
-    }
     return runtime.autoEnabled;
   }
 

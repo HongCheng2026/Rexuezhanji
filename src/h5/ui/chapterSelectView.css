@@ -560,12 +560,13 @@
   width: 28px;
 }
 
-.campaign-map-action:disabled {
+.campaign-map-action:disabled,
+.campaign-map-action[aria-disabled="true"] {
   color: rgba(202, 218, 231, 0.46);
-  cursor: default;
+  cursor: not-allowed;
 }
 
-.campaign-map-action:not(:disabled):hover,
+.campaign-map-action:not(:disabled):not([aria-disabled="true"]):hover,
 .campaign-map-action:focus-visible,
 #startButton.campaign-map-action:not(:disabled):hover,
 #startButton.campaign-map-action:focus-visible {

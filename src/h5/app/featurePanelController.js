@@ -183,6 +183,7 @@
 
   function openFeaturePanel(key) {
     syncProfile();
+    if (dom.featurePanelTitle) dom.featurePanelTitle.classList.remove("event-mode-title");
     if (key === "profile") {
       renderProfilePanel();
       return;
@@ -225,7 +226,10 @@
       if (shared.mainFeaturePanelsView.renderPanel(key, dom, socialPanelOptions)) {
         socialClickState.options = socialPanelOptions;
         var isFeatureV3Panel = dom.featurePanelSlots && dom.featurePanelSlots.classList.contains("feature-v3-content");
-        openFeaturePanelShell(isFeatureV3Panel ? "main-feature-panel feature-v3-panel" : "main-feature-panel");
+        var isEndlessPanel = dom.featurePanelSlots && dom.featurePanelSlots.querySelector("[data-endless-entry]");
+        openFeaturePanelShell(isEndlessPanel
+          ? "main-feature-panel feature-v3-panel endless-feature-panel"
+          : isFeatureV3Panel ? "main-feature-panel feature-v3-panel" + (key === "shop" ? " shop-feature-panel" : "") : "main-feature-panel");
         return;
       }
     }

@@ -7,6 +7,8 @@ type Dependencies = {
   sha256: (value: string) => Promise<string>;
 };
 
+const BOSS_INTERVAL_SECONDS = 15;
+
 export function createEndlessService(deps: Dependencies) {
   async function getRecord(ctx: Context) {
     const { data, error } = await ctx.admin.from("endless_records")
@@ -57,7 +59,7 @@ export function createEndlessService(deps: Dependencies) {
     const survivalSeconds = Math.max(0, Math.floor(Number(body.survivalSeconds) || 0));
     const kills = Math.max(0, Math.floor(Number(body.kills) || 0));
     if (survivalSeconds > elapsedSeconds + 5) return deps.error("生存时长校验未通过。", 409);
-    const theoreticalMaximum = Math.floor(elapsedSeconds / 30) + 1;
+    const theoreticalMaximum = Math.floor(elapsedSeconds / BOSS_INTERVAL_SECONDS) + 1;
     if (kills > theoreticalMaximum) return deps.error("击杀数量超过理论最大出怪数。", 409);
     const { data, error: commitError } = await ctx.admin.rpc("commit_endless_result", {
       p_user_id: ctx.userId,

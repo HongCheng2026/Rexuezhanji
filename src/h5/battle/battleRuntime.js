@@ -32,6 +32,7 @@
 
     state.mode = "fight";
     state.level = level;
+    state.battleMode = callbacks && callbacks.battleMode || "campaign";
 
     // 使用 BattleLoadout 覆盖玩家初始属性
     if (loadout) {
@@ -69,6 +70,8 @@
       loadout: loadout,
       cloud: cloud,
       callbacks: callbacks || {},
+      inputState: callbacks && callbacks.inputState || { keys: root.rxKeys, pointer: root.rxPointer },
+      modeDirector: callbacks && callbacks.modeDirector || null,
       lastTime: 0,
       animationId: 0,
       activeBattleTicket: null
@@ -112,6 +115,7 @@
     state.player.cooldown -= dt;
     state.player.invincible = Math.max(0, state.player.invincible - dt);
     state.player.shield = Math.max(0, state.player.shield - dt);
+    state.player.phaseShieldRemaining = Math.max(0, (Number(state.player.phaseShieldRemaining) || 0) - dt);
     if (scope.abilitySystem && scope.abilitySystem.update) {
       scope.abilitySystem.update(state, battleContext.loadout, dt);
     }
@@ -123,19 +127,23 @@
     updateStars(state, dt);
 
     // 玩家移动
-    updatePlayer(state, dt);
+    updatePlayer(state, dt, battleContext.inputState);
 
     // 射击
     if (scope.weaponSystem && scope.weaponSystem.autoShoot) {
       scope.weaponSystem.autoShoot(state, battleContext.loadout, state.bullets);
     }
 
-    if (state.battleMode === "endless" && scope.endlessModeDirector) {
-      scope.endlessModeDirector.beforeUpdate(state);
+    if (battleContext.modeDirector && battleContext.modeDirector.beforeUpdate) {
+      battleContext.modeDirector.beforeUpdate(state);
     } else {
       // 普通关卡继续使用原导演和章节平衡。
       if (enemySys && enemySys.spawnEnemies) enemySys.spawnEnemies(state, state.level);
       if (bossSys && bossSys.spawnBossIfNeeded) bossSys.spawnBossIfNeeded(state, state.level);
+    }
+
+    if (scope.extensionWeaponSystem && scope.extensionWeaponSystem.update) {
+      scope.extensionWeaponSystem.update(state);
     }
 
     // 道具生成
@@ -182,8 +190,8 @@
     if (collisionSys && collisionSys.checkCollisions) {
       collisionSys.checkCollisions(state, null, battleContext.loadout);
     }
-    if (state.battleMode === "endless" && scope.endlessModeDirector) {
-      scope.endlessModeDirector.afterCollisions(state);
+    if (battleContext.modeDirector && battleContext.modeDirector.afterCollisions) {
+      battleContext.modeDirector.afterCollisions(state);
     }
 
     if (scope.audioSystem && scope.audioSystem.flushFrameAudio) {
@@ -245,7 +253,7 @@
     }
   }
 
-  function updatePlayer(state, dt) {
+  function updatePlayer(state, dt, inputState) {
     // playerSystem.updatePlayer 已不再单独导出，此处内联
     var upgrades = {};
     var speed = 320;
@@ -253,8 +261,8 @@
     // 尝试从 battleContext 获取，这里简化
     speed = 320;
 
-    var keys = root.rxKeys;
-    var pointer = root.rxPointer;
+    var keys = inputState && inputState.keys;
+    var pointer = inputState && inputState.pointer;
     var dx = 0, dy = 0;
 
     if (keys) {

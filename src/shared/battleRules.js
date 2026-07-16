@@ -159,6 +159,51 @@
     return Math.round(getBattleExperience({ levelId, levelCoins: 0, baseReward: reward }) * 0.55);
   }
 
+  function getSweepHonorTier(profile, level) {
+    if (!profile || !level) return 0;
+    if (stageHonorSystem.getStageHonor) {
+      const honor = stageHonorSystem.getStageHonor(profile, level) || {};
+      return Math.max(0, Math.floor(Number(honor.tier) || 0));
+    }
+    const ratings = profile.ratings || {};
+    return Math.max(0, Math.floor(Number(ratings[level.id]) || 0));
+  }
+
+  function getSweepEligibility(profile, level) {
+    if (!isLevelCompleted(profile, level)) {
+      return { canSweep: false, reason: "NOT_COMPLETED", honorTier: getSweepHonorTier(profile, level) };
+    }
+    const honorTier = getSweepHonorTier(profile, level);
+    if (honorTier < 3) return { canSweep: false, reason: "NOT_THREE_STAR", honorTier };
+    return { canSweep: true, reason: "", honorTier };
+  }
+
+  function getSweepMaxCount(profile) {
+    const resources = profile && profile.resources || {};
+    const currentEnergy = Math.max(0, Math.floor(Number(resources.energy) || 0));
+    const maxEnergy = Math.max(0, Math.floor(Number(resources.maxEnergy) || currentEnergy));
+    const usableEnergy = Math.min(currentEnergy, maxEnergy);
+    return Math.floor(usableEnergy / BATTLE_REWARD_CONFIG.staminaCost);
+  }
+
+  function isLevelCompleted(profile, levelOrId) {
+    if (!profile || levelOrId == null) return false;
+    const level = typeof levelOrId === "object"
+      ? levelOrId
+      : (levelsConfig.levels || []).find(function findLevel(item) { return Number(item.id) === Number(levelOrId); });
+    const levelId = Number(level && level.id != null ? level.id : levelOrId);
+    const completed = Array.isArray(profile.completed) ? profile.completed : [];
+    if (Number.isFinite(levelId) && completed.some(function matchesLevel(id) { return Number(id) === levelId; })) return true;
+    if (!level) return false;
+    const stageKey = stageHonorSystem.getStageKey
+      ? stageHonorSystem.getStageKey(level)
+      : (Number(level.chapterIndex) === 0 ? "prologue_" + level.stageInChapter : level.chapterIndex + "_" + level.stageInChapter);
+    const cleared = profile.progress && Array.isArray(profile.progress.clearedStageIds)
+      ? profile.progress.clearedStageIds
+      : [];
+    return cleared.some(function matchesStage(id) { return String(id) === String(stageKey); });
+  }
+
   function completeLevel(profile, level, rating) {
     profile.completed = Array.from(new Set([...(profile.completed || []), level.id]));
     profile.unlockedLevel = Math.max(profile.unlockedLevel || 1, Math.min((levelsConfig.levels || []).length || 3, level.id + 1));
@@ -188,6 +233,10 @@
     calculateRating,
     getSweepReward,
     getSweepExperience,
+    getSweepHonorTier,
+    getSweepEligibility,
+    getSweepMaxCount,
+    isLevelCompleted,
     completeLevel
   };
 

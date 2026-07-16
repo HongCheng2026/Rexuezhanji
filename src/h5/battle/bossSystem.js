@@ -116,10 +116,18 @@
         });
       } catch (e) { /* fallback below */ }
     }
-    if (balanceConfig.getEnemyHp) {
-      var hp = balanceConfig.getEnemyHp("boss", level);
-      var scaling = balanceConfig.getEnemyScalingForLevel(level, {});
-      return { hp: hp, damageTakenMultiplier: (scaling && scaling.damageTakenMultiplier) || 1, attackDamage: 80, bulletSpeed: 360 };
+    if (balanceConfig.getBossScaling) {
+      var scaling = balanceConfig.getBossScaling(
+        level.chapterIndex != null ? level.chapterIndex : 1,
+        level.stageInChapter != null ? level.stageInChapter : (level.id || 1)
+      );
+      return {
+        hp: scaling.hp,
+        damageReductionRate: scaling.damageReductionRate,
+        damageTakenMultiplier: scaling.damageTakenMultiplier,
+        attackDamage: 80,
+        bulletSpeed: 360
+      };
     }
     return { hp: 100000, damageTakenMultiplier: 1, attackDamage: 80, bulletSpeed: 360 };
   }

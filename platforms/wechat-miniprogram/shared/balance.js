@@ -52,39 +52,6 @@
     ]
   };
 
-  const WEAPON_MODULES = {
-    "spread-focus": {
-      id: "spread-focus", name: "聚束校准器", weaponType: "spread", price: 50000,
-      description: "散射角缩小30%，单弹伤害增加18%。",
-      effects: { angleMultiplier: 0.7, damageMultiplier: 1.18 }
-    },
-    "spread-storm": {
-      id: "spread-storm", name: "风暴弹仓", weaponType: "spread", price: 50000,
-      description: "额外发射2颗子弹，单弹伤害降低8%。",
-      effects: { projectileBonus: 2, projectileCap: 19, damageMultiplier: 0.92 }
-    },
-    "laser-prism": {
-      id: "laser-prism", name: "穿透棱镜", weaponType: "laser", price: 50000,
-      description: "每条激光多穿透1个目标，伤害增加8%。",
-      effects: { pierceBonus: 1, damageMultiplier: 1.08 }
-    },
-    "laser-capacitor": {
-      id: "laser-capacitor", name: "蓄能电容", weaponType: "laser", price: 50000,
-      description: "每第5轮追加一条200%伤害宽光束，其余激光伤害降低5%。",
-      effects: { triggerEvery: 5, bonusBeamDamageMultiplier: 2, damageMultiplier: 0.95 }
-    },
-    "missile-guidance": {
-      id: "missile-guidance", name: "蜂群制导", weaponType: "missile", price: 50000,
-      description: "额外发射1枚导弹，转向提高35%，单弹伤害降低8%。",
-      effects: { projectileBonus: 1, projectileCap: 11, turnMultiplier: 1.35, damageMultiplier: 0.92 }
-    },
-    "missile-warhead": {
-      id: "missile-warhead", name: "重爆弹头", weaponType: "missile", price: 50000,
-      description: "获得64px爆炸范围和20%伤害，飞行速度降低12%。",
-      effects: { splashRadius: 64, damageMultiplier: 1.2, speedMultiplier: 0.88 }
-    }
-  };
-
   const ENEMY_BASE_STATS = {
     small: { name: "敌军小飞机", baseHp: 100 },
     elite: { name: "精英战机", baseHp: 1000 },
@@ -95,6 +62,14 @@
     chapterGrowthPerLevel: 0.1,
     stageExtraGrowth: { 5: 0.05, 10: 0.1 }
   };
+
+  const CAMPAIGN_BOSS_BALANCE_RULES = Object.freeze({
+    baseHp: ENEMY_BASE_STATS.boss.baseHp,
+    chapterHpMultiplier: 1,
+    chapterArmorPierce: 0.1,
+    stageHpMultiplierBonus: Object.freeze({ 5: 0.5, 10: 1 }),
+    stageDamageReductionBonus: Object.freeze({ 5: 0.05, 10: 0.1 })
+  });
 
   const PILOT_RARITY_STATS = {
     S: { armorPenetration: 0.2 },
@@ -235,6 +210,40 @@
     );
   }
 
+  function getBossScaling(chapterIndex, stageInChapter, baseDamageReductionRate) {
+    const chapter = Math.max(0, Math.min(9, Math.floor(Number(chapterIndex) || 0)));
+    const stage = Math.max(1, Math.min(10, Math.floor(Number(stageInChapter) || 1)));
+    if (chapter === 0) {
+      return {
+        chapterIndex: 0,
+        stageInChapter: stage,
+        hpMultiplier: 1,
+        hp: CAMPAIGN_BOSS_BALANCE_RULES.baseHp,
+        damageReductionRate: 0,
+        damageTakenMultiplier: 1,
+        armorPierceRatio: 0
+      };
+    }
+    const hpMultiplier = normalizeRate(
+      1 + chapter * CAMPAIGN_BOSS_BALANCE_RULES.chapterHpMultiplier +
+      (CAMPAIGN_BOSS_BALANCE_RULES.stageHpMultiplierBonus[stage] || 0)
+    );
+    const damageReductionRate = Math.min(0.9, normalizeRate(
+      normalizeRate(baseDamageReductionRate) +
+      (CAMPAIGN_BOSS_BALANCE_RULES.stageDamageReductionBonus[stage] || 0)
+    ));
+    const armorPierceRatio = normalizeRate(chapter * CAMPAIGN_BOSS_BALANCE_RULES.chapterArmorPierce);
+    return {
+      chapterIndex: chapter,
+      stageInChapter: stage,
+      hpMultiplier,
+      hp: Math.ceil(CAMPAIGN_BOSS_BALANCE_RULES.baseHp * hpMultiplier),
+      damageReductionRate,
+      damageTakenMultiplier: normalizeRate(Math.max(0, 1 - damageReductionRate)),
+      armorPierceRatio
+    };
+  }
+
   function getEnemyHp(type, level) {
     const baseHp = ENEMY_BASE_STATS[type]?.baseHp || ENEMY_BASE_STATS.small.baseHp;
     return Math.ceil(baseHp * getEnemyScalingForLevel(level).hpMultiplier - 1e-9);
@@ -293,9 +302,9 @@
     MAX_WEAPON_LEVEL,
     FIGHTER_BATTLE_RULES,
     PLAYER_WEAPON_LEVELS,
-    WEAPON_MODULES,
     ENEMY_BASE_STATS,
     ENEMY_BALANCE_RULES,
+    CAMPAIGN_BOSS_BALANCE_RULES,
     PILOT_RARITY_STATS,
     FIGHTER_RARITY_STATS,
     enemyBaseHp,
@@ -309,6 +318,7 @@
     getTotalArmorPenetration,
     getEnemyScaling,
     getEnemyScalingForLevel,
+    getBossScaling,
     getEnemyHp,
     getEnemyStats,
     getPickupDamageMultiplier,

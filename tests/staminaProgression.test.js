@@ -93,7 +93,8 @@ test("本地扫荡升级也会补体力", () => {
     staminaRuleVersion: 2,
     player: { level: 1, totalExp: levels.COMMANDER_EXP_TO_NEXT_LEVEL[1] - 1, exp: levels.COMMANDER_EXP_TO_NEXT_LEVEL[1] - 1 },
     resources: { energy: 120, maxEnergy: 120 },
-    completed: [level.id]
+    completed: [level.id],
+    ratings: { [level.id]: 3 }
   });
   const result = progressionSystem.sweepLevel(profile, level);
   assert.equal(result.success, true);
@@ -101,4 +102,87 @@ test("本地扫荡升级也会补体力", () => {
   assert.equal(profile.resources.energy, 120);
   assert.equal(profile.resources.maxEnergy, 125);
   assert.equal(result.levelProgress.energyGained, 5);
+});
+
+test("新关卡进度记录可以正常扫荡", () => {
+  const level = levels.levels[3];
+  const profile = profileModule.normalizeProfile({
+    resources: { energy: 20, maxEnergy: 120 },
+    completed: [],
+    progress: { clearedStageIds: ["1_1"] },
+    ratings: { [level.id]: 3 }
+  });
+  const beforeGold = profile.resources.gold;
+  const result = progressionSystem.sweepLevel(profile, level);
+  assert.equal(result.success, true);
+  assert.equal(profile.resources.energy, 15);
+  assert.ok(profile.resources.gold > beforeGold);
+});
+
+test("本地扫荡体力不足时不扣资源也不发奖励", () => {
+  const level = levels.levels[0];
+  const profile = profileModule.normalizeProfile({
+    resources: { energy: 4, maxEnergy: 120, gold: 321 },
+    completed: [level.id],
+    ratings: { [level.id]: 3 }
+  });
+  const result = progressionSystem.sweepLevel(profile, level);
+  assert.deepEqual(result, { success: false, reason: "NO_ENERGY", maxCount: 0 });
+  assert.equal(profile.resources.energy, 4);
+  assert.equal(profile.resources.gold, 321);
+});
+
+test("只有三星、金冠和彩冠关卡可以扫荡", () => {
+  const level = levels.levels[0];
+  for (const tier of [1, 2]) {
+    const profile = profileModule.normalizeProfile({
+      resources: { energy: 20, maxEnergy: 120 },
+      completed: [level.id],
+      ratings: { [level.id]: tier }
+    });
+    assert.equal(progressionSystem.sweepLevel(profile, level).reason, "NOT_THREE_STAR");
+  }
+  for (const tier of [3, 4, 5]) {
+    const profile = profileModule.normalizeProfile({
+      resources: { energy: 20, maxEnergy: 120 },
+      completed: [level.id],
+      ratings: { [level.id]: tier }
+    });
+    assert.equal(progressionSystem.sweepLevel(profile, level).success, true);
+  }
+});
+
+test("多次扫荡一次扣除总消耗并发放总奖励", () => {
+  const level = levels.levels[0];
+  const profile = profileModule.normalizeProfile({
+    resources: { energy: 33, maxEnergy: 120, gold: 100 },
+    completed: [level.id],
+    ratings: { [level.id]: 3 }
+  });
+  const singleGold = progressionSystem.getSweepReward(level);
+  const singleExperience = battleRules.getSweepExperience(singleGold, level.id);
+  const result = progressionSystem.sweepLevel(profile, level, 3);
+  assert.equal(result.success, true);
+  assert.equal(result.count, 3);
+  assert.equal(result.energySpent, 15);
+  assert.equal(result.goldEarned, singleGold * 3);
+  assert.equal(result.expEarned, singleExperience * 3);
+  assert.equal(profile.resources.energy, 18);
+  assert.equal(profile.resources.gold, 100 + singleGold * 3);
+});
+
+test("扫荡最大次数同时受当前体力和体力上限约束", () => {
+  const level = levels.levels[0];
+  const profile = profileModule.normalizeProfile({
+    resources: { energy: 500, maxEnergy: 120, gold: 100 },
+    completed: [level.id],
+    ratings: { [level.id]: 3 }
+  });
+  profile.resources.energy = 500;
+  profile.resources.maxEnergy = 120;
+  assert.equal(battleRules.getSweepMaxCount(profile), 24);
+  const before = { energy: profile.resources.energy, gold: profile.resources.gold };
+  const result = progressionSystem.sweepLevel(profile, level, 25);
+  assert.deepEqual(result, { success: false, reason: "NO_ENERGY", maxCount: 24 });
+  assert.deepEqual({ energy: profile.resources.energy, gold: profile.resources.gold }, before);
 });

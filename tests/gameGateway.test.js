@@ -23,8 +23,8 @@ function createAdapter(label, calls) {
     upgradeFighter: record("upgradeFighter"),
     buyPilot: record("buyPilot"),
     buyShip: record("buyShip"),
-    buyWeaponModule: record("buyWeaponModule"),
-    equipWeaponModule: record("equipWeaponModule"),
+    saveFighterSkillLoadout: record("saveFighterSkillLoadout"),
+    upgradeAutoWeapon: record("upgradeAutoWeapon"),
     redeem: record("redeem"),
     saveCosmetics: record("saveCosmetics")
   };
@@ -102,27 +102,28 @@ test("结算、升级和外观接口完整透传参数", async () => {
   const rating = { stars: 3 };
   const details = { coinsEarned: 120 };
   const profile = { player: { name: "测试" } };
+  const loadout = { activeSlots: [null, null, null, null], autoWeaponIds: [null, null, null] };
 
   await gateway.finishBattle("ticket-1", 5, rating, details);
+  await gateway.sweep(5, 4);
   await gateway.upgrade("fire");
   await gateway.upgradeFighter("attack");
   await gateway.buyPilot("pilot-b-bailing");
   await gateway.buyShip("ship-b-01");
-  await gateway.buyWeaponModule("spread-focus");
-  await gateway.equipWeaponModule("spread-focus");
-  await gateway.equipWeaponModule(null);
+  await gateway.saveFighterSkillLoadout("ship-b-01", loadout);
+  await gateway.upgradeAutoWeapon("weapon_module_04", "operation-1");
   await gateway.redeem("svip0903");
   await gateway.saveCosmetics(profile);
 
   assert.deepEqual(calls.map((item) => [item.method, item.args]), [
     ["finishBattle", ["ticket-1", 5, rating, details]],
+    ["sweep", [5, 4]],
     ["upgrade", ["fire"]],
     ["upgradeFighter", ["attack"]],
     ["buyPilot", ["pilot-b-bailing"]],
     ["buyShip", ["ship-b-01"]],
-    ["buyWeaponModule", ["spread-focus"]],
-    ["equipWeaponModule", ["spread-focus"]],
-    ["equipWeaponModule", [null]],
+    ["saveFighterSkillLoadout", ["ship-b-01", loadout]],
+    ["upgradeAutoWeapon", ["weapon_module_04", "operation-1"]],
     ["redeem", ["svip0903"]],
     ["saveCosmetics", [profile]]
   ]);

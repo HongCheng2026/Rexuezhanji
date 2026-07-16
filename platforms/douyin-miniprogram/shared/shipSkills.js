@@ -39,6 +39,15 @@
       duration: 4,
       damageMultiplier: 1.3,
       armorPierceBonus: 0.25
+    }),
+    "phase-shield": Object.freeze({
+      id: "phase-shield",
+      name: "相位护盾",
+      description: "展开相位防护层，持续 3 秒；自动模式仅在生命不高于 50% 时触发。",
+      iconText: "相",
+      cooldown: 18,
+      duration: 3,
+      autoCondition: Object.freeze({ type: "hpRatioAtMost", value: 0.5 })
     })
   });
 

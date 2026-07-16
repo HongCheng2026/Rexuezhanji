@@ -374,6 +374,9 @@
     }
     var before = state.player.weapons[type] || 0;
     state.player.weapons[type] = Math.min(MAX_WEAPON_LEVEL, (state.player.weapons[type] || 0) + 1);
+    if (scope.battleState && scope.battleState.refreshFixedWeaponSkill) {
+      scope.battleState.refreshFixedWeaponSkill(state.player, type);
+    }
     if (state.supplyDirector) state.supplyDirector.collected += 1;
     addNotice(state,
       "武器升级 · " + ((POWERUPS[type] || {}).name || type) + " Lv." + state.player.weapons[type] + (before < MAX_WEAPON_LEVEL && state.player.weapons[type] >= MAX_WEAPON_LEVEL ? " MAX" : ""),

@@ -323,13 +323,16 @@
 }
 
 .battle-screen .battle-in-battle-slot {
-  grid-template-rows: 22px 11px;
-  width: 42px;
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: 17px 15px;
+  padding: 1px 3px;
+  width: 58px;
 }
 
 .battle-screen .battle-in-battle-slot .battle-slot-icon {
-  font-size: 16px;
-  height: 22px;
+  font-size: 15px;
+  grid-row: 1 / span 2;
+  height: 32px;
 }
 
 .battle-screen .battle-slot-level {
@@ -337,10 +340,35 @@
   font-size: 8px;
   font-weight: 900;
   line-height: 10px;
+  justify-self: start;
 }
 
-.battle-screen .battle-in-battle-slot.is-reserved {
-  border-style: dashed;
+.battle-screen .battle-slot-status {
+  align-self: start;
+  color: rgba(100, 232, 255, 0.78);
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 850;
+  justify-self: start;
+  line-height: 10px;
+  white-space: nowrap;
+}
+
+.battle-screen .battle-in-battle-slot.is-extension {
+  background: linear-gradient(145deg, rgba(5, 38, 55, 0.96), rgba(4, 17, 29, 0.96));
+  border-color: rgba(81, 224, 255, 0.74);
+}
+
+.battle-screen .battle-in-battle-slot[data-status="ready"] {
+  box-shadow: 0 0 10px rgba(70, 231, 255, 0.2), inset 0 0 12px rgba(70, 231, 255, 0.12);
+}
+
+.battle-screen .battle-in-battle-slot[data-status="waiting-target"] .battle-slot-status {
+  color: rgba(255, 211, 112, 0.82);
+}
+
+.battle-screen .battle-in-battle-slot[data-status="cooldown"] .battle-slot-icon {
+  opacity: 0.48;
 }
 
 .battle-screen .battle-decisive-command-button {
@@ -373,6 +401,21 @@
 .battle-screen .battle-decisive-command-button.is-ready {
   border-color: rgba(255, 230, 151, 0.9);
   box-shadow: 0 0 12px rgba(255, 209, 102, 0.12), inset 0 0 12px rgba(255, 209, 102, 0.1);
+}
+
+@media (pointer: coarse) {
+  .battle-screen .battle-decisive-command-button {
+    min-height: 48px;
+  }
+
+  .battle-screen .battle-decisive-command-button small {
+    font-size: 0;
+  }
+
+  .battle-screen .battle-decisive-command-button small::after {
+    content: "点击释放";
+    font-size: 9px;
+  }
 }
 
 @keyframes battle-auto-pulse {

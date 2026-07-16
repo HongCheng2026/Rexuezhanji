@@ -1988,6 +1988,10 @@
   width: auto;
 }
 
+.feature-panel.main-feature-panel.feature-v3-panel.shop-feature-panel .feature-panel-box::after {
+  border-top-width: 1px;
+}
+
 .feature-panel.main-feature-panel.feature-v3-panel #featurePanelKicker {
   align-self: center;
   font-size: 0;
@@ -3488,43 +3492,4 @@
   .feature-panel.main-feature-panel .shop-board.fp-v3 {
     grid-template-rows: 44px 84px 30px minmax(0, 1fr);
   }
-}
-/* Endless mode is isolated under its page root so later event panels can evolve independently. */
-.feature-panel.main-feature-panel .event-board.endless-board.fp-v3 {
-  grid-template-rows: minmax(170px, auto) auto 34px minmax(0, 1fr);
-}
-
-.endless-board .endless-hero {
-  align-items: center;
-  background: linear-gradient(120deg, rgba(8, 32, 58, 0.96), rgba(41, 10, 45, 0.92));
-  border: 1px solid rgba(100, 222, 255, 0.45);
-  display: grid;
-  gap: 20px;
-  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr) 180px;
-  padding: 24px;
-}
-
-.endless-board .endless-hero > div { display: grid; gap: 8px; }
-.endless-board .endless-hero > div > span { color: #7ce7ff; font-size: 12px; font-weight: 900; letter-spacing: .12em; }
-.endless-board .endless-hero > div > strong { color: #fff; font-size: clamp(30px, 4vw, 52px); }
-.endless-board .endless-hero p { color: rgba(220, 244, 255, .82); line-height: 1.55; margin: 0; }
-.endless-board .endless-hero dl { display: grid; gap: 8px; margin: 0; }
-.endless-board .endless-hero dl div { background: rgba(4, 16, 30, .56); display: flex; justify-content: space-between; padding: 10px 12px; }
-.endless-board .endless-hero dt { color: rgba(195, 230, 244, .7); }
-.endless-board .endless-hero dd { color: #ffe28a; font-weight: 900; margin: 0; }
-.endless-board .endless-hero button { background: linear-gradient(180deg, #ffe37b, #be6e17); border: 1px solid #fff0a8; color: #271400; font-weight: 900; min-height: 48px; }
-.endless-board .endless-rules { display: grid; gap: 12px; grid-template-columns: repeat(3, 1fr); }
-.endless-board .endless-rules article { background: rgba(5, 23, 39, .78); border: 1px solid rgba(100, 222, 255, .26); display: grid; gap: 5px; padding: 14px; }
-.endless-board .endless-rules strong { color: #fff; }
-.endless-board .endless-rules span { color: #85e5ff; }
-.endless-board .endless-boss-grid { display: grid; gap: 10px; grid-template-columns: repeat(9, minmax(110px, 1fr)); }
-.endless-board .endless-boss-grid article { background: rgba(3, 18, 32, .76); border: 1px solid rgba(100, 222, 255, .22); display: grid; grid-template-rows: auto 94px auto; min-width: 0; padding: 9px; }
-.endless-board .endless-boss-grid span { color: #ffe28a; font-weight: 900; }
-.endless-board .endless-boss-grid img { height: 90px; max-width: 100%; object-fit: contain; width: 100%; }
-.endless-board .endless-boss-grid strong { color: rgba(230, 247, 255, .9); font-size: 12px; line-height: 1.35; }
-
-@media (max-width: 900px) {
-  .endless-board .endless-hero { grid-template-columns: 1fr; }
-  .endless-board .endless-rules { grid-template-columns: 1fr; }
-  .endless-board .endless-boss-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

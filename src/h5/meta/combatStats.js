@@ -31,6 +31,37 @@
     });
   }
 
+  function createExtensionWeaponSnapshot(definition, level, levelStats, finalAttack, armorPierceRatio) {
+    if (!definition || !levelStats || !(level > 0)) return null;
+    var multiplier = Math.max(0, Number(levelStats.damageMultiplier) || 0);
+    var resolvedStats = Object.freeze({
+      damageMultiplier: multiplier,
+      damagePerProjectile: Math.max(1, Math.round(Math.max(0, Number(finalAttack) || 0) * multiplier)),
+      fireInterval: Math.max(0.01, Number(levelStats.fireInterval) || 1),
+      projectileCount: Math.max(1, Math.floor(Number(levelStats.projectileCount || levelStats.trajectoryCount) || 1)),
+      trajectoryCount: Math.max(1, Math.floor(Number(levelStats.trajectoryCount || levelStats.projectileCount) || 1)),
+      targetCount: Math.max(1, Math.floor(Number(levelStats.targetCount) || 1)),
+      coverageAngle: Math.max(0, Number(levelStats.coverageAngle) || 0),
+      projectileSpeed: Math.max(1, Number(levelStats.projectileSpeed) || 600),
+      pierceTargets: Math.max(1, Math.floor(Number(levelStats.pierceTargets) || 1)),
+      normalBulletCancelRate: Math.max(0, Math.min(1, Number(levelStats.normalBulletCancelRate) || 0)),
+      eliteBulletCancelRate: Math.max(0, Math.min(1, Number(levelStats.eliteBulletCancelRate) || 0)),
+      turnRate: Math.max(0, Number(levelStats.turnRate) || 0),
+      accelerationDuration: Math.max(0.01, Number(levelStats.accelerationDuration) || 0.35),
+      maxSpeedMultiplier: Math.max(1, Number(levelStats.maxSpeedMultiplier) || 1),
+      armorPierceRatio: Math.max(0, Number(armorPierceRatio) || 0)
+    });
+    return Object.freeze({
+      id: String(definition.id || ""),
+      name: String(definition.name || ""),
+      category: String(definition.category || ""),
+      source: "meta",
+      level: Math.max(1, Math.floor(Number(level) || 1)),
+      requiresTarget: definition.requiresTarget !== false,
+      resolvedStats: resolvedStats
+    });
+  }
+
   /**
    * 从 profile 生成 BattleLoadout 出战属性快照。
    * 养成系统调用此函数，战斗系统只消费返回的快照，不直接读 profile。
@@ -98,8 +129,19 @@
     var initialWeapons = balance && balance.getInitialWeaponsForRank
       ? balance.getInitialWeaponsForRank(ship.rank)
       : { spread: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1, laser: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1, missile: ship.rank === "S" ? 3 : ship.rank === "A" ? 2 : 1 };
-    var activeSlots = ship.rank === "S" && Array.isArray(ship.activeSkills) ? ship.activeSkills.slice(0, 4) : [];
-    while (activeSlots.length < 4) activeSlots.push(null);
+    var tacticalConfig = scope.tacticalLoadoutConfig || {};
+    var configuredLoadout = profile.shipSkillLoadouts && profile.shipSkillLoadouts[ship.id];
+    var configuredActiveSlots = configuredLoadout && Array.isArray(configuredLoadout.activeSlots)
+      ? configuredLoadout.activeSlots.slice(0, Number(tacticalConfig.ACTIVE_SLOT_COUNT) || 4)
+      : (Array.isArray(ship.activeSkills) ? ship.activeSkills.slice(0, 4).map(function useNativeSkill(skill) {
+        return skill ? { skillId: skill.id, autoEnabled: false } : null;
+      }) : []);
+    var activeSlots = configuredActiveSlots.map(function resolveActiveSkill(slot) {
+      if (!slot || !scope.shipSkills || !scope.shipSkills.getActiveSkill) return null;
+      var definition = scope.shipSkills.getActiveSkill(slot.skillId);
+      return definition ? Object.assign({}, definition, { autoEnabled: Boolean(slot.autoEnabled) }) : null;
+    });
+    while (activeSlots.length < (Number(tacticalConfig.ACTIVE_SLOT_COUNT) || 4)) activeSlots.push(null);
     var decisiveCommandRule = scope.battleRules && scope.battleRules.getDecisiveCommandRule
       ? scope.battleRules.getDecisiveCommandRule(ship.rank)
       : { maxCharges: ship.rank === "S" ? 4 : ship.rank === "A" ? 3 : 2, initialCharges: 1, rechargeSeconds: 18 };
@@ -115,16 +157,27 @@
       laser: 0,
       missile: 0
     };
-    var moduleRule = balance && balance.FIGHTER_BATTLE_RULES ? balance.FIGHTER_BATTLE_RULES[ship.rank] : null;
-    var moduleSlots = moduleRule ? Math.max(0, Math.floor(Number(moduleRule.moduleSlots) || 0)) : 0;
-    var moduleState = profile.weaponModules || {};
-    var ownedModuleIds = Array.isArray(moduleState.ownedIds) ? moduleState.ownedIds : [];
-    var equippedModuleId = moduleSlots > 0 && ownedModuleIds.indexOf(moduleState.equippedId) >= 0
-      ? moduleState.equippedId
-      : null;
-    var equippedWeaponModule = equippedModuleId && balance && balance.WEAPON_MODULES
-      ? balance.WEAPON_MODULES[equippedModuleId] || null
-      : null;
+    var fixedAutoWeapons = Array.isArray(tacticalConfig.FIXED_AUTO_WEAPONS)
+      ? tacticalConfig.FIXED_AUTO_WEAPONS.map(function resolveFixedWeapon(definition) {
+        return Object.assign({}, definition, { level: Math.max(0, Math.floor(Number(initialWeapons[definition.weaponType]) || 0)) });
+      })
+      : [];
+    var autoWeaponLevels = tacticalConfig.normalizeAutoWeaponLevels
+      ? tacticalConfig.normalizeAutoWeaponLevels(profile.autoWeaponLevels)
+      : (profile.autoWeaponLevels || {});
+    var configuredAutoWeaponIds = configuredLoadout && Array.isArray(configuredLoadout.autoWeaponIds)
+      ? configuredLoadout.autoWeaponIds.slice(0, Number(tacticalConfig.AUTO_WEAPON_SLOT_COUNT) || 3)
+      : [];
+    var extensionAutoWeapons = configuredAutoWeaponIds.map(function resolveAutoWeapon(moduleId) {
+      var definition = moduleId && tacticalConfig.AUTO_WEAPONS ? tacticalConfig.AUTO_WEAPONS[moduleId] : null;
+      if (!definition || !(Number(autoWeaponLevels[moduleId]) > 0)) return null;
+      var level = Number(autoWeaponLevels[moduleId]) || 0;
+      var levelStats = tacticalConfig.getAutoWeaponLevelStats
+        ? tacticalConfig.getAutoWeaponLevelStats(moduleId, level)
+        : null;
+      return createExtensionWeaponSnapshot(definition, level, levelStats, attack, totalArmorPenetration);
+    });
+    while (extensionAutoWeapons.length < (Number(tacticalConfig.AUTO_WEAPON_SLOT_COUNT) || 3)) extensionAutoWeapons.push(null);
     return {
       pilot: {
         id: pilot.id,
@@ -172,8 +225,10 @@
         activeSlots: activeSlots,
         decisiveCommand: decisiveCommand
       },
-      moduleSlots: moduleSlots,
-      equippedWeaponModule: equippedWeaponModule
+      autoWeapons: {
+        fixed: fixedAutoWeapons,
+        extensionSlots: extensionAutoWeapons
+      }
     };
   }
 

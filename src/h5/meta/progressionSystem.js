@@ -16,9 +16,11 @@
   /**
    * 检查关卡是否已通关
    */
-  function isLevelCompleted(levelId, profile) {
+  function isLevelCompleted(levelOrId, profile) {
+    if (battleRules.isLevelCompleted) return battleRules.isLevelCompleted(profile, levelOrId);
     if (!profile || !profile.completed) return false;
-    return profile.completed.indexOf(levelId) >= 0;
+    var levelId = Number(levelOrId && typeof levelOrId === "object" ? levelOrId.id : levelOrId);
+    return profile.completed.some(function matchesLevel(id) { return Number(id) === levelId; });
   }
 
   /**
@@ -92,19 +94,27 @@
   /**
    * 扫荡关卡（生成数据，不处理 UI）
    */
-  function sweepLevel(profile, level) {
-    if (!isLevelCompleted(level.id, profile)) {
-      return { success: false, reason: "NOT_COMPLETED" };
-    }
+  function sweepLevel(profile, level, count) {
+    var eligibility = battleRules.getSweepEligibility
+      ? battleRules.getSweepEligibility(profile, level)
+      : { canSweep: Boolean(level && isLevelCompleted(level, profile)), reason: "NOT_COMPLETED" };
+    if (!eligibility.canSweep) return { success: false, reason: eligibility.reason || "NOT_COMPLETED" };
 
-    if (!spendEnergy(profile, ENERGY_COST)) {
-      return { success: false, reason: "NO_ENERGY" };
-    }
+    var sweepCount = Math.max(1, Math.floor(Number(count) || 1));
+    var maxCount = battleRules.getSweepMaxCount
+      ? battleRules.getSweepMaxCount(profile)
+      : Math.floor(Math.max(0, Number(profile.resources && profile.resources.energy) || 0) / ENERGY_COST);
+    if (sweepCount > maxCount) return { success: false, reason: "NO_ENERGY", maxCount: maxCount };
 
-    var goldReward = getSweepReward(level);
-    var expReward = battleRules.getSweepExperience
-      ? battleRules.getSweepExperience(goldReward, level.id)
-      : Math.round(goldReward * 0.55);
+    var energySpent = sweepCount * ENERGY_COST;
+    if (!spendEnergy(profile, energySpent)) return { success: false, reason: "NO_ENERGY", maxCount: maxCount };
+
+    var singleGoldReward = getSweepReward(level);
+    var singleExpReward = battleRules.getSweepExperience
+      ? battleRules.getSweepExperience(singleGoldReward, level.id)
+      : Math.round(singleGoldReward * 0.55);
+    var goldReward = singleGoldReward * sweepCount;
+    var expReward = singleExpReward * sweepCount;
 
     var resources = profile.resources || {};
     resources.gold = Math.max(0, Math.floor((resources.gold || 0) + goldReward));
@@ -119,6 +129,8 @@
 
     return {
       success: true,
+      count: sweepCount,
+      energySpent: energySpent,
       goldEarned: goldReward,
       expEarned: expReward,
       levelProgress: levelProgress,
@@ -127,9 +139,13 @@
   }
 
   function spendEnergy(profile, amount) {
-    var resources = profile.resources || {};
-    resources.energy = Math.max(0, Math.floor((resources.energy || 0) - amount));
-    return resources.energy >= 0;
+    profile.resources = profile.resources || {};
+    var resources = profile.resources;
+    var cost = Math.max(0, Math.floor(Number(amount) || 0));
+    var current = Math.max(0, Math.floor(Number(resources.energy) || 0));
+    if (current < cost) return false;
+    resources.energy = current - cost;
+    return true;
   }
 
   var api = {

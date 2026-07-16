@@ -6,6 +6,10 @@
   function create(options) {
     options = options || {};
     var shared = options.shared || scope;
+    var battleInput = options.battleInput || shared.battleInput;
+    if (!battleInput || typeof battleInput.getActiveSlotIndex !== "function") {
+      throw new Error("H5 game bootstrap failed: missing battle input adapter.");
+    }
     var dom = options.dom || {};
     var canvas = options.canvas;
     var keys = options.keys;
@@ -33,15 +37,12 @@
     var isCloudMode = options.isCloudMode;
     var saveProfile = options.saveProfile;
     var renderLobby = options.renderLobby;
-    var upgradeFighterStat = options.upgradeFighterStat;
-    var buyWeaponModule = options.buyWeaponModule;
-    var equipWeaponModule = options.equipWeaponModule;
+    var handleFighterUpgradeClick = options.handleFighterUpgradeClick;
     var redeemCode = options.redeemCode;
     var handleProfilePanelClick = options.handleProfilePanelClick;
     var handleAvatarUpload = options.handleAvatarUpload;
     var openFeaturePanel = options.openFeaturePanel;
     var updatePointer = options.updatePointer;
-    var startEndlessMode = options.startEndlessMode;
     var gatewayActionLock = options.gatewayActionLock || { busy: false };
     var ensureGameGateway = options.ensureGameGateway;
     var getGameGateway = options.getGameGateway;
@@ -171,8 +172,6 @@
     });
     dom.startButton.addEventListener("click", function onStart() {
       if (options.getState().mode === "settlement-error") settlePendingBattle();
-      else if (options.getState().mode === "endless-settlement-error") abortBattle("endless-retry");
-      else if (options.getState().mode === "endless-result") abortBattle("lobby");
       else if (options.getState().mode === "paused") resumeGame();
       else startSelectedLevel();
     });
@@ -236,17 +235,6 @@
     });
     dom.featurePanel.addEventListener("click", function onFighterUpgradeClick(event) {
       if (handleSettingPanelClick(event)) return;
-      var endlessStart = event.target && event.target.closest ? event.target.closest("[data-endless-start]") : null;
-      if (endlessStart && !endlessStart.disabled && startEndlessMode) {
-        endlessStart.disabled = true;
-        endlessStart.textContent = "正在申请票据…";
-        Promise.resolve(startEndlessMode()).catch(function showEndlessStartError(error) {
-          endlessStart.disabled = false;
-          endlessStart.textContent = "开始挑战";
-          dom.featurePanelBody.textContent = error && error.message ? error.message : "暂时无法开始无尽模式。";
-        });
-        return;
-      }
       if (shared.starWingsGachaView && shared.starWingsGachaView.handleEvent && shared.starWingsGachaView.handleEvent(event, dom)) {
         playSfx("button");
         return;
@@ -255,7 +243,8 @@
         profile: options.getProfile(),
         levels: levels,
         combatPower: calculateTotalPower(),
-        audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null
+        audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null,
+        startEndlessMode: options.startEndlessMode
       })) {
         playSfx("button");
         return;
@@ -323,6 +312,16 @@
       var shopBuy = event.target && event.target.closest ? event.target.closest("[data-shop-buy]") : null;
       if (shopBuy && !shopBuy.disabled) {
         if (!isCloudMode()) {
+          if (shopBuy.dataset.shopBuy === "daily_free_supply" && shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.claimDailyShopItem) {
+            var shopClaim = shared.mainFeaturePanelsView.claimDailyShopItem(options.getProfile(), shopBuy.dataset.shopBuy);
+            if (shopClaim && shopClaim.ok) {
+              playSfx("button");
+              saveProfile();
+              renderLobby();
+              shared.mainFeaturePanelsView.renderPanel("shop", dom, { profile: options.getProfile(), levels: levels });
+            }
+            return;
+          }
           dom.featurePanelBody.textContent = "商店购买仅在云端正式服开放。";
           return;
         }
@@ -334,24 +333,12 @@
         closeFeaturePanel();
         return;
       }
-      var moduleBuy = event.target && event.target.closest ? event.target.closest("[data-module-buy]") : null;
-      if (moduleBuy && !moduleBuy.disabled) {
-        buyWeaponModule(moduleBuy.dataset.moduleBuy);
-        return;
+      if (handleFighterUpgradeClick && handleFighterUpgradeClick(event)) return;
+    });
+    dom.featurePanel.addEventListener("keydown", function onFeaturePanelKeydown(event) {
+      if (shared.eventModeHubView && shared.eventModeHubView.handleKeydown && shared.eventModeHubView.handleKeydown(event, dom)) {
+        playSfx("button");
       }
-      var moduleEquip = event.target && event.target.closest ? event.target.closest("[data-module-equip]") : null;
-      if (moduleEquip && !moduleEquip.disabled) {
-        equipWeaponModule(moduleEquip.dataset.moduleEquip);
-        return;
-      }
-      var moduleUnequip = event.target && event.target.closest ? event.target.closest("[data-module-unequip]") : null;
-      if (moduleUnequip && !moduleUnequip.disabled) {
-        equipWeaponModule(null);
-        return;
-      }
-      var target = event.target && event.target.closest ? event.target.closest("[data-fighter-upgrade]") : null;
-      if (!target || target.disabled) return;
-      upgradeFighterStat(target.dataset.fighterUpgrade);
     });
     dom.featurePanel.addEventListener("click", function closeBackdrop(event) {
       handleProfilePanelClick(event);
@@ -368,23 +355,26 @@
     });
 
     root.addEventListener("keydown", function onKeyDown(event) {
-      var activeSlotIndex = getActiveSlotIndex(event.code);
-      var gameKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space", "KeyP"].indexOf(event.code) >= 0 || activeSlotIndex >= 0;
+      if (options.isExternalBattleActive && options.isExternalBattleActive()) return;
+      var eventCode = battleInput.getCode(event);
+      var activeSlotIndex = battleInput.getActiveSlotIndex(event);
+      var gameKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space", "KeyP"].indexOf(eventCode) >= 0 || activeSlotIndex >= 0;
       if (gameKey) event.preventDefault();
-      keys.add(event.code);
-      if (event.repeat && (event.code === "Space" || event.code === "KeyP" || activeSlotIndex >= 0)) return;
-      if (event.code === "Space" && options.getState().mode === "fight") tryUseDecisiveCommand();
+      if (eventCode) keys.add(eventCode);
+      if (event.repeat && (eventCode === "Space" || eventCode === "KeyP" || activeSlotIndex >= 0)) return;
+      if (eventCode === "Space" && options.getState().mode === "fight") tryUseDecisiveCommand();
       if (activeSlotIndex >= 0 && options.getState().mode === "fight") tryCastActiveSlot(activeSlotIndex);
-      if (event.code === "KeyP") {
+      if (eventCode === "KeyP") {
         if (options.getState().mode === "paused") resumeGame();
         else pauseGame();
       }
     });
 
     root.addEventListener("keyup", function onKeyUp(event) {
-      keys.delete(event.code);
+      keys.delete(battleInput.getCode(event));
     });
     canvas.addEventListener("pointerdown", function onPointerDown(event) {
+      if (canvas.focus) canvas.focus({ preventScroll: true });
       pointer.active = true;
       updatePointer(event);
       canvas.setPointerCapture(event.pointerId);
@@ -400,21 +390,6 @@
       pointer.active = false;
     });
   }
-
-  function getActiveSlotIndex(code) {
-    var keyMap = {
-      Digit1: 0,
-      Digit2: 1,
-      Digit3: 2,
-      Digit4: 3,
-      Numpad1: 0,
-      Numpad2: 1,
-      Numpad3: 2,
-      Numpad4: 3
-    };
-    return Object.prototype.hasOwnProperty.call(keyMap, code) ? keyMap[code] : -1;
-  }
-
 
     return {
       bind: bindEvents,

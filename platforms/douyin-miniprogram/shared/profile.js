@@ -3,9 +3,10 @@
   const assets = scope.assets || {};
   const levelConfig = scope.levels || {};
   const balanceConfig = scope.balance || {};
+  const tacticalConfig = scope.tacticalLoadoutConfig || {};
   const stageHonorSystem = scope.stageHonorSystem || {};
 
-  const SAVE_VERSION = 6;
+  const SAVE_VERSION = 7;
   const ENERGY_MAX = levelConfig.ENERGY_MAX || 120;
   const ENERGY_COST = levelConfig.ENERGY_COST || 5;
   const ENERGY_RECOVER_MS = levelConfig.ENERGY_RECOVER_MS || 5 * 60 * 1000;
@@ -88,6 +89,77 @@
     resources.gold = Math.max(0, Math.floor(Number(resources.gold) || 0)) + credit;
   }
 
+  function migrateLegacyWeaponModules(incomingVersion, nextProfile, resources, migrationFlags) {
+    if (incomingVersion >= 7 || migrationFlags.weaponModulesV7Refunded) return;
+    const legacyIds = Array.isArray(tacticalConfig.LEGACY_WEAPON_MODULE_IDS)
+      ? tacticalConfig.LEGACY_WEAPON_MODULE_IDS
+      : [];
+    const incomingModules = nextProfile.weaponModules || {};
+    const refundableIds = uniqueList(incomingModules.ownedIds).filter(function keepRefundable(id) {
+      return legacyIds.includes(id);
+    });
+    resources.gold += refundableIds.length * 50000;
+    migrationFlags.weaponModulesV7Refunded = true;
+  }
+
+  function getNativeActiveSkillId(shipId) {
+    const ships = Array.isArray(assets.SHIP_ASSETS) ? assets.SHIP_ASSETS : [];
+    const ship = ships.find(function findShip(item) { return item.id === shipId; });
+    return ship && ship.activeSkillId ? String(ship.activeSkillId) : null;
+  }
+
+  function getUnlockedActiveSkillIds(ownedShipIds) {
+    const unlocked = new Set(["phase-shield"]);
+    uniqueList(ownedShipIds).forEach(function unlockNativeSkill(shipId) {
+      const skillId = getNativeActiveSkillId(shipId);
+      if (skillId) unlocked.add(skillId);
+    });
+    return unlocked;
+  }
+
+  function normalizeTacticalLoadouts(nextProfile, ownedShipIds, currentShipId, incomingVersion, autoWeaponLevels) {
+    const activeSlotCount = Math.max(1, Number(tacticalConfig.ACTIVE_SLOT_COUNT) || 4);
+    const autoSlotCount = Math.max(1, Number(tacticalConfig.AUTO_WEAPON_SLOT_COUNT) || 3);
+    const knownAutoWeapons = tacticalConfig.AUTO_WEAPONS || {};
+    const unlockedSkills = getUnlockedActiveSkillIds(ownedShipIds);
+    const incoming = nextProfile.shipSkillLoadouts && typeof nextProfile.shipSkillLoadouts === "object"
+      ? nextProfile.shipSkillLoadouts
+      : {};
+    const result = {};
+
+    uniqueList(ownedShipIds).forEach(function normalizeShipLoadout(shipId) {
+      const raw = incoming[shipId];
+      if (!raw || typeof raw !== "object") return;
+      const seenSkills = new Set();
+      const seenWeapons = new Set();
+      const activeSlots = Array.from({ length: activeSlotCount }, function normalizeActiveSlot(_, index) {
+        const slot = Array.isArray(raw.activeSlots) ? raw.activeSlots[index] : null;
+        const skillId = slot && String(slot.skillId || "");
+        if (!skillId || !unlockedSkills.has(skillId) || seenSkills.has(skillId)) return null;
+        seenSkills.add(skillId);
+        return { skillId, autoEnabled: Boolean(slot.autoEnabled) };
+      });
+      const autoWeaponIds = Array.from({ length: autoSlotCount }, function normalizeAutoSlot(_, index) {
+        const moduleId = Array.isArray(raw.autoWeaponIds) && raw.autoWeaponIds[index]
+          ? String(raw.autoWeaponIds[index])
+          : "";
+        if (!moduleId || !knownAutoWeapons[moduleId] || seenWeapons.has(moduleId) || !(Number(autoWeaponLevels[moduleId]) > 0)) return null;
+        seenWeapons.add(moduleId);
+        return moduleId;
+      });
+      result[shipId] = { activeSlots, autoWeaponIds };
+    });
+
+    if (incomingVersion < 7 && !result[currentShipId]) {
+      const nativeSkillId = getNativeActiveSkillId(currentShipId);
+      const activeSlots = Array.from({ length: activeSlotCount }, function emptyActive() { return null; });
+      const autoWeaponIds = Array.from({ length: autoSlotCount }, function emptyWeapon() { return null; });
+      if (nativeSkillId && unlockedSkills.has(nativeSkillId)) activeSlots[0] = { skillId: nativeSkillId, autoEnabled: false };
+      result[currentShipId] = { activeSlots, autoWeaponIds };
+    }
+    return result;
+  }
+
   function normalizeProfile(nextProfile = {}) {
     const incomingVersion = Number(nextProfile.saveVersion) || 0;
     const incomingStaminaRuleVersion = Math.max(0, Math.floor(Number(nextProfile.staminaRuleVersion) || 0));
@@ -122,15 +194,8 @@
     const upgrades = { fire: 0, armor: 0, engine: 0, bounty: 0, ...(nextProfile.upgrades || {}) };
     const fighterUpgrades = { attack: 1, armorPenetration: 1, hp: 1, ...(nextProfile.fighterUpgrades || {}) };
     migrateLegacyFireUpgrade(incomingVersion, upgrades, fighterUpgrades, resources, player);
-
-    const incomingModules = nextProfile.weaponModules || {};
-    const knownModuleIds = Object.keys(balanceConfig.WEAPON_MODULES || {});
-    const ownedModuleIds = uniqueList(incomingModules.ownedIds).filter(function keepKnownModule(id) {
-      return !knownModuleIds.length || knownModuleIds.includes(id);
-    });
-    const equippedModuleId = ownedModuleIds.includes(incomingModules.equippedId)
-      ? incomingModules.equippedId
-      : null;
+    const migrationFlags = { ...(nextProfile.migrationFlags || {}) };
+    migrateLegacyWeaponModules(incomingVersion, nextProfile, resources, migrationFlags);
 
     const starterRosterVersion = Math.max(0, Math.floor(Number(nextProfile.starterRosterVersion) || 0));
     const incomingOwnedPilots = uniqueList((nextProfile.owned && nextProfile.owned.pilots) || []).filter(function migrateLegacyStarterPilot(id) {
@@ -149,6 +214,10 @@
     scene.pilotId = owned.pilots.includes(scene.pilotId) ? scene.pilotId : LOBBY_DEFAULTS.scene.pilotId;
     scene.shipId = owned.ships.includes(scene.shipId) ? scene.shipId : LOBBY_DEFAULTS.scene.shipId;
     scene.backgroundId = owned.backgrounds.includes(scene.backgroundId) ? scene.backgroundId : LOBBY_DEFAULTS.scene.backgroundId;
+    const autoWeaponLevels = tacticalConfig.normalizeAutoWeaponLevels
+      ? tacticalConfig.normalizeAutoWeaponLevels(nextProfile.autoWeaponLevels)
+      : { weapon_module_04: 0, weapon_module_05: 1, weapon_module_06: 1 };
+    const shipSkillLoadouts = normalizeTacticalLoadouts(nextProfile, owned.ships, scene.shipId, incomingVersion, autoWeaponLevels);
 
     const normalized = {
       ...nextProfile,
@@ -159,7 +228,10 @@
       completed: Array.isArray(nextProfile.completed) ? nextProfile.completed : [],
       upgrades,
       fighterUpgrades,
-      weaponModules: { ownedIds: ownedModuleIds, equippedId: equippedModuleId },
+      shipSkillLoadouts,
+      autoWeaponLevels,
+      migrationFlags,
+      tacticalOperationIds: uniqueList(nextProfile.tacticalOperationIds).slice(-32),
       player,
       resources,
       scene,
@@ -169,6 +241,7 @@
       ,usedRedeemCodes: uniqueList(nextProfile.usedRedeemCodes)
       ,progress: { clearedStageIds: uniqueList(nextProfile.progress?.clearedStageIds), clearedChapterIds: uniqueList(nextProfile.progress?.clearedChapterIds).map(Number).filter(Number.isFinite), stageStars: nextProfile.progress?.stageStars || {}, stageHonors: nextProfile.progress?.stageHonors || {}, storySeenSceneIds: uniqueList(nextProfile.progress?.storySeenSceneIds), perfectClearCount: Math.max(0, Number(nextProfile.progress?.perfectClearCount) || 0), noDamageBossClearCount: Math.max(0, Number(nextProfile.progress?.noDamageBossClearCount) || 0), clearCount: Math.max(0, Number(nextProfile.progress?.clearCount) || 0) }
     };
+    delete normalized.weaponModules;
 
     if (stageHonorSystem.migrateProfileStageHonors) {
       stageHonorSystem.migrateProfileStageHonors(normalized, levelConfig.levels || []);
@@ -188,7 +261,11 @@
       completed: [],
       upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
       fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1 },
-      weaponModules: { ownedIds: [], equippedId: null },
+      shipSkillLoadouts: {},
+      autoWeaponLevels: tacticalConfig.createDefaultAutoWeaponLevels
+        ? tacticalConfig.createDefaultAutoWeaponLevels()
+        : { weapon_module_04: 0, weapon_module_05: 1, weapon_module_06: 1 },
+      migrationFlags: { weaponModulesV7Refunded: true },
       player: { ...LOBBY_DEFAULTS.player },
       resources: { ...LOBBY_DEFAULTS.resources },
       scene: { ...LOBBY_DEFAULTS.scene },
@@ -241,6 +318,8 @@
     normalizeHonorLevel,
     honorLevelToText,
     migrateLegacyFireUpgrade,
+    migrateLegacyWeaponModules,
+    normalizeTacticalLoadouts,
     normalizeProfile,
     createProfile,
     recoverEnergy,

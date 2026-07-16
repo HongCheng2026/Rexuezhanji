@@ -158,7 +158,7 @@
     lobbyFrameWide: uiHudV5Asset("v5-menu-tile-clean-alpha.png"),
     lobbyFrameEntry: uiHudV5Asset("v5-left-tile-alpha.png"),
     lobbyFrameTile: uiHudV5Asset("v5-menu-tile-clean-alpha.png"),
-    lobbyFrameContact: uiHudV5Asset("v6-contact-card-alpha.png"),
+    lobbyFrameContact: uiHudV5Asset("v6-contact-card-emblem-alpha.png"),
     lobbyFrameBattle: uiHudV5Asset("v6-start-button-alpha.png"),
     lobbyFrameChat: uiHudV5Asset("v5-chat-strip.png"),
     lobbyPromoArt: uiHudAsset("star-wings-promo-v2.png"),
@@ -203,6 +203,8 @@
 
   const FEATURE_PANEL_ASSETS = {
     eventHero: runtimeAsset("ui/feature-panels", "event-starport-breakthrough.png"),
+    endlessDarkTideEntryFrame: runtimeAsset("ui/feature-panels", "event-hub-dark-tide-frame-v3.webp"),
+    endlessDarkTideSettlementFrame: runtimeAsset("ui/feature-panels", "endless-dark-tide-report-frame-v3.webp"),
     contactQr: runtimeAsset("ui/contact", "wechat-qr.jpg")
   };
 
