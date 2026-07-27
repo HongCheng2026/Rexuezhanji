@@ -29,7 +29,7 @@ function createDom() {
 test("活动中心使用常驻左侧玩法栏，并切换已注册的真实玩法", () => {
   const previousGame = global.RXGame;
   global.RXGame = {};
-  const hub = loadFresh("src/h5/ui/eventModeHubView.js");
+  const hub = loadFresh("src/h5/UI/FeaturePanels/eventModeHubView.js");
   hub.registerMode({ id: "endless", label: "无尽模式", navSubtitle: "进行中", getFrame: () => "frame.webp", render: () => "ENDLESS" });
   hub.registerMode({ id: "trial", label: "试炼模式", navSubtitle: "开放中", getFrame: () => "trial.webp", render: () => "TRIAL" });
   const dom = createDom();
@@ -37,6 +37,11 @@ test("活动中心使用常驻左侧玩法栏，并切换已注册的真实玩�
   assert.equal(hub.renderPanel(dom, { profile: {} }), true);
   assert.match(dom.featurePanelSlots.innerHTML, /data-feature-back/);
   assert.match(dom.featurePanelSlots.innerHTML, /活动中心/);
+  assert.ok(
+    dom.featurePanelSlots.innerHTML.indexOf("活动中心") <
+      dom.featurePanelSlots.innerHTML.indexOf("data-feature-back"),
+    "返回按钮应位于功能区标题之后，由右上角热区承载"
+  );
   assert.match(dom.featurePanelSlots.innerHTML, /data-event-mode-option="endless"/);
   assert.match(dom.featurePanelSlots.innerHTML, /ENDLESS/);
 
@@ -52,7 +57,7 @@ test("活动中心使用常驻左侧玩法栏，并切换已注册的真实玩�
 test("未注册活动以三个敬请期待占位，不伪造可开始的玩法", () => {
   const previousGame = global.RXGame;
   global.RXGame = {};
-  const hub = loadFresh("src/h5/ui/eventModeHubView.js");
+  const hub = loadFresh("src/h5/UI/FeaturePanels/eventModeHubView.js");
   hub.registerMode({ id: "endless", label: "无尽模式", render: () => "ENDLESS" });
   const dom = createDom();
   hub.renderPanel(dom, { profile: {} });
@@ -65,10 +70,10 @@ test("未注册活动以三个敬请期待占位，不伪造可开始的玩法",
 test("无尽入口仅显示主视觉、战绩、简要规则和开始操作", () => {
   const previousGame = global.RXGame;
   global.RXGame = {};
-  const hub = loadFresh("src/h5/ui/eventModeHubView.js");
-  global.RXGame.assets = { FEATURE_PANEL_ASSETS: { endlessDarkTideEntryFrame: "assets/runtime/ui/feature-panels/event-hub-dark-tide-frame-v3.webp" } };
-  loadFresh("src/h5/endless/endlessModeAssets.js");
-  const endless = loadFresh("src/h5/endless/endlessModeEntryView.js");
+  const hub = loadFresh("src/h5/UI/FeaturePanels/eventModeHubView.js");
+  global.RXGame.assets = { FEATURE_PANEL_ASSETS: { endlessDarkTideEntryFrame: "assets/runtime/event/feature-panels/event-hub-dark-tide-frame-return-right.webp" } };
+  loadFresh("src/h5/Presentation/Endless/endlessModeAssets.js");
+  const endless = loadFresh("src/h5/Presentation/Endless/endlessModeEntryView.js");
   const html = endless.render({ endlessRecord: { bestKills: 6, bestSurvivalSeconds: 199 } }, {});
   assert.equal(hub.getModes().length, 1);
   assert.match(html, /个人最佳/);

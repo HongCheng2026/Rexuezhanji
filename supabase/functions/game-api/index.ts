@@ -100,16 +100,30 @@ const fighterUpgradeCosts: Record<string, number[]> = {
   hp: [0, 0, 325, 475, 560, 615, 665, 705, 745, 775, 805, 835, 860, 885, 905, 925, 945, 965, 985, 1000, 1025, 2500, 2750, 3000, 3250, 3500, 2500, 2750, 3000, 3250, 3500, 6840, 8870, 9845, 10535, 11080, 11535, 11930, 12275, 12585, 12870, 13130, 13370, 13595, 13810, 14005, 14195, 14375, 14545, 14705, 14860, 15010, 15155, 15295, 15430, 15555, 15680, 15805, 15925, 16040, 16150]
 };
 const LEGACY_WEAPON_MODULE_IDS = new Set(["spread-focus", "spread-storm", "laser-prism", "laser-capacitor", "missile-guidance", "missile-warhead"]);
-const ACTIVE_SKILL_SOURCE_SHIP: Record<string, string | null> = {
+const ACTIVE_SKILL_IDS = new Set([
+  "active-summon-wingman",
+  "active-decoy",
+  "active-chain-lightning",
+  "active-black-hole"
+]);
+const AUTO_PROTOCOL_SOURCE_SHIP: Record<string, string | null> = {
   "sky-lock-beam": "ship-s-09",
   "obsidian-gravity-well": "ship-s-08",
   "gold-judgement-buff": "ship-b-04",
   "phase-shield": null
 };
-const AUTO_WEAPON_MODULES: Record<string, { defaultLevel: number; maxLevel: number; costs: number[] }> = {
-  weapon_module_04: { defaultLevel: 0, maxLevel: 9, costs: [0, 50000, 80000, 120000, 180000, 270000, 400000, 600000, 900000, 1350000] },
-  weapon_module_05: { defaultLevel: 1, maxLevel: 9, costs: [0, 50000, 80000, 120000, 180000, 270000, 400000, 600000, 900000, 1350000] },
-  weapon_module_06: { defaultLevel: 1, maxLevel: 9, costs: [0, 50000, 80000, 120000, 180000, 270000, 400000, 600000, 900000, 1350000] }
+const AUTO_WEAPON_MODULES: Record<string, { defaultLevel: number; maxLevel: number; baseGold: number; goldPerLevel: number }> = {
+  weapon_module_04: { defaultLevel: 0, maxLevel: 10, baseGold: 5000, goldPerLevel: 6000 },
+  weapon_module_05: { defaultLevel: 1, maxLevel: 10, baseGold: 6000, goldPerLevel: 7000 },
+  weapon_module_06: { defaultLevel: 1, maxLevel: 10, baseGold: 5000, goldPerLevel: 6000 },
+  "passive-front-spread": { defaultLevel: 0, maxLevel: 10, baseGold: 3000, goldPerLevel: 4000 },
+  "passive-railgun": { defaultLevel: 0, maxLevel: 10, baseGold: 5000, goldPerLevel: 6000 },
+  "passive-shockwave": { defaultLevel: 0, maxLevel: 10, baseGold: 4000, goldPerLevel: 5000 },
+  "passive-chain-lightning": { defaultLevel: 0, maxLevel: 10, baseGold: 4500, goldPerLevel: 5500 },
+  "sky-lock-beam": { defaultLevel: 0, maxLevel: 10, baseGold: 6000, goldPerLevel: 7000 },
+  "obsidian-gravity-well": { defaultLevel: 0, maxLevel: 10, baseGold: 7000, goldPerLevel: 8000 },
+  "gold-judgement-buff": { defaultLevel: 0, maxLevel: 10, baseGold: 5000, goldPerLevel: 6000 },
+  "phase-shield": { defaultLevel: 1, maxLevel: 10, baseGold: 6000, goldPerLevel: 7000 }
 };
 const PILOT_RANK_BY_ID: Record<string, "S" | "A" | "B"> = {
   "pilot-s-lingyan": "S",
@@ -123,7 +137,8 @@ const PILOT_RANK_BY_ID: Record<string, "S" | "A" | "B"> = {
   "pilot-b-sumianxing": "B",
   "pilot-b-xingtao": "B"
 };
-const SHIP_RANK_BY_ID: Record<string, "S" | "A" | "B"> = {
+const SHIP_RANK_BY_ID: Record<string, "SS" | "S" | "A" | "B"> = {
+  "ship-ss-lingguang": "SS",
   "ship-s-09": "S",
   "ship-s-08": "S",
   "ship-b-04": "S",
@@ -135,8 +150,7 @@ const SHIP_RANK_BY_ID: Record<string, "S" | "A" | "B"> = {
   "ship-b-05": "B"
 };
 const PILOT_PRICE_BY_RANK = { B: 30000, A: 120000, S: 900000 } as const;
-const SHIP_PRICE_BY_RANK = { B: 50000, A: 150000, S: 1300000 } as const;
-const ACTIVE_SKILL_BY_SHIP: Record<string, string> = { "ship-s-09": "sky-lock-beam", "ship-s-08": "obsidian-gravity-well", "ship-b-04": "gold-judgement-buff" };
+const SHIP_PRICE_BY_RANK = { B: 50000, A: 150000, S: 1300000, SS: 5000000 } as const;
 const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "gold" | "stamina" | "item"; amount: number; itemId?: string }> }> = {
   SVIP0903: { minLevel: 1, rewards: [{ type: "gold", amount: 5000000 }] },
   RXZJ666: { minLevel: 1, rewards: [{ type: "gold", amount: 30000 }, { type: "stamina", amount: 50 }] },
@@ -148,7 +162,7 @@ const redeemCodes: Record<string, { minLevel: number; rewards: Array<{ type: "go
 function baseProfile() {
   const now = Date.now();
   return {
-    saveVersion: 7,
+    saveVersion: 8,
     staminaRuleVersion: STAMINA_RULE_VERSION,
     starterRosterVersion: 2,
     coins: 0,
@@ -156,9 +170,9 @@ function baseProfile() {
     completed: [] as number[],
     upgrades: { fire: 0, armor: 0, engine: 0, bounty: 0 },
     fighterUpgrades: { attack: 1, armorPenetration: 1, hp: 1 },
-    shipSkillLoadouts: {} as Record<string, { activeSlots: Array<{ skillId: string; autoEnabled: boolean } | null>; autoWeaponIds: Array<string | null> }>,
-    autoWeaponLevels: { weapon_module_04: 0, weapon_module_05: 1, weapon_module_06: 1 },
-    migrationFlags: { weaponModulesV7Refunded: true },
+    shipSkillLoadouts: {} as Record<string, { activeSlots: Array<{ skillId: string; autoEnabled: boolean } | null>; fixedWeaponOverrides: Array<string | null>; autoWeaponIds: Array<string | null> }>,
+    autoWeaponLevels: Object.fromEntries(Object.entries(AUTO_WEAPON_MODULES).map(([id, definition]) => [id, definition.defaultLevel])),
+    migrationFlags: { weaponModulesV7Refunded: true, activeSkillGradesV8Migrated: true, autoSkillLevelsV8Migrated: true },
     player: { uid: "", name: "王牌飞行员", signature: "保持航线，火力覆盖。", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
     resources: { energy: ENERGY_MAX, maxEnergy: ENERGY_MAX, gold: 0, diamonds: 0, lastEnergyAt: now },
     scene: { pilotId: "pilot-b-linzhihan", shipId: "ship-b-01", backgroundId: "bg-hangar-01" },
@@ -181,16 +195,18 @@ function normalizeAutoWeaponLevels(input: any) {
   return result;
 }
 
-function emptySkillLoadout(): { activeSlots: Array<{ skillId: string; autoEnabled: boolean } | null>; autoWeaponIds: Array<string | null> } {
-  return { activeSlots: [null, null, null, null], autoWeaponIds: [null, null, null] };
+function emptySkillLoadout(): { activeSlots: Array<{ skillId: string; autoEnabled: boolean } | null>; fixedWeaponOverrides: Array<string | null>; autoWeaponIds: Array<string | null> } {
+  return { activeSlots: [null, null, null, null], fixedWeaponOverrides: [null, null, null], autoWeaponIds: [null, null, null] };
 }
 
 function unlockedActiveSkillIds(profile: any) {
-  const unlocked = new Set<string>(["phase-shield"]);
-  for (const shipId of Array.isArray(profile.owned?.ships) ? profile.owned.ships : []) {
-    if (ACTIVE_SKILL_BY_SHIP[shipId]) unlocked.add(ACTIVE_SKILL_BY_SHIP[shipId]);
-  }
-  return unlocked;
+  return new Set<string>(ACTIVE_SKILL_IDS);
+}
+
+function ownsAutoSkill(profile: any, skillId: string) {
+  if (!Object.prototype.hasOwnProperty.call(AUTO_PROTOCOL_SOURCE_SHIP, skillId)) return true;
+  const sourceShipId = AUTO_PROTOCOL_SOURCE_SHIP[skillId];
+  return sourceShipId == null || (Array.isArray(profile.owned?.ships) && profile.owned.ships.includes(sourceShipId));
 }
 
 function normalizeShipSkillLoadouts(profile: any, input: any, incomingVersion: number) {
@@ -202,6 +218,12 @@ function normalizeShipSkillLoadouts(profile: any, input: any, incomingVersion: n
     if (!raw || typeof raw !== "object") continue;
     const seenSkills = new Set<string>();
     const seenWeapons = new Set<string>();
+    const normalizeAutoSlot = (value: any) => {
+      const moduleId = String(value || "");
+      if (!AUTO_WEAPON_MODULES[moduleId] || !ownsAutoSkill(profile, moduleId) || seenWeapons.has(moduleId) || !(Number(profile.autoWeaponLevels[moduleId]) > 0)) return null;
+      seenWeapons.add(moduleId);
+      return moduleId;
+    };
     const activeSlots = Array.from({ length: 4 }, (_, index) => {
       const slot = Array.isArray(raw.activeSlots) ? raw.activeSlots[index] : null;
       const skillId = String(slot?.skillId || "");
@@ -209,49 +231,49 @@ function normalizeShipSkillLoadouts(profile: any, input: any, incomingVersion: n
       seenSkills.add(skillId);
       return { skillId, autoEnabled: Boolean(slot.autoEnabled) };
     });
-    const autoWeaponIds = Array.from({ length: 3 }, (_, index) => {
-      const moduleId = Array.isArray(raw.autoWeaponIds) ? String(raw.autoWeaponIds[index] || "") : "";
-      if (!AUTO_WEAPON_MODULES[moduleId] || seenWeapons.has(moduleId) || !(Number(profile.autoWeaponLevels[moduleId]) > 0)) return null;
-      seenWeapons.add(moduleId);
-      return moduleId;
-    });
-    result[shipId] = { activeSlots, autoWeaponIds };
+    const fixedWeaponOverrides = Array.from({ length: 3 }, (_, index) =>
+      normalizeAutoSlot(Array.isArray(raw.fixedWeaponOverrides) ? raw.fixedWeaponOverrides[index] : null));
+    const autoWeaponIds = Array.from({ length: 3 }, (_, index) =>
+      normalizeAutoSlot(Array.isArray(raw.autoWeaponIds) ? raw.autoWeaponIds[index] : null));
+    result[shipId] = { activeSlots, fixedWeaponOverrides, autoWeaponIds };
   }
   if (incomingVersion < 7 && !result[profile.scene.shipId]) {
     const starter = emptySkillLoadout();
-    const nativeSkillId = ACTIVE_SKILL_BY_SHIP[profile.scene.shipId];
-    if (nativeSkillId && unlockedSkills.has(nativeSkillId)) starter.activeSlots[0] = { skillId: nativeSkillId, autoEnabled: false };
     result[profile.scene.shipId] = starter;
   }
   return result;
 }
 
-function validateFighterSkillLoadout(profile: any, shipId: string, activeSlots: any, autoWeaponIds: any) {
+function validateFighterSkillLoadout(profile: any, shipId: string, activeSlots: any, fixedWeaponOverrides: any, autoWeaponIds: any) {
   if (!profile.owned.ships.includes(shipId) || !SHIP_RANK_BY_ID[shipId]) throw new Error("不能为尚未拥有的战机保存配装。");
   if (!Array.isArray(activeSlots) || activeSlots.length !== 4) throw new Error("主动技能槽必须恰好为 4 格。");
+  if (!Array.isArray(fixedWeaponOverrides) || fixedWeaponOverrides.length !== 3) throw new Error("基础武器替换槽必须恰好为 3 格。");
   if (!Array.isArray(autoWeaponIds) || autoWeaponIds.length !== 3) throw new Error("扩展自动武装槽必须恰好为 3 格。");
   const unlockedSkills = unlockedActiveSkillIds(profile);
   const seenSkills = new Set<string>();
   const normalizedActive = activeSlots.map((slot: any) => {
     if (slot == null) return null;
     const skillId = String(slot.skillId || "");
-    if (!Object.prototype.hasOwnProperty.call(ACTIVE_SKILL_SOURCE_SHIP, skillId)) throw new Error("主动技能 ID 不合法。");
+    if (!ACTIVE_SKILL_IDS.has(skillId)) throw new Error("主动技能 ID 不合法。");
     if (!unlockedSkills.has(skillId)) throw new Error("该主动技能尚未解锁。");
     if (seenSkills.has(skillId)) throw new Error("同一战机不能重复装备同一主动技能。");
     seenSkills.add(skillId);
     return { skillId, autoEnabled: Boolean(slot.autoEnabled) };
   });
   const seenWeapons = new Set<string>();
-  const normalizedWeapons = autoWeaponIds.map((value: any) => {
+  const normalizeAutoSlot = (value: any) => {
     if (value == null || value === "") return null;
     const moduleId = String(value);
     if (!AUTO_WEAPON_MODULES[moduleId]) throw new Error("自动武装 ID 不合法。");
+    if (!ownsAutoSkill(profile, moduleId)) throw new Error("尚未拥有该专属自动技能。");
     if (!(Number(profile.autoWeaponLevels[moduleId]) > 0)) throw new Error("请先解锁该自动武装。");
     if (seenWeapons.has(moduleId)) throw new Error("同一战机不能重复装备同一自动武装。");
     seenWeapons.add(moduleId);
     return moduleId;
-  });
-  return { activeSlots: normalizedActive, autoWeaponIds: normalizedWeapons };
+  };
+  const normalizedOverrides = fixedWeaponOverrides.map(normalizeAutoSlot);
+  const normalizedWeapons = autoWeaponIds.map(normalizeAutoSlot);
+  return { activeSlots: normalizedActive, fixedWeaponOverrides: normalizedOverrides, autoWeaponIds: normalizedWeapons };
 }
 
 function normalizeProfile(input: any = {}) {
@@ -273,7 +295,7 @@ function normalizeProfile(input: any = {}) {
     ratings: input.ratings || {}
     ,progress: { ...base.progress, ...(input.progress || {}) }
   };
-  profile.saveVersion = 7;
+  profile.saveVersion = 8;
   profile.staminaRuleVersion = STAMINA_RULE_VERSION;
   profile.starterRosterVersion = 2;
   profile.unlockedLevel = Math.max(1, Math.min(levels.length, Math.floor(Number(profile.unlockedLevel) || 1)));
@@ -306,6 +328,11 @@ function normalizeProfile(input: any = {}) {
   if (!profile.owned.pilots.includes(profile.scene.pilotId)) profile.scene.pilotId = base.scene.pilotId;
   if (!profile.owned.ships.includes(profile.scene.shipId)) profile.scene.shipId = base.scene.shipId;
   profile.autoWeaponLevels = normalizeAutoWeaponLevels(profile.autoWeaponLevels);
+  for (const [skillId, sourceShipId] of Object.entries(AUTO_PROTOCOL_SOURCE_SHIP)) {
+    if (sourceShipId && profile.owned.ships.includes(sourceShipId)) {
+      profile.autoWeaponLevels[skillId] = Math.max(1, Number(profile.autoWeaponLevels[skillId]) || 0);
+    }
+  }
   const migrationAlreadyApplied = Boolean(input.migrationFlags?.weaponModulesV7Refunded);
   if (incomingVersion < 7 && !migrationAlreadyApplied) {
     const legacyIds = Array.from(new Set(
@@ -315,7 +342,12 @@ function normalizeProfile(input: any = {}) {
     ));
     profile.resources.gold += legacyIds.length * 50000;
   }
-  profile.migrationFlags = { ...(profile.migrationFlags || {}), weaponModulesV7Refunded: true };
+  profile.migrationFlags = {
+    ...(profile.migrationFlags || {}),
+    weaponModulesV7Refunded: true,
+    activeSkillGradesV8Migrated: true,
+    autoSkillLevelsV8Migrated: true
+  };
   profile.shipSkillLoadouts = normalizeShipSkillLoadouts(profile, input.shipSkillLoadouts, incomingVersion);
   profile.progress.clearedStageIds = Array.from(new Set(Array.isArray(profile.progress.clearedStageIds) ? profile.progress.clearedStageIds.map(String) : []));
   profile.progress.clearedChapterIds = Array.from(new Set(Array.isArray(profile.progress.clearedChapterIds) ? profile.progress.clearedChapterIds.map(Number).filter(Number.isFinite) : []));
@@ -756,7 +788,7 @@ async function saveFighterSkillLoadout(ctx: Context, body: Json) {
   const { profile, revision } = await loadProfile(ctx);
   let loadout;
   try {
-    loadout = validateFighterSkillLoadout(profile, shipId, body.activeSlots, body.autoWeaponIds);
+    loadout = validateFighterSkillLoadout(profile, shipId, body.activeSlots, body.fixedWeaponOverrides, body.autoWeaponIds);
   } catch (validationError) {
     return error(validationError instanceof Error ? validationError.message : "配装数据不合法。", 400);
   }
@@ -767,21 +799,50 @@ async function saveFighterSkillLoadout(ctx: Context, body: Json) {
 }
 
 async function upgradeAutoWeapon(ctx: Context, body: Json) {
-  const moduleId = String(body.moduleId || "");
+  const moduleId = String(body.moduleId || body.skillId || "");
   const definition = AUTO_WEAPON_MODULES[moduleId];
   if (!definition) return error("自动武装不存在。", 404);
   const { profile, revision } = await loadProfile(ctx);
   profile.autoWeaponLevels = normalizeAutoWeaponLevels(profile.autoWeaponLevels);
+  const sourceShipId = AUTO_PROTOCOL_SOURCE_SHIP[moduleId];
+  if (sourceShipId && !profile.owned?.ships?.includes(sourceShipId)) return error("尚未拥有该专属自动技能。", 403);
   const currentLevel = Math.max(0, Math.floor(Number(profile.autoWeaponLevels[moduleId]) || 0));
   if (currentLevel >= definition.maxLevel) return error("该自动武装已达 MAX。", 409);
   const targetLevel = currentLevel + 1;
-  const cost = Math.max(0, Math.floor(Number(definition.costs[targetLevel]) || 0));
+  const itemId = "auto_weapon_module_purple";
+  const secondaryItemId = "auto_weapon_module_gold";
+  const itemCount = targetLevel;
+  const secondaryItemCount = targetLevel >= 7 ? targetLevel - 6 : 0;
+  const cost = Math.max(0, Math.floor(definition.baseGold + definition.goldPerLevel * (targetLevel - 1)));
+  profile.resources = profile.resources || {};
+  const inventory = profile.resources.inventory = profile.resources.inventory || {};
+  const itemOwned = Math.max(0, Math.floor(Number(inventory[itemId]) || 0));
+  const secondaryOwned = Math.max(0, Math.floor(Number(inventory[secondaryItemId]) || 0));
+  if (itemOwned < itemCount) return error(`自动武器模块不足，还需 ${itemCount - itemOwned} 个。`, 409);
+  if (secondaryOwned < secondaryItemCount) return error(`自动武器核心不足，还需 ${secondaryItemCount - secondaryOwned} 个。`, 409);
   if (!cost) return error("该自动武装无法升级。", 409);
   if (game.profile.getGold(profile) < cost) return error("金币不足。", 409);
+  inventory[itemId] = itemOwned - itemCount;
+  if (secondaryItemCount > 0) inventory[secondaryItemId] = secondaryOwned - secondaryItemCount;
   game.profile.setGold(profile, game.profile.getGold(profile) - cost);
   profile.autoWeaponLevels[moduleId] = targetLevel;
-  const saved = await profileTransaction.commit(ctx, profile, revision, body, "upgrade-auto-weapon", -cost, 0, { moduleId, level: targetLevel });
-  return reply({ profile: publicProfile(saved), cost, moduleId, level: Number(saved.autoWeaponLevels?.[moduleId]) || targetLevel });
+  const saved = await profileTransaction.commit(ctx, profile, revision, body, "upgrade-auto-skill", -cost, 0, {
+    moduleId, level: targetLevel, itemId, itemCount, secondaryItemId, secondaryItemCount
+  });
+  const savedLevel = Number(saved.autoWeaponLevels?.[moduleId]) || targetLevel;
+  return reply({
+    profile: publicProfile(saved),
+    cost,
+    goldCost: cost,
+    moduleId,
+    skillId: moduleId,
+    level: savedLevel,
+    targetGrade: savedLevel,
+    itemId,
+    itemCount,
+    secondaryItemId,
+    secondaryItemCount
+  });
 }
 
 async function saveCosmetics(ctx: Context, body: Json) {
@@ -869,6 +930,8 @@ Deno.serve(async (request) => {
         else if (action === "buy-ship") response = await buyShip(ctx, body);
         else if (action === "save-fighter-skill-loadout") response = await saveFighterSkillLoadout(ctx, body);
         else if (action === "upgrade-auto-weapon") response = await upgradeAutoWeapon(ctx, body);
+        else if (action === "upgrade-auto-weapon-components") response = await upgradeAutoWeapon(ctx, body);
+        else if (action === "upgrade-passive-skill") response = await upgradeAutoWeapon(ctx, body);
         else if (action === "save-cosmetics") response = await saveCosmetics(ctx, body);
         else if (action === "redeem") response = await redeem(ctx, body);
         else if (action === "shop-buy") response = await economyService.buyShopItem(ctx, body);

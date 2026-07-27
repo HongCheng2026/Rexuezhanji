@@ -4,8 +4,8 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
-const scriptPath = path.join(root, "src/shared/campaignStoryScript.js");
-const frameworkPath = path.join(root, "src/shared/campaignStoryFramework.js");
+const scriptPath = path.join(root, "src/h5/World/Story/campaignStoryScript.js");
+const frameworkPath = path.join(root, "src/h5/World/Story/campaignStoryFramework.js");
 
 function loadStoryModules() {
   const previous = global.RXGame;
@@ -17,15 +17,16 @@ function loadStoryModules() {
   return { previous, script, framework };
 }
 
-test("第一季剧本包含十章和四十个必要场景", () => {
+test("第一季剧本包含十章和不少于四十个必要场景", () => {
   const loaded = loadStoryModules();
   try {
     const scenes = loaded.script.STORY_SCENES;
-    assert.equal(loaded.script.version, 2);
+    assert.equal(loaded.script.version, 3);
     assert.equal(loaded.script.CHAPTER_STORY_ARCS.length, 10);
-    assert.equal(scenes.length, 40);
+    assert.ok(scenes.length >= 40, "扩展后场景数不少于40");
     assert.equal(new Set(scenes.map((scene) => scene.sceneId)).size, scenes.length);
 
+    // 验证所有原有必要场景仍然存在
     const required = [
       "prologue_1_pre",
       "prologue_2_pre",
@@ -35,10 +36,14 @@ test("第一季剧本包含十章和四十个必要场景", () => {
     for (let chapter = 1; chapter <= 9; chapter += 1) {
       required.push(`${chapter}_1_pre`, `${chapter}_5_pre`, `${chapter}_10_pre`, `${chapter}_10_post_win`);
     }
-    assert.deepEqual(
-      scenes.map((scene) => scene.sceneId).sort(),
-      required.sort()
-    );
+    for (const id of required) {
+      assert.ok(scenes.find((s) => s.sceneId === id), `必要场景 ${id} 必须存在`);
+    }
+
+    // 验证尾声场景存在
+    for (const epId of ["epilogue_1", "epilogue_2", "epilogue_3"]) {
+      assert.ok(scenes.find((s) => s.sceneId === epId), `尾声场景 ${epId} 必须存在`);
+    }
   } finally {
     global.RXGame = loaded.previous;
   }
@@ -50,11 +55,12 @@ test("所有场景和台词满足可播放结构约束", () => {
     const speakers = new Set(Object.keys(loaded.script.CHARACTERS));
     const sides = new Set(["left", "right", "center"]);
     const modes = new Set(["character", "system", "messiah"]);
+    const triggers = new Set(["pre_stage", "post_win", "epilogue"]);
     for (const scene of loaded.script.STORY_SCENES) {
       assert.ok(scene.title, `${scene.sceneId} 应有标题`);
       assert.ok(scene.mood, `${scene.sceneId} 应有情绪基调`);
       assert.ok(scene.lines.length >= 3 && scene.lines.length <= 5, `${scene.sceneId} 应保持3至5句`);
-      assert.ok(scene.trigger === "pre_stage" || scene.trigger === "post_win", `${scene.sceneId} 触发类型非法`);
+      assert.ok(triggers.has(scene.trigger), `${scene.sceneId} 触发类型非法：${scene.trigger}`);
       for (const line of scene.lines) {
         assert.ok(speakers.has(line.speakerId), `${scene.sceneId} 存在未知角色 ${line.speakerId}`);
         assert.ok(line.speakerName, `${scene.sceneId} 存在空角色名`);
@@ -82,6 +88,10 @@ test("牺牲、取舍和第二季悬念均进入实际可播放场景", () => {
     assert.match(textFor("8_10_post_win"), /完整度0\.7%/);
     assert.match(textFor("9_10_post_win"), /不要开门。那不是我/);
     assert.match(textFor("9_10_post_win"), /四十七个归航信号/);
+    // 尾声场景验证
+    assert.match(textFor("epilogue_1"), /伤亡不是数字/);
+    assert.match(textFor("epilogue_2"), /不要开门/);
+    assert.match(textFor("epilogue_3"), /第一季·归航协议，结束/);
   } finally {
     global.RXGame = loaded.previous;
   }
@@ -90,7 +100,7 @@ test("牺牲、取舍和第二季悬念均进入实际可播放场景", () => {
 test("框架只查询独立剧本并保持旧接口兼容", () => {
   const loaded = loadStoryModules();
   try {
-    assert.equal(loaded.framework.version, 2);
+    assert.equal(loaded.framework.version, 3);
     assert.equal(loaded.framework.STORY_SCENES, loaded.script.STORY_SCENES);
     assert.equal(loaded.framework.getChapterStory(6).shortTitle, "主力决战");
     assert.equal(loaded.framework.getStageStoryScenes({ chapterIndex: 6, stageInChapter: 10 }).length, 2);
@@ -104,16 +114,21 @@ test("框架只查询独立剧本并保持旧接口兼容", () => {
     loaded.framework.markStorySceneSeen(profile, scene.sceneId);
     assert.equal(loaded.framework.isStorySceneSeen(profile, scene.sceneId), true);
     assert.equal(loaded.framework.getNextUnseenStoryScene({ profile, chapterIndex: 1, stageInChapter: 1, trigger: "pre_stage" }), null);
+
+    // 尾声场景查询
+    const epilogue = loaded.framework.getNextUnseenEpilogueScene({});
+    assert.ok(epilogue, "默认应有未播放的尾声场景");
+    assert.equal(epilogue.trigger, "epilogue");
   } finally {
     global.RXGame = loaded.previous;
   }
 });
 
 test("H5 按剧本、框架、兼容层顺序加载", () => {
-  const loader = fs.readFileSync(path.join(root, "src/h5/shared-loader.js"), "utf8");
-  const scriptIndex = loader.indexOf('"campaignStoryScript.js"');
-  const frameworkIndex = loader.indexOf('"campaignStoryFramework.js"');
-  const compatibilityIndex = loader.indexOf('"stageStoryConfig.js"');
+  const loader = fs.readFileSync(path.join(root, "src/h5/Shell/shared-loader.js"), "utf8");
+  const scriptIndex = loader.indexOf('"World/Story/campaignStoryScript.js"');
+  const frameworkIndex = loader.indexOf('"World/Story/campaignStoryFramework.js"');
+  const compatibilityIndex = loader.indexOf('"World/Story/stageStoryConfig.js"');
   assert.ok(scriptIndex >= 0, "独立剧本应注册到加载器");
   assert.ok(scriptIndex < frameworkIndex, "剧本应先于剧情框架加载");
   assert.ok(frameworkIndex < compatibilityIndex, "剧情框架应先于兼容层加载");

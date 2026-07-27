@@ -3,7 +3,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
-const roomModule = require(path.join(root, "src/h5/endless/endlessModeRoomController.js"));
+const roomModule = require(path.join(root, "src/h5/Gameplay/Combat/Endless/endlessModeRoomController.js"));
 
 function makeClassList(initial = []) {
   const values = new Set(initial);
@@ -190,4 +190,55 @@ test("无尽纪录保存失败时保留战报且禁止离开，重试成功后�
     global.requestAnimationFrame = previousRaf;
     global.cancelAnimationFrame = previousCancel;
   }
+});
+
+test("无尽渲染器使用逻辑战场尺寸并将高分辨率缓冲铺满画布", () => {
+  let rendererOptions = null;
+  let transform = null;
+  const context = {
+    imageSmoothingEnabled: false,
+    imageSmoothingQuality: "low",
+    setTransform(...values) { transform = values; }
+  };
+  const canvas = {
+    width: 1440,
+    height: 710,
+    dataset: { logicalWidth: "960", logicalHeight: "473" },
+    getContext() { return context; },
+    addEventListener() {}
+  };
+  const shared = {
+    battleInput: {
+      getCode(event) { return event && event.code || ""; },
+      getActiveSlotIndex() { return -1; }
+    },
+    battleGeometry: {
+      getField() {
+        return { width: 960, height: 473, playerLeft: 42, playerRight: 42, playerTop: 42, playerBottom: 42 };
+      }
+    },
+    canvasRenderer: {
+      create(options) {
+        rendererOptions = options;
+        return { drawScene() {} };
+      }
+    }
+  };
+
+  const controller = roomModule.create({
+    shared,
+    dom: {
+      endlessBattleScreen: makeNode(),
+      endlessBattleUiRoot: makeNode(),
+      endlessSettlementRoot: makeNode(["hidden"])
+    },
+    uiHandle: { canvas }
+  });
+
+  assert.equal(controller.getSnapshot().renderer != null, true);
+  assert.equal(rendererOptions.width, 960);
+  assert.equal(rendererOptions.height, 473);
+  assert.deepEqual(transform, [1.5, 0, 0, 710 / 473, 0, 0]);
+  assert.equal(context.imageSmoothingEnabled, true);
+  assert.equal(context.imageSmoothingQuality, "medium");
 });

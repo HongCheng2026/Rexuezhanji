@@ -4,126 +4,184 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 global.RXGame = {};
-require("../src/shared/balance.js");
-require("../src/shared/levels.js");
-const shipSkills = require("../src/shared/shipSkills.js");
-const tacticalConfig = require("../src/shared/tacticalLoadoutConfig.js");
-const assets = require("../src/shared/assets.js");
-require("../src/shared/stageHonorSystem.js");
-const profileSystem = require("../src/shared/profile.js");
-const tacticalSystem = require("../src/h5/meta/tacticalLoadoutSystem.js");
-const combatStats = require("../src/h5/meta/combatStats.js");
+require("../src/h5/Data/Balance/balance.js");
+require("../src/h5/World/Level/levels.js");
+require("../src/h5/Gameplay/Ability/shipSkills.js");
+require("../src/h5/Data/Config/skillGradeConfig.js");
+const tacticalConfig = require("../src/h5/Gameplay/Fighter/tacticalLoadoutConfig.js");
+require("../src/h5/Presentation/Assets/assets.js");
+require("../src/h5/World/Level/stageHonorSystem.js");
+const profileSystem = require("../src/h5/Gameplay/Player/profile.js");
+const tacticalSystem = require("../src/h5/Gameplay/Fighter/tacticalLoadoutSystem.js");
+const combatStats = require("../src/h5/Gameplay/Fighter/combatStats.js");
 
 function makeOwnedProfile() {
   return profileSystem.normalizeProfile({
-    saveVersion: 7,
+    saveVersion: 8,
     starterRosterVersion: 2,
     player: { level: 30 },
-    resources: { gold: 5000000 },
-    scene: { shipId: "ship-a-06" },
-    owned: { ships: ["ship-a-06", "ship-s-09", "ship-s-08"] },
-    migrationFlags: { weaponModulesV7Refunded: true },
+    resources: { gold: 5000000, inventory: {} },
+    scene: { shipId: "ship-s-09" },
+    owned: { ships: ["ship-a-06", "ship-s-09", "ship-ss-lingguang"] },
+    migrationFlags: { weaponModulesV7Refunded: true, activeSkillGradesV8Migrated: true, autoSkillLevelsV8Migrated: true },
+    activeSkillGrades: {
+      "active-summon-wingman": "D", "active-decoy": "D",
+      "active-chain-lightning": "D", "active-black-hole": "D"
+    },
     autoWeaponLevels: { weapon_module_04: 1, weapon_module_05: 1, weapon_module_06: 1 }
   });
 }
 
-test("侧翼火幕九级数值与购买至 MAX 费用使用需求记录", () => {
-  const stats = tacticalConfig.SIDEWING_LEVEL_STATS.slice(1);
-  assert.deepEqual(stats.map((item) => item.damageMultiplier * 100), [100, 120, 145, 175, 210, 250, 295, 345, 400]);
-  assert.deepEqual(stats.map((item) => item.coverageAngle), [0, 12, 24, 36, 48, 60, 70, 80, 90]);
-  assert.deepEqual(stats.map((item) => item.trajectoryCount), [1, 2, 3, 4, 5, 6, 7, 8, 10]);
-  assert.equal(stats.reduce((sum, item) => sum + item.cost, 0), 3950000);
+function emptyLoadout() {
+  return {
+    activeSlots: [null, null, null, null],
+    fixedWeaponOverrides: [null, null, null],
+    autoWeaponIds: [null, null, null]
+  };
+}
+
+test("侧翼火幕保留前九级策划曲线并在十级获得明显强化", () => {
+  const legacyStats = tacticalConfig.SIDEWING_LEVEL_STATS.slice(1, 10);
+  const levelTen = tacticalConfig.SIDEWING_LEVEL_STATS[10];
+  assert.deepEqual(legacyStats.map((item) => item.damageMultiplier * 100), [100, 120, 145, 175, 210, 250, 295, 345, 400]);
+  assert.deepEqual(legacyStats.map((item) => item.trajectoryCount), [1, 2, 3, 4, 5, 6, 7, 8, 10]);
+  assert.equal(legacyStats.reduce((sum, item) => sum + item.cost, 0), 3950000);
+  assert.equal(levelTen.level, 10);
+  assert.equal(levelTen.trajectoryCount, 12);
+  assert.ok(levelTen.damageMultiplier > legacyStats.at(-1).damageMultiplier);
+  assert.ok(levelTen.fireInterval < legacyStats.at(-1).fireInterval);
 });
 
-test("v6 旧模块只按去重后合法 ID 退款一次，并保留当前 S 战机原生技能", () => {
+test("v6 模块退款只执行一次，旧主动技能迁入自动技能扩展槽", () => {
   const migrated = profileSystem.normalizeProfile({
     saveVersion: 6,
     starterRosterVersion: 2,
     resources: { gold: 1000 },
     scene: { shipId: "ship-s-09" },
     owned: { ships: ["ship-s-09"] },
-    weaponModules: { ownedIds: ["spread-focus", "spread-focus", "laser-prism", "invalid"], equippedId: "spread-focus" }
+    weaponModules: { ownedIds: ["spread-focus", "spread-focus", "laser-prism", "invalid"] }
   });
-  assert.equal(migrated.saveVersion, 7);
+  assert.equal(migrated.saveVersion, 8);
   assert.equal(profileSystem.getGold(migrated), 101000);
   assert.equal(Object.hasOwn(migrated, "weaponModules"), false);
-  assert.equal(migrated.migrationFlags.weaponModulesV7Refunded, true);
-  assert.deepEqual(migrated.shipSkillLoadouts["ship-s-09"].activeSlots, [
-    { skillId: "sky-lock-beam", autoEnabled: false }, null, null, null
-  ]);
-  assert.deepEqual(migrated.shipSkillLoadouts["ship-s-09"].autoWeaponIds, [null, null, null]);
-  assert.deepEqual(migrated.autoWeaponLevels, { weapon_module_04: 0, weapon_module_05: 1, weapon_module_06: 1 });
+  assert.deepEqual(migrated.shipSkillLoadouts["ship-s-09"].activeSlots, [null, null, null, null]);
+  assert.deepEqual(migrated.shipSkillLoadouts["ship-s-09"].autoWeaponIds, ["sky-lock-beam", null, null]);
+  assert.equal(migrated.autoWeaponLevels["sky-lock-beam"], 1);
   const normalizedAgain = profileSystem.normalizeProfile(migrated);
   assert.equal(profileSystem.getGold(normalizedAgain), 101000);
 });
 
-test("主动技能可跨品级战机配置，每台战机的配装相互独立", () => {
+test("主动技能全局养成、按战机独立配装，S 与 SS 战机读取同一全局品级", () => {
   const profile = makeOwnedProfile();
-  tacticalSystem.save(profile, "ship-a-06", {
-    activeSlots: [
-      { skillId: "sky-lock-beam", autoEnabled: true },
-      { skillId: "obsidian-gravity-well", autoEnabled: false },
-      { skillId: "phase-shield", autoEnabled: true },
-      null
-    ],
-    autoWeaponIds: ["weapon_module_04", "weapon_module_05", null]
-  });
-  tacticalSystem.save(profile, "ship-s-09", {
-    activeSlots: [{ skillId: "phase-shield", autoEnabled: false }, null, null, null],
-    autoWeaponIds: ["weapon_module_06", null, null]
-  });
-  assert.equal(profile.shipSkillLoadouts["ship-a-06"].activeSlots[0].skillId, "sky-lock-beam");
-  assert.equal(profile.shipSkillLoadouts["ship-s-09"].activeSlots[0].skillId, "phase-shield");
-
-  profile.scene.shipId = "ship-a-06";
-  const loadout = combatStats.generateBattleLoadout(profile);
-  assert.deepEqual(loadout.abilities.activeSlots.map((item) => item && item.id), ["sky-lock-beam", "obsidian-gravity-well", "phase-shield", null]);
-  assert.equal(loadout.abilities.activeSlots[0].autoEnabled, true);
-  assert.deepEqual(loadout.autoWeapons.fixed.map((item) => item.id), ["weapon_fixed_01", "weapon_fixed_02", "weapon_fixed_03"]);
-  assert.deepEqual(loadout.autoWeapons.extensionSlots.map((item) => item && item.id), ["weapon_module_04", "weapon_module_05", null]);
-  assert.equal(Object.hasOwn(loadout, "equippedWeaponModule"), false);
+  const sLoadout = emptyLoadout();
+  sLoadout.activeSlots[0] = { skillId: "active-summon-wingman", autoEnabled: false };
+  tacticalSystem.save(profile, "ship-s-09", sLoadout);
+  const ssLoadout = emptyLoadout();
+  ssLoadout.activeSlots[0] = { skillId: "active-summon-wingman", autoEnabled: true };
+  tacticalSystem.save(profile, "ship-ss-lingguang", ssLoadout);
+  assert.equal(profile.shipSkillLoadouts["ship-s-09"].activeSlots[0].autoEnabled, false);
+  assert.equal(profile.shipSkillLoadouts["ship-ss-lingguang"].activeSlots[0].autoEnabled, true);
+  profile.activeSkillGrades["active-summon-wingman"] = "S";
+  profile.scene.shipId = "ship-s-09";
+  assert.equal(combatStats.generateBattleLoadout(profile).abilities.activeSlots[0].globalGrade, "S");
+  profile.scene.shipId = "ship-ss-lingguang";
+  assert.equal(combatStats.generateBattleLoadout(profile).abilities.activeSlots[0].globalGrade, "S");
+  const activeSnapshot = combatStats.generateBattleLoadout(profile).abilities.activeSlots[0];
+  assert.equal(activeSnapshot.initialCharges, 1);
+  assert.equal(activeSnapshot.maxCharges, 3);
+  assert.ok(activeSnapshot.rechargeSeconds > 0);
 });
 
-test("配装校验拒绝非法长度、未解锁技能、重复技能和重复武装", () => {
+test("六槽配装校验长度、合法 ID、重复装备和品级槽位规则", () => {
   const profile = makeOwnedProfile();
-  assert.throws(() => tacticalSystem.save(profile, "ship-a-06", { activeSlots: [], autoWeaponIds: [null, null, null] }), /4 格/);
-  assert.throws(() => tacticalSystem.save(profile, "ship-a-06", {
-    activeSlots: [{ skillId: "gold-judgement-buff" }, null, null, null], autoWeaponIds: [null, null, null]
-  }), /未解锁/);
-  assert.throws(() => tacticalSystem.save(profile, "ship-a-06", {
-    activeSlots: [{ skillId: "phase-shield" }, { skillId: "phase-shield" }, null, null], autoWeaponIds: [null, null, null]
-  }), /重复/);
-  assert.throws(() => tacticalSystem.save(profile, "ship-a-06", {
-    activeSlots: [null, null, null, null], autoWeaponIds: ["weapon_module_05", "weapon_module_05", null]
-  }), /重复/);
-  assert.throws(() => tacticalSystem.save(profile, "ship-b-05", {
-    activeSlots: [null, null, null, null], autoWeaponIds: [null, null, null]
-  }), /尚未拥有/);
+  assert.throws(() => tacticalSystem.save(profile, "ship-s-09", { activeSlots: [], fixedWeaponOverrides: [], autoWeaponIds: [] }));
+  const invalid = emptyLoadout();
+  invalid.activeSlots[0] = { skillId: "not-a-real-skill" };
+  assert.throws(() => tacticalSystem.save(profile, "ship-s-09", invalid));
+  const duplicateActive = emptyLoadout();
+  duplicateActive.activeSlots[0] = { skillId: "active-decoy" };
+  duplicateActive.activeSlots[1] = { skillId: "active-decoy" };
+  assert.throws(() => tacticalSystem.save(profile, "ship-s-09", duplicateActive));
+  const duplicateAuto = emptyLoadout();
+  duplicateAuto.fixedWeaponOverrides[0] = "weapon_module_05";
+  duplicateAuto.autoWeaponIds[0] = "weapon_module_05";
+  assert.throws(() => tacticalSystem.save(profile, "ship-s-09", duplicateAuto));
+  const aOverride = emptyLoadout();
+  aOverride.fixedWeaponOverrides[0] = "weapon_module_05";
+  assert.throws(() => tacticalSystem.save(profile, "ship-a-06", aOverride));
 });
 
-test("侧翼火幕从购买到 MAX 逐级扣费，重复 operationId 不二次扣费", () => {
-  const profile = profileSystem.normalizeProfile({
-    saveVersion: 7,
-    starterRosterVersion: 2,
-    resources: { gold: 4000000 },
-    migrationFlags: { weaponModulesV7Refunded: true }
-  });
-  const first = tacticalSystem.upgradeAutoWeapon(profile, "weapon_module_04", "op-1");
-  assert.equal(first.level, 1);
-  assert.equal(first.cost, 50000);
-  const afterFirst = profileSystem.getGold(profile);
-  const duplicate = tacticalSystem.upgradeAutoWeapon(profile, "weapon_module_04", "op-1");
-  assert.equal(duplicate.duplicate, true);
-  assert.equal(profileSystem.getGold(profile), afterFirst);
-  for (let level = 2; level <= 9; level += 1) tacticalSystem.upgradeAutoWeapon(profile, "weapon_module_04", "op-" + level);
-  assert.equal(profile.autoWeaponLevels.weapon_module_04, 9);
-  assert.equal(profileSystem.getGold(profile), 50000);
-  assert.throws(() => tacticalSystem.upgradeAutoWeapon(profile, "weapon_module_04", "op-10"), /MAX/);
+test("黑洞仅允许 SS 及以上战机装配，旧的越级配装不会进入战斗快照", () => {
+  const profile = makeOwnedProfile();
+  const blackHoleLoadout = emptyLoadout();
+  blackHoleLoadout.activeSlots[0] = { skillId: "active-black-hole", autoEnabled: false };
+  assert.throws(
+    () => tacticalSystem.save(profile, "ship-s-09", blackHoleLoadout),
+    /黑洞.*SS/
+  );
+  assert.equal(tacticalSystem.canUseActiveSkill("S", "active-black-hole"), false);
+  assert.equal(tacticalSystem.canUseActiveSkill("SS", "active-black-hole"), true);
+
+  tacticalSystem.save(profile, "ship-ss-lingguang", blackHoleLoadout);
+  profile.scene.shipId = "ship-ss-lingguang";
+  assert.equal(combatStats.generateBattleLoadout(profile).abilities.activeSlots[0].id, "active-black-hole");
+
+  profile.scene.shipId = "ship-s-09";
+  profile.shipSkillLoadouts["ship-s-09"] = blackHoleLoadout;
+  assert.equal(combatStats.generateBattleLoadout(profile).abilities.activeSlots[0], null);
 });
 
-test("相位护盾配置为 3 秒、18 秒冷却和半血自动条件", () => {
-  const shield = shipSkills.getActiveSkill("phase-shield");
-  assert.equal(shield.duration, 3);
-  assert.equal(shield.cooldown, 18);
-  assert.deepEqual(shield.autoCondition, { type: "hpRatioAtMost", value: 0.5 });
+test("三种扩展武器按自己的全局等级写入六槽战斗快照", () => {
+  const profile = makeOwnedProfile();
+  profile.autoWeaponLevels.weapon_module_04 = 3;
+  profile.autoWeaponLevels.weapon_module_05 = 5;
+  profile.autoWeaponLevels.weapon_module_06 = 9;
+  const loadout = emptyLoadout();
+  loadout.autoWeaponIds = ["weapon_module_04", "weapon_module_05", "weapon_module_06"];
+  tacticalSystem.save(profile, "ship-ss-lingguang", loadout);
+  profile.scene.shipId = "ship-ss-lingguang";
+  const battle = combatStats.generateBattleLoadout(profile);
+  assert.deepEqual(battle.autoSkills.slots.slice(3).map((slot) => [slot.id, slot.level]), [
+    ["weapon_module_04", 3], ["weapon_module_05", 5], ["weapon_module_06", 9]
+  ]);
+  assert.equal(battle.autoSkills.slots[3].resolvedStats.trajectoryCount, 3);
+  assert.equal(battle.autoSkills.slots[4].resolvedStats.fireInterval, 2.73);
+  assert.equal(battle.autoSkills.slots[5].resolvedStats.projectileCount, 11);
+});
+
+test("相位护盾已迁入自动技能，一级为 3 秒、18 秒、半血触发", () => {
+  assert.equal(global.RXGame.shipSkills.getActiveSkill("phase-shield"), null);
+  const definition = tacticalConfig.ALL_AUTO_SKILLS["phase-shield"];
+  const stats = tacticalConfig.getAutoSkillLevelStats("phase-shield", 1);
+  assert.equal(stats.duration, 3);
+  assert.equal(stats.fireInterval, 18);
+  assert.deepEqual(definition.autoCondition, { type: "hpRatioAtMost", value: 0.5 });
+});
+
+test("战术技能(被动)等级参数表定义先于声明，levelStats 为数组且可全程解析", () => {
+  const passiveIds = ["passive-front-spread", "passive-railgun", "passive-shockwave", "passive-chain-lightning"];
+  for (const id of passiveIds) {
+    const def = tacticalConfig.ALL_AUTO_SKILLS[id];
+    assert.ok(def, "TACTICAL_SKILLS 应包含 " + id);
+    // 关键回归防护：var 提升曾让 levelStats 捕获到 undefined，导致升级房只剩图标、
+    // 战斗快照里对应槽位为 null（装备不在局内生效）。
+    assert.ok(Array.isArray(def.levelStats), id + " 的 levelStats 必须是数组（防止 var 提升回退）");
+    for (const lvl of [1, 3, 5, 9, 10]) {
+      const stats = tacticalConfig.getAutoSkillLevelStats(id, lvl);
+      assert.ok(stats && typeof stats === "object", id + " L" + lvl + " 必须解析出参数");
+      assert.equal(stats.level, lvl);
+    }
+  }
+});
+
+test("所有局外自动技能均以十级为上限，十级参数可被战斗快照解析", () => {
+  const definitions = tacticalConfig.ALL_AUTO_SKILLS;
+  assert.equal(Object.keys(definitions).length, 11);
+  for (const [id, definition] of Object.entries(definitions)) {
+    assert.equal(definition.maxLevel, 10, id);
+    const levelNine = tacticalConfig.getAutoSkillLevelStats(id, 9);
+    const levelTen = tacticalConfig.getAutoSkillLevelStats(id, 10);
+    assert.equal(levelTen.level, 10, id);
+    assert.ok(levelTen.fireInterval <= levelNine.fireInterval, id + " 的十级射速不得退化");
+  }
 });

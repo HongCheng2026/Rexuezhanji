@@ -1,0 +1,634 @@
+/* =========================================================================
+   战机强化 · 量子战术坞 (Fighter Upgrade / Tactical Dock) — 视觉样式
+   -------------------------------------------------------------------------
+   纯表现层。只引用现有位图资产（--rx-td-* 资源令牌）与 --rx-td-* 设计令牌，
+   不新增/替换任何 PNG，不使用任何 CSS 渐变或内联 SVG
+   （满足 tests/fighterUpgradeUi.test.js 的「仅位图装饰」断言）。
+
+   对齐基线（栅格/色彩/字号）全部驱动于 .fu-dock 上的 --rx-td-* 变量；
+   响应式只覆写变量值，不再逐选择器重写。DOM 结构沿用 fighterUpgradeView.js。
+
+   结构（UX 规格 §1）：
+     左导航 NAV（整列全高）│ 顶栏 TOP（横跨中+右）│ 中区 MIDDLE（弹性）
+                          │                        │ 右区 RIGHT（固定宽）
+                          ├──────── 中区 + 右区 同行 ┤
+                          底栏 BOTTOM（横跨中+右，资源横排等距）
+   ========================================================================= */
+
+/* —— 屏幕容器：16:9 横版，绝对居中铺满 —— */
+.fighter-upgrade-screen {
+  align-items: center;
+  background-color: #00050c;
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  overflow: hidden;
+  position: absolute;
+  z-index: var(--z-panel, 80);
+}
+.fighter-upgrade-screen,
+.fighter-upgrade-screen * { box-sizing: border-box; }
+.fighter-upgrade-screen.hidden { display: none; }
+
+/* —— 挂载点：锁定 16:9，按视口等比缩放 —— */
+.fighter-upgrade-mount {
+  aspect-ratio: 16 / 9;
+  height: min(100vh, 56.25vw);
+  max-height: 100%;
+  max-width: 100%;
+  width: min(100vw, 177.777vh);
+}
+
+/* =========================================================================
+   顶层网格 + 设计令牌（全界面唯一对齐基线）
+   注意：本文件内只允许出现「一次」以 .fu-dock 起始于行首的规则块；
+   媒体查询内的 .fu-dock 必须缩进，避免触发结构性测试（^\.fu-dock\s*\{ 计数）。
+   ========================================================================= */
+.fu-dock {
+  /* —— 对齐基线（三页共用，响应式只改这里）—— */
+  --rx-td-gutter: 12px;
+  --rx-td-nav-w: 132px;
+  --rx-td-detail-w: 420px;
+  --rx-td-header-h: 60px;
+  --rx-td-footer-h: 60px;
+  --rx-td-pad-x: 18px;
+  --rx-td-pad-y: 16px;
+  --rx-td-lib-h: 180px;
+  --rx-td-radar: contain;
+  --rx-td-close-inset: 4px;
+
+  /* —— 色彩系统（一色一义）—— */
+  --rx-td-c-ink: #eaf7ff;          /* 主文字 */
+  --rx-td-c-ink-dim: #9cb8c7;      /* 正文/副文字 */
+  --rx-td-c-blue: #5ec7ef;         /* 主强调（标签/图标/可点） */
+  --rx-td-c-blue-strong: #2e9fdc;  /* 交互蓝（hover/边框） */
+  --rx-td-c-gold: #f2ca68;         /* 唯一动作色（金主按钮） */
+  --rx-td-c-gold-strong: #f0ca64;  /* 主按钮边框/文字 */
+  --rx-td-c-pos: #5be0ad;          /* 正向（下一级/充足） */
+  --rx-td-c-rarity: #9c6bf4;       /* 稀有度（仅品级） */
+  --rx-td-c-divider: #2a6a8a;      /* 统一分隔线 */
+
+  /* —— 字号阶梯（主次：标题 > 身份 > 战斗指数 > 区块标题 > 正文）—— */
+  --rx-td-fs-display: 34px;
+  --rx-td-fs-title: 30px;
+  --rx-td-fs-h2: 20px;
+  --rx-td-fs-h3: 24px;
+  --rx-td-fs-strong: 15px;
+  --rx-td-fs-body: 12px;
+  --rx-td-fs-caption: 10px;
+  --rx-td-fs-eyebrow: 9px;
+
+  background-color: #010812;
+  background-image: var(--rx-td-dock-background);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  color: var(--rx-td-c-ink);
+  display: grid;
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  gap: var(--rx-td-gutter);
+  grid-template-columns: var(--rx-td-nav-w) minmax(0, 1fr);
+  grid-template-rows: var(--rx-td-header-h) minmax(0, 1fr) var(--rx-td-footer-h);
+  height: 100%;
+  overflow: hidden;
+  padding: var(--rx-td-pad-y) var(--rx-td-pad-x);
+  border: 12px solid transparent;
+  border-image-repeat: stretch;
+  border-image-slice: 150;
+  border-image-source: var(--rx-td-panel-frame);
+  border-image-width: 12px;
+  width: 100%;
+}
+
+/* —— 区域底色（去框：仅保留底色块，边框统一移到 .fu-dock 大外框）—— */
+.fu-surface,
+.fu-footer,
+.fu-nav,
+.fu-nav-tab,
+.fu-upgrade-row,
+.fu-active-slot,
+.fu-auto-slot,
+.fu-skill-card {
+  background-color: #020d19;
+}
+
+/* —— 槽位 / 卡片：半透明圆角块，去框后靠底色 + 圆角辨识（覆盖上方 #020d19）—— */
+.fu-upgrade-row {
+  background: rgba(3, 20, 35, .45);
+  border-radius: 3px;
+}
+.fu-active-slot,
+.fu-auto-slot,
+.fu-skill-card {
+  background: rgba(3, 20, 35, .55);
+  border-radius: 3px;
+}
+/* 自动武器槽：纯色背景避免雷达底纹透出不均 */
+.fu-auto-slot { background-color: #0a1c2a; }
+
+/* —— 选中态：金辉光 + 底色高亮 + 文字转金（不再用 --rx-td-panel-frame-selected 位图换框）—— */
+.fu-upgrade-row.is-selected,
+.fu-active-slot.is-selected,
+.fu-auto-slot.is-selected,
+.fu-skill-card.is-selected,
+.fu-nav-tab.is-active {
+  background: rgba(242, 202, 104, .18);
+  box-shadow: inset 0 0 0 1px var(--rx-td-c-gold), 0 0 14px rgba(242, 202, 104, .30);
+}
+.fu-auto-slot.is-selected,
+.fu-skill-card.is-selected,
+.fu-active-slot.is-selected { background: rgba(242, 202, 104, .30); }
+/* 左栏标签选中：无侧边金条，仅用背景高亮 + 外辉光（避免"一条线"观感） */
+.fu-nav-tab.is-active {
+  box-shadow: 0 0 14px rgba(242, 202, 104, .30);
+}
+.fu-upgrade-row.is-selected strong,
+.fu-active-slot.is-selected strong,
+.fu-auto-slot.is-selected strong,
+.fu-skill-card.is-selected strong,
+.fu-nav-tab.is-active strong { color: var(--rx-td-c-gold); }
+
+/* —— 锁定态：去饱和 + 降透明度 —— */
+.is-locked { filter: saturate(.40); opacity: .55; }
+.is-locked .fu-auto-badge { border-color: #3a5a6c; color: #6f93a6; }
+
+/* —— 禁用态（材料/金币不足、网关锁定）：灰化 —— */
+.fighter-upgrade-screen button:disabled { cursor: default; filter: saturate(.42); opacity: .5; }
+.fu-upgrade-row.is-disabled { opacity: .72; }
+
+/* —— 位图图标容器：保持比例、不拉伸 —— */
+.fu-art { display: block; height: 100%; object-fit: contain; width: 100%; }
+
+/* —— 全局按钮基础交互 —— */
+.fighter-upgrade-screen button { font-family: inherit; }
+.fighter-upgrade-screen button:not(:disabled) { cursor: pointer; }
+.fighter-upgrade-screen button:not(:disabled):hover { filter: brightness(1.1); }
+.fighter-upgrade-screen button:focus-visible { outline: 2px solid #f0c766; outline-offset: -4px; }
+
+/* =========================================================================
+   统一按钮规范（UX §4.1 / 美化方案 B.3.4）
+   行内次按钮 = 蓝（.fu-btn）；详情底部主按钮 = 金（.fu-btn--primary）。
+   金主按钮为纯色（不使用渐变，满足测试约束）。
+   ========================================================================= */
+.fu-btn,
+.fu-upgrade-row > button {
+  background-color: #07517d;
+  border: 1px solid var(--rx-td-c-blue-strong);
+  border-radius: 3px;
+  color: var(--rx-td-c-ink);
+  cursor: pointer;
+  font: 12px/1 inherit;
+  min-height: 40px;
+  padding: 6px 12px;
+}
+.fu-btn:hover:not(:disabled),
+.fu-upgrade-row > button:hover:not(:disabled) { filter: brightness(1.08); }
+
+.fu-btn--primary,
+.fu-detail footer button {
+  background-color: var(--rx-td-c-gold);
+  border-color: var(--rx-td-c-gold-strong);
+  color: #2a1c05;
+  font-weight: 800;
+}
+.fu-btn--primary:hover:not(:disabled),
+.fu-detail footer button:hover:not(:disabled) { filter: brightness(1.06); }
+
+/* =========================================================================
+   左导航 NAV（整列全高）
+   ========================================================================= */
+.fu-nav {
+  border-right: 1px solid var(--rx-td-c-divider);
+  display: grid;
+  gap: 12px;
+  grid-column: 1;
+  grid-row: 1 / 4;
+  grid-template-rows: 58px minmax(0, 1fr);
+  min-height: 0;
+  padding: 8px;
+}
+.fu-nav-crest {
+  align-items: center;
+  color: #c8f4ff;
+  display: flex;
+  font-size: 17px;
+  font-weight: 800;
+  justify-content: center;
+  letter-spacing: .12em;
+}
+.fu-nav-tabs {
+  align-content: start;
+  display: grid;
+  gap: 12px;
+  grid-template-rows: repeat(3, 176px);
+  min-height: 0;
+}
+.fu-nav-tab {
+  align-items: center;
+  color: var(--rx-td-c-ink);
+  display: grid;
+  grid-template-rows: 16px 82px 24px 16px;
+  justify-items: center;
+  min-height: 0;
+  padding: 5px;
+  position: relative;
+}
+.fu-nav-index { color: var(--rx-td-c-blue); font-size: 9px; justify-self: start; letter-spacing: .1em; }
+.fu-nav-art { height: 78px; width: 78px; }
+.fu-nav-tab strong { color: var(--rx-td-c-ink); font-size: 14px; }
+.fu-nav-tab small { color: #5797b5; font-size: var(--rx-td-fs-eyebrow); letter-spacing: .18em; }
+.fu-nav-tab.is-active strong { color: var(--rx-td-c-gold); }
+.fu-nav-tab:not(.is-active):hover { filter: brightness(1.12); }
+
+/* =========================================================================
+   顶栏 TOP（横跨中区 + 右区，标题随页变化，关闭钮固定最右）
+   ========================================================================= */
+.fu-header {
+  align-items: center;
+  border-bottom: 1px solid var(--rx-td-c-divider);
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 6px 0 10px;
+}
+.fu-title { align-items: baseline; display: flex; gap: 10px; min-width: 0; }
+.fu-title strong { color: #f3f9ff; font-size: var(--rx-td-fs-title); letter-spacing: .05em; line-height: 1; }
+.fu-title span { color: var(--rx-td-c-blue); font-size: 21px; font-weight: 800; white-space: nowrap; }
+.fu-title small { color: #4d8ba9; font-size: var(--rx-td-fs-eyebrow); letter-spacing: .18em; margin-left: 8px; }
+.fu-close { background: transparent; border: 0; height: 48px; margin-right: var(--rx-td-close-inset); padding: 0; width: 48px; }
+.fu-close img { display: block; height: 100%; object-fit: contain; width: 100%; }
+
+/* =========================================================================
+   页面舞台 + 内页网格（中区弹性 + 右区固定宽）
+   ========================================================================= */
+.fu-page-stage { grid-column: 2; grid-row: 2; min-height: 0; min-width: 0; }
+.fu-page {
+  display: grid;
+  gap: var(--rx-td-gutter);
+  grid-template-columns: minmax(0, 1fr) var(--rx-td-detail-w);
+  height: 100%;
+  min-height: 0;
+}
+.fu-surface { min-height: 0; min-width: 0; overflow: hidden; }
+
+/* =========================================================================
+   01 基础强化页
+   ========================================================================= */
+.fu-base-workbench {
+  display: grid;
+  gap: var(--rx-td-gutter);
+  grid-template-rows: minmax(0, 1.12fr) minmax(0, .88fr);
+  padding: 10px;
+}
+.fu-fighter-hero {
+  background-color: #010a14;
+  background-image: var(--rx-td-matrix-radar);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--rx-td-radar);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 76px;
+  min-height: 0;
+  padding: 12px 18px 8px;
+  position: relative;
+}
+.fu-fighter-visual { align-items: center; display: flex; grid-column: 1; grid-row: 1; justify-content: center; min-height: 0; }
+.fu-fighter-visual img {
+  filter: brightness(1.12) contrast(1.06) saturate(.85) drop-shadow(0 0 20px rgba(75, 188, 238, .34));
+  height: 82%;
+  max-width: 84%;
+  object-fit: contain;
+}
+.fu-combat-index { left: 14px; position: absolute; top: 10px; z-index: 2; max-width: 42%; }
+.fu-combat-index small,
+.fu-combat-index strong,
+.fu-combat-index em { display: block; }
+.fu-combat-index small { color: var(--rx-td-c-blue); font-size: var(--rx-td-fs-eyebrow); letter-spacing: .14em; }
+.fu-combat-index strong { color: var(--rx-td-c-gold); font-size: var(--rx-td-fs-display); line-height: 1.05; }
+.fu-combat-index em { color: var(--rx-td-c-ink-dim); font-size: var(--rx-td-fs-eyebrow); font-style: normal; }
+.fu-stat-capsules { align-self: end; display: grid; gap: 9px; grid-column: 1; grid-row: 2; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fu-stat-capsules > div { align-items: center; background-color: #03111f; border: 1px solid #1d4b64; display: grid; gap: 7px; grid-template-columns: 38px 1fr; grid-template-rows: 1fr 1fr; padding: 8px 13px; }
+.fu-stat-capsules span { grid-row: 1 / 3; height: 36px; width: 36px; }
+.fu-stat-capsules small { align-self: end; color: #78a4b9; font-size: var(--rx-td-fs-eyebrow); }
+.fu-stat-capsules strong { align-self: start; color: var(--rx-td-c-ink); font-size: 19px; line-height: 1; }
+
+.fu-upgrade-stack { display: grid; gap: 7px; grid-template-rows: repeat(3, minmax(0, 1fr)); min-height: 0; }
+.fu-upgrade-row {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 66px 105px 1fr 34px 1fr 116px;
+  min-height: 0;
+  padding: 7px 10px;
+}
+.fu-upgrade-art { height: 58px; width: 58px; }
+.fu-upgrade-name strong,
+.fu-upgrade-name small,
+.fu-upgrade-metric small,
+.fu-upgrade-metric strong { display: block; }
+.fu-upgrade-name strong { color: #eef8ff; font-size: var(--rx-td-fs-strong); }
+.fu-upgrade-name small,
+.fu-upgrade-metric small { color: #719bb0; font-size: var(--rx-td-fs-eyebrow); }
+.fu-upgrade-metric strong { color: #edf7ff; font-size: var(--rx-td-fs-strong); margin-top: 3px; }
+.fu-upgrade-metric.is-next strong { color: var(--rx-td-c-pos); }
+.fu-upgrade-arrow { color: #3d99c5; font-size: 25px; letter-spacing: -.25em; }
+.fu-upgrade-row > button b,
+.fu-upgrade-row > button > span { display: block; }
+.fu-upgrade-row > button b { font-size: 12px; }
+
+.fu-currency { align-items: center; display: inline-flex; gap: 4px; justify-content: center; }
+.fu-currency img { height: 14px; object-fit: contain; width: 14px; }
+.fu-currency strong { color: var(--rx-td-c-gold); font-size: var(--rx-td-fs-caption); }
+
+/* =========================================================================
+   右区详情（基础 / 主动 / 自动 共用骨架）
+   ========================================================================= */
+.fu-detail { border-left: 1px solid var(--rx-td-c-divider); display: grid; gap: 13px; grid-template-rows: 54px auto auto minmax(0, 1fr) 58px; padding: 12px 15px; }
+.fu-skill-detail { grid-template-rows: 54px auto auto minmax(0, 1fr) auto 58px; }
+.fu-detail > header { border-bottom: 1px solid var(--rx-td-c-divider); padding: 1px 4px 10px; }
+.fu-detail > header small,
+.fu-detail > header strong { display: block; }
+.fu-detail > header small { color: var(--rx-td-c-blue); font-size: var(--rx-td-fs-eyebrow); letter-spacing: .18em; }
+.fu-detail > header strong { color: #eff8ff; font-size: var(--rx-td-fs-h2); margin-top: 2px; }
+.fu-detail-identity { align-items: center; display: grid; gap: 16px; grid-template-columns: 150px minmax(0, 1fr); padding: 3px 8px; }
+.fu-detail-identity > span { height: 150px; width: 150px; }
+.fu-detail-identity > div > small { color: var(--rx-td-c-blue); display: block; font-size: var(--rx-td-fs-eyebrow); letter-spacing: .13em; }
+.fu-detail-identity > div > strong { color: var(--rx-td-c-gold); display: block; font-size: var(--rx-td-fs-h3); }
+.fu-detail-identity > div > em { color: var(--rx-td-c-rarity); display: block; font-size: 20px; font-style: normal; font-weight: 800; margin-top: 3px; }
+.fu-detail-identity p,
+.fu-detail-description { color: var(--rx-td-c-ink-dim); font-size: var(--rx-td-fs-body); line-height: 1.65; margin: 0; }
+.fu-detail-description { border-bottom: 1px solid var(--rx-td-c-divider); padding: 0 8px 12px; }
+.fu-detail-requirement {
+  border: 1px solid rgba(255, 203, 102, .42);
+  color: #ffd889;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0 8px;
+  padding: 8px 10px;
+}
+.fu-level-compare { align-items: center; display: grid; grid-template-columns: 1fr 46px 1fr; padding: 4px 10px 12px; text-align: center; }
+.fu-level-compare small,
+.fu-level-compare strong,
+.fu-level-compare em { display: block; }
+.fu-level-compare small { color: #789fb2; font-size: var(--rx-td-fs-caption); }
+.fu-level-compare strong { color: #e9f4fb; font-size: 23px; }
+.fu-level-compare em { color: #e9f4fb; font-size: 31px; font-style: normal; }
+.fu-level-compare b { color: #438fba; font-size: 28px; }
+.fu-level-compare .is-next strong,
+.fu-level-compare .is-next em { color: var(--rx-td-c-pos); }
+.fu-detail-lines { align-content: start; display: grid; gap: 6px; min-height: 0; }
+.fu-detail-grade-bar { align-items: center; color: #6f9db3; display: grid; font-size: 10px; grid-template-columns: 1fr auto 1fr; letter-spacing: .08em; min-height: 24px; padding: 0 8px; }
+.fu-detail-grade-bar b { color: #9fdff4; font-size: 10px; font-weight: 700; text-align: center; }
+.fu-detail-grade-bar span:last-child { color: #62dfad; text-align: right; }
+.fu-detail-lines > span { align-items: center; background-color: #03131f; border-left: 2px solid #2e7498; display: grid; grid-template-columns: 1fr auto; min-height: 38px; padding: 7px 10px; }
+.fu-detail-lines > span b { color: #a8dcef; font-size: var(--rx-td-fs-caption); }
+.fu-detail-lines > span em { color: var(--rx-td-c-pos); font-size: 11px; font-style: normal; }
+.fu-material { align-items: center; background-color: #03131f; border: 1px solid var(--rx-td-c-divider); display: grid; gap: 3px 8px; grid-template-columns: 1fr auto; padding: 9px 12px; }
+.fu-material small { color: #6e99ae; font-size: var(--rx-td-fs-caption); grid-column: 1 / 3; }
+.fu-material strong { color: #edf7ff; font-size: 11px; }
+.fu-material em { color: #62dfad; font-size: 12px; font-style: normal; }
+
+/* 固定动作区：永远贴底，等宽网格；基础页单按钮满宽 */
+.fu-detail footer { align-self: end; display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+.fu-base-detail footer { grid-template-columns: 1fr; }
+.fu-base-detail footer button { width: 100%; }
+.fu-detail footer button { font-size: 12px; }
+
+/* 空状态详情（请先选择一个技能。） */
+.fu-detail--empty { grid-template-rows: 54px 1fr; place-items: center; text-align: center; }
+.fu-detail--empty > p { color: var(--rx-td-c-ink-dim); font-size: var(--rx-td-fs-body); }
+
+/* =========================================================================
+   02 主动技能页
+   ========================================================================= */
+.fu-active-workbench {
+  display: grid;
+  gap: var(--rx-td-gutter);
+  grid-template-rows: minmax(0, 1fr) var(--rx-td-lib-h);
+  padding: 10px;
+}
+.fu-active-matrix {
+  background-color: #010a14;
+  background-image: var(--rx-td-matrix-radar);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--rx-td-radar);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(185px, 27%) minmax(280px, 1fr) minmax(185px, 27%);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  padding: 10px;
+}
+.fu-active-slot {
+  align-items: center;
+  color: #dff4ff;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 10px;
+  position: relative;
+  text-align: left;
+}
+.fu-active-slot--1 { grid-column: 1; grid-row: 1; }
+.fu-active-slot--2 { grid-column: 3; grid-row: 1; }
+.fu-active-slot--3 { grid-column: 1; grid-row: 2; }
+.fu-active-slot--4 { grid-column: 3; grid-row: 2; }
+.fu-slot-index { color: var(--rx-td-c-blue); font-size: 11px; left: 9px; position: absolute; top: 7px; }
+.fu-slot-art { height: 82px; width: 82px; }
+.fu-slot-copy { min-width: 0; }
+.fu-slot-copy strong,
+.fu-slot-copy em { display: block; }
+.fu-slot-copy strong { color: #eff8ff; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fu-slot-copy em { color: var(--rx-td-c-rarity); font-size: 12px; font-style: normal; font-weight: 800; margin-top: 4px; }
+.fu-auto-toggle { bottom: 7px; color: var(--rx-td-c-pos); font-size: 9px; position: absolute; right: 9px; }
+.fu-matrix-ship {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: 12px 4px;
+  pointer-events: none;
+}
+.fu-matrix-ship img {
+  filter: brightness(1.12) contrast(1.06) saturate(.85) drop-shadow(0 0 20px rgba(75, 188, 238, .34));
+  height: 82%;
+  max-width: 84%;
+  object-fit: contain;
+}
+.fu-matrix-ship strong { color: #eff9ff; font-size: 20px; }
+.fu-matrix-ship small { color: var(--rx-td-c-blue); font-size: 9px; letter-spacing: .12em; }
+
+/* =========================================================================
+   技能库（主动 4 列网格 / 自动 横向滚动条）
+   ========================================================================= */
+.fu-skill-library { display: grid; grid-template-rows: 28px minmax(0, 1fr); min-height: 0; }
+.fu-skill-library > header { align-items: center; display: flex; justify-content: space-between; padding: 0 2px; }
+.fu-skill-library > header strong { color: #a9d9ec; font-size: 12px; }
+.fu-skill-library > header small { color: #54a7ca; font-size: var(--rx-td-fs-eyebrow); letter-spacing: .16em; }
+.fu-skill-library > div { display: grid; gap: 7px; min-height: 0; }
+.fu-active-library > div { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* 技能卡：图标(上) / 名称(中) / 品级·装备位(下) 竖向堆叠 —— 天然无重叠
+   §5.3 SSS 重叠修复：图标与文字分属不同网格行，永不叠放；
+   文字 nowrap 并容器 overflow:hidden 裁剪，绝不压到图标或序号。 */
+.fu-skill-card {
+  align-items: center;
+  color: var(--rx-td-c-ink);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 22px 15px;
+  justify-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: 5px;
+}
+.fu-skill-card > span { height: 74px; position: static; width: 82px; z-index: 1; }
+.fu-skill-card > strong { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fu-skill-card > small { color: var(--rx-td-c-pos); font-size: 9px; max-width: 100%; overflow: hidden; position: relative; text-overflow: ellipsis; white-space: nowrap; z-index: 2; }
+.fu-skill-card.is-locked { opacity: .55; }
+.fu-skill-card:not(.is-selected):not(.is-locked):hover { filter: brightness(1.12); }
+
+/* =========================================================================
+   03 自动技能页
+   ========================================================================= */
+.fu-auto-workbench {
+  display: grid;
+  gap: var(--rx-td-gutter);
+  grid-template-rows: minmax(0, 1fr) var(--rx-td-lib-h);
+  padding: 10px;
+}
+.fu-auto-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  padding: 10px 14px;
+  background-color: #010a14;
+  background-image: var(--rx-td-matrix-radar);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: var(--rx-td-radar);
+}
+.fu-auto-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  min-height: 0;
+  width: 100%;
+}
+.fu-auto-slot {
+  align-items: center;
+  color: #dff4ff;
+  display: grid;
+  grid-template-rows: 18px minmax(0, 1fr) 24px 18px;
+  justify-items: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: 7px 10px;
+  position: relative;
+}
+.fu-auto-index { color: #65c4ec; font-size: 13px; justify-self: start; }
+.fu-auto-badge { border: 1px solid #28617c; color: var(--rx-td-c-blue); font-size: 11px; padding: 3px 7px; position: absolute; right: 9px; top: 8px; }
+.fu-auto-art { height: 100px; max-height: 100%; width: 120px; }
+.fu-auto-slot > strong { color: #eef8ff; font-size: 16px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fu-auto-slot > small { color: var(--rx-td-c-pos); font-size: 9px; letter-spacing: .1em; }
+.fu-auto-slot.is-equipped .fu-auto-badge { border-color: #4ec9a6; color: var(--rx-td-c-pos); }
+.fu-auto-slot:not(.is-selected):not(.is-locked):hover { filter: brightness(1.1); }
+
+/* 自动库横向滚动条（§5.1 滚动位置由 JS 局部补丁保留，CSS 仅负责外观） */
+.fu-auto-library-track {
+  display: flex !important;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 3px 8px;
+  scrollbar-color: #327aa2 #02101c;
+  scrollbar-width: thin;
+}
+.fu-auto-library-track::-webkit-scrollbar { height: 8px; }
+.fu-auto-library-track::-webkit-scrollbar-track { background-color: #02101c; background-image: var(--rx-td-scroll-track); background-repeat: repeat-x; background-size: auto 100%; }
+.fu-auto-library-track::-webkit-scrollbar-thumb { background-color: #327aa2; border: 1px solid #6abfe4; }
+.fu-auto-library-track .fu-skill-card { flex: 0 0 126px; }
+
+/* =========================================================================
+   底栏 BOTTOM（资源横排等距，图标与文本 flex/grid 兄弟，绝不叠放 — §5.3/§4.3）
+   ========================================================================= */
+.fu-footer {
+  align-items: center;
+  border-top: 1px solid var(--rx-td-c-divider);
+  display: flex;
+  grid-column: 2;
+  grid-row: 3;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: 4px 14px;
+}
+.fu-resources {
+  align-items: center;
+  background-color: #031323;
+  border: 6px solid transparent;
+  border-image-repeat: stretch;
+  border-image-slice: 90 130 fill;
+  border-image-source: var(--rx-td-resource-tray);
+  border-image-width: 6px;
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  max-width: 100%;
+  min-height: 40px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 14px;
+}
+.fu-resource-item {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  min-width: 0;
+}
+.fu-resource-item img { flex: 0 0 22px; height: 22px; object-fit: contain; width: 22px; }
+.fu-resource-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  justify-content: center;
+  min-height: 28px;
+  min-width: 0;
+}
+.fu-resource-item strong { align-self: flex-start; color: var(--rx-td-c-gold); font-size: 12px; line-height: 1; white-space: nowrap; }
+.fu-resource-item em { align-self: flex-start; color: #729db2; font-size: var(--rx-td-fs-caption); font-style: normal; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* =========================================================================
+   响应式：仅覆写 --rx-td-* 变量与少量图标尺寸；不逐选择器重写布局
+   （.fu-dock 缩进，保证文件内只有一个行首 .fu-dock 规则块）
+   ========================================================================= */
+@media (max-width: 1280px), (max-height: 720px) {
+  .fu-dock {
+    --rx-td-gutter: 8px;
+    --rx-td-nav-w: 104px;
+    --rx-td-detail-w: 330px;
+    --rx-td-header-h: 48px;
+    --rx-td-footer-h: 46px;
+    --rx-td-pad-x: 11px;
+    --rx-td-pad-y: 10px;
+    --rx-td-lib-h: 140px;
+    border-width: 8px;
+    border-image-width: 8px;
+  }
+  .fu-nav-art { height: 64px; width: 64px; }
+  .fu-slot-art { height: 60px; width: 60px; }
+  .fu-auto-art { height: 72px; width: 92px; }
+  .fu-detail-identity > span { height: 110px; width: 110px; }
+  .fu-upgrade-art { height: 42px; width: 42px; }
+  .fu-stat-capsules span { height: 28px; width: 28px; }
+  .fu-skill-card > span { height: 56px; width: 50px; }
+}

@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const viewportModule = require("../src/h5/app/gameViewportController.js");
+const viewportModule = require("../src/h5/Game/Camera/gameViewportController.js");
 
 function createEventTarget() {
   const listeners = new Map();

@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const gatewayModule = require("../src/h5/app/gameGateway.js");
+const gatewayModule = require("../src/h5/Game/Gateway/gameGateway.js");
 
 function createAdapter(label, calls) {
   function record(method, value) {
@@ -23,6 +23,9 @@ function createAdapter(label, calls) {
     upgradeFighter: record("upgradeFighter"),
     buyPilot: record("buyPilot"),
     buyShip: record("buyShip"),
+    promoteUnit: record("promoteUnit"),
+    starUpPilot: record("starUpPilot"),
+    starUpFighter: record("starUpFighter"),
     saveFighterSkillLoadout: record("saveFighterSkillLoadout"),
     upgradeAutoWeapon: record("upgradeAutoWeapon"),
     redeem: record("redeem"),
@@ -110,6 +113,9 @@ test("结算、升级和外观接口完整透传参数", async () => {
   await gateway.upgradeFighter("attack");
   await gateway.buyPilot("pilot-b-bailing");
   await gateway.buyShip("ship-b-01");
+  await gateway.promoteUnit("pilot", "pilot-b-bailing", "pilot_rank_a_token");
+  await gateway.starUpPilot("pilot-ss-heiyue");
+  await gateway.starUpFighter("ship-ss-lingguang");
   await gateway.saveFighterSkillLoadout("ship-b-01", loadout);
   await gateway.upgradeAutoWeapon("weapon_module_04", "operation-1");
   await gateway.redeem("svip0903");
@@ -122,6 +128,9 @@ test("结算、升级和外观接口完整透传参数", async () => {
     ["upgradeFighter", ["attack"]],
     ["buyPilot", ["pilot-b-bailing"]],
     ["buyShip", ["ship-b-01"]],
+    ["promoteUnit", ["pilot", "pilot-b-bailing", "pilot_rank_a_token"]],
+    ["starUpPilot", ["pilot-ss-heiyue"]],
+    ["starUpFighter", ["ship-ss-lingguang"]],
     ["saveFighterSkillLoadout", ["ship-b-01", loadout]],
     ["upgradeAutoWeapon", ["weapon_module_04", "operation-1"]],
     ["redeem", ["svip0903"]],

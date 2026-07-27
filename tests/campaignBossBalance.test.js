@@ -6,8 +6,8 @@ const root = path.resolve(__dirname, "..");
 
 function loadBalanceModules() {
   const previous = global.RXGame;
-  const balancePath = path.join(root, "src/shared/balance.js");
-  const enemyPath = path.join(root, "src/shared/enemyStageBalance.js");
+  const balancePath = path.join(root, "src/h5/Data/Balance/balance.js");
+  const enemyPath = path.join(root, "src/h5/Gameplay/Enemy/enemyStageBalance.js");
   delete require.cache[require.resolve(balancePath)];
   delete require.cache[require.resolve(enemyPath)];
   global.RXGame = {};
@@ -80,7 +80,7 @@ test("普通敌人与无尽 BOSS 不引用章节 BOSS 血量公式", () => {
     assert.equal(normal.damageReductionRate, loaded.enemyStageBalance.getStageDamageReductionRate(9, 10));
     const elite = loaded.enemyStageBalance.getEnemyFinalStats({ chapterIndex: 9, stageInChapter: 5, enemyType: "elite" });
     assert.equal(elite.damageReductionRate, loaded.enemyStageBalance.getStageDamageReductionRate(9, 5));
-    const endlessPath = path.join(root, "src/shared/endlessModeConfig.js");
+    const endlessPath = path.join(root, "src/h5/Gameplay/Combat/Endless/endlessModeConfig.js");
     delete require.cache[require.resolve(endlessPath)];
     const endless = require(endlessPath);
     assert.equal(endless.getRoundStats(1).hp, endless.BASE_BOSS_HP);

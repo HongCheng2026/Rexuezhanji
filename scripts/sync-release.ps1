@@ -29,36 +29,30 @@ function Copy-DirectoryContents([string]$Source, [string]$Destination) {
 
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $SourceH5 = Join-Path $Root "src\h5"
-$SourceShared = Join-Path $Root "src\shared"
-$SourceMiniCommon = Join-Path $Root "src\miniprogram-common"
+$SourceShell = Join-Path $SourceH5 "Shell"
 $RuntimeAssets = Join-Path $Root "assets\runtime"
 $Release = Join-Path $Root "release\netlify-h5"
 $PackageDir = Join-Path $Root "release\packages"
-$Wechat = Join-Path $Root "platforms\wechat-miniprogram"
-$Douyin = Join-Path $Root "platforms\douyin-miniprogram"
 
 Reset-Directory $Root $Release
 Copy-DirectoryContents $SourceH5 $Release
-Copy-DirectoryContents $SourceShared (Join-Path $Release "shared")
-Copy-DirectoryContents $SourceShared $Release
 Copy-DirectoryContents $RuntimeAssets (Join-Path $Release "assets\runtime")
-
-foreach ($platform in @($Wechat, $Douyin)) {
-  if (Test-Path -LiteralPath $platform) {
-    Reset-Directory $Root (Join-Path $platform "shared")
-    Copy-DirectoryContents $SourceShared (Join-Path $platform "shared")
-
-    if (Test-Path -LiteralPath (Join-Path $SourceMiniCommon "profile.js")) {
-      New-Item -ItemType Directory -Path (Join-Path $platform "utils") -Force | Out-Null
-      Copy-Item -LiteralPath (Join-Path $SourceMiniCommon "profile.js") -Destination (Join-Path $platform "utils\profile.js") -Force
-    }
-
-    if (Test-Path -LiteralPath (Join-Path $SourceMiniCommon "assets\images")) {
-      Reset-Directory $Root (Join-Path $platform "assets\images")
-      Copy-DirectoryContents (Join-Path $SourceMiniCommon "assets\images") (Join-Path $platform "assets\images")
-    }
-  }
+$releaseTestPage = Join-Path $Release "Shell\test.html"
+if (Test-Path -LiteralPath $releaseTestPage) {
+  Remove-Item -LiteralPath $releaseTestPage -Force
 }
+$legacyContactQr = Join-Path $Release "assets\runtime\social\contact\wechat-qr.jpg"
+if (Test-Path -LiteralPath $legacyContactQr) {
+  Remove-Item -LiteralPath $legacyContactQr -Force
+}
+
+# Netlify serves release/index.html. The actual game frame remains in Shell/
+# so every source-relative module path stays identical between local and cloud.
+$rootIndex = (Get-Content -LiteralPath (Join-Path $SourceShell "index.html") -Raw -Encoding UTF8)
+$rootIndex = $rootIndex.Replace('data-src="game-frame.html"', 'data-src="Shell/game-frame.html"')
+$rootIndex = $rootIndex.Replace('src="../Game/', 'src="Game/')
+Set-Content -LiteralPath (Join-Path $Release "index.html") -Value $rootIndex -Encoding UTF8
+Copy-Item -LiteralPath (Join-Path $SourceShell "viewport.css") -Destination (Join-Path $Release "viewport.css") -Force
 
 New-Item -ItemType Directory -Path $PackageDir -Force | Out-Null
 $ZipPath = Join-Path $PackageDir "netlify-h5.zip"
@@ -67,4 +61,4 @@ if (Test-Path -LiteralPath $ZipPath) {
 }
 Compress-Archive -Path (Join-Path $Release "*") -DestinationPath $ZipPath -Force
 
-Write-Host "Sync complete: src/h5, src/shared, and assets/runtime copied to release/netlify-h5."
+Write-Host "Sync complete: layered H5 source and runtime assets copied to release/netlify-h5."

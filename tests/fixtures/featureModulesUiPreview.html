@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1600, initial-scale=1">
+  <title>Gacha Inventory UI Fixture</title>
+  <link rel="stylesheet" href="../../src/h5/UI/Gacha/gachaView.css">
+  <link rel="stylesheet" href="../../src/h5/UI/Inventory/inventoryView.css">
+  <style>*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}body{background:#010813 url("../../assets/runtime/story/backgrounds/lobby-command-cockpit-a.png") center/cover no-repeat}#gachaMount,#inventoryMount{height:100%;width:100%}.hidden{display:none!important}</style>
+</head>
+<body>
+  <section id="gachaScreen" class="gacha-screen hidden"><div id="gachaMount"></div></section>
+  <section id="inventoryScreen" class="inventory-screen hidden"><div id="inventoryMount"></div></section>
+  <script>globalThis.RXGame = {};</script>
+  <script src="../../src/h5/UI/Gacha/gachaConfig.js"></script>
+  <script src="../../src/h5/UI/Gacha/gachaView.js"></script>
+  <script src="../../src/h5/UI/Inventory/inventoryCatalog.js"></script>
+  <script src="../../src/h5/UI/Inventory/inventoryView.js"></script>
+  <script>
+    (function renderFixture() {
+      var mode = new URLSearchParams(location.search).get("mode") || "gacha";
+      var assetBase = "../../assets/runtime/";
+      if (mode.indexOf("inventory") === 0) {
+        document.querySelector("#inventoryScreen").classList.remove("hidden");
+        var icons = {
+          energy_small: assetBase + "inventory/items/energy-small.png",
+          energy_large: assetBase + "inventory/items/energy-large.png",
+          attack_core: assetBase + "shop/items/attack-pack.png",
+          armor_core: assetBase + "shop/items/armor-pack.png",
+          auto_weapon_module_purple: assetBase + "shop/items/auto-weapon-module-purple.png",
+          starlink_ticket: assetBase + "shop/items/starlink-ticket-v2.png",
+          stamina_potion: assetBase + "shop/items/energy-potion-inventory.png",
+          sss_fighter_module: assetBase + "inventory/items/sss-weapon-module.png",
+          sss_pilot_medal: assetBase + "inventory/items/sss-pilot-medal.png",
+          pilot_ss_heiyue_copy: assetBase + "pilot/pilot-ss-heiyue.png",
+          ship_ss_lingguang_copy: assetBase + "ship/lobby/ship-lobby-ss-lingguang.png",
+          legacy_relic: assetBase + "inventory/ui/unknown-item.png"
+        };
+        var items = [
+          { id: "energy_large", name: "大体力药水", category: "consumable", rarity: "purple", description: "恢复 80 点体力。体力已满时不会消耗。", source: "商店、抽卡精英奖励", use: { energy: 80 }, quantity: 3, icon: icons.energy_large },
+          { id: "energy_small", name: "小体力药水", category: "consumable", rarity: "blue", description: "恢复 30 点体力。", source: "商店、抽卡标准奖励", use: { energy: 30 }, quantity: 8, icon: icons.energy_small },
+          { id: "stamina_potion", name: "体力药水", category: "consumable", rarity: "blue", description: "恢复 100 点体力。", source: "商店、抽卡标准奖励", use: { energy: 100 }, quantity: 5, icon: icons.stamina_potion },
+          { id: "attack_core", name: "攻击核心", category: "material", rarity: "purple", description: "用于提升战机攻击模块。", source: "商店、抽卡", quantity: 12, icon: icons.attack_core },
+          { id: "armor_core", name: "装甲核心", category: "material", rarity: "purple", description: "用于提升战机装甲模块。", source: "商店、抽卡", quantity: 7, icon: icons.armor_core },
+          { id: "auto_weapon_module_purple", name: "自动武器模块", category: "material", rarity: "purple", description: "紫阶自动武器模块，用于解锁与进阶自动武装。", source: "商店（金币）", quantity: 3, icon: icons.auto_weapon_module_purple, sellPrice: 10000, sellCurrency: "gold" },
+          { id: "starlink_ticket", name: "星链研究券", category: "ticket", rarity: "gold", description: "星穹之翼抽卡专用研究凭证。", source: "商店、活动", quantity: 18, icon: icons.starlink_ticket },
+          { id: "sss_fighter_module", name: "SSS战机模组", category: "material", rarity: "rainbow", description: "用于 SS 战机升阶与 SSS 战机升星。", source: "抽卡传奇奖励（二选一）", quantity: 2, icon: icons.sss_fighter_module },
+          { id: "sss_pilot_medal", name: "SSS级战姬奖章", category: "material", rarity: "rainbow", description: "SS 战姬升级为 SSS 的核心道具。", source: "抽卡传奇奖励（二选一）", quantity: 1, icon: icons.sss_pilot_medal },
+          { id: "pilot_ss_heiyue_copy", name: "SS 战姬本体·黑月", category: "archive", rarity: "rainbow", description: "重复获得的黑月完整本体，后续用于升星或升阶；不可转换。", source: "重复获得 SS 战姬", quantity: 2, icon: icons.pilot_ss_heiyue_copy },
+          { id: "ship_ss_lingguang_copy", name: "SS 战机本体·凌光", category: "archive", rarity: "rainbow", description: "重复获得的凌光完整本体，后续用于升星或升阶；不可转换。", source: "重复获得 SS 战机", quantity: 3, icon: icons.ship_ss_lingguang_copy },
+          { id: "legacy_relic", name: "未知物资", category: "material", rarity: "blue", description: "旧版本物资，安全保留。", source: "历史存档", quantity: 2, icon: icons.legacy_relic, unknown: true }
+        ];
+        var selected = mode === "inventory" ? items[0] : items.find(function (item) { return item.id === "auto_weapon_module_purple"; });
+        RXGame.inventoryView.create({ mount: document.querySelector("#inventoryMount"), catalog: RXGame.inventoryCatalog, uiAssets: {
+          terminalBackground: assetBase + "inventory/ui/terminal-background.png",
+          categoryAll: assetBase + "inventory/ui/category-all.png",
+          categoryConsumable: assetBase + "inventory/ui/category-consumable.png",
+          categoryMaterial: assetBase + "inventory/ui/category-material.png",
+          categoryTicket: assetBase + "inventory/ui/category-ticket.png",
+          categoryArchive: assetBase + "inventory/ui/category-archive.png",
+          resourceGold: assetBase + "Shared/lobby-icons/gold-coin.png",
+          resourceDiamond: assetBase + "Shared/lobby-icons/diamond-gem.png",
+          resourceTicket: assetBase + "shop/items/starlink-ticket-v2.png"
+        } }).render({
+          filter: "all", items: items, selectedId: selected.id, selected: selected, cloudMode: false, message: "", isError: false,
+          feedback: mode === "inventory-receipt" ? { kind: "sell", currency: "gold", amount: 10000 } : null,
+          resources: { gold: 128600, diamonds: 960, tickets: 18 }
+        });
+        return;
+      }
+      document.querySelector("#gachaScreen").classList.remove("hidden");
+      var tiers = ["ultimate", "legendary", "elite", "standard", "standard", "elite", "standard", "standard", "legendary", "standard"];
+      var rewardIds = ["pilot-ss-heiyue", "sss_fighter_module", "auto_weapon_module_purple", "gold_10000", "stamina_potion", "gold_30000", "gold_50000", "sss_pilot_medal", "active_weapon_module"];
+      var labels = ["SS 战姬 · 黑月", "SSS战机模组 ×1", "自动武器模块 ×1", "金币 ×10,000", "体力药水 ×1", "金币 ×30,000", "金币 ×50,000", "SSS级战姬奖章 ×1", "武器模组 ×1"];
+      var results = tiers.map(function (tier, index) { return { tier: tier, reward: { id: rewardIds[index], label: labels[index], quantity: 1 } }; });
+      var rewardIcons = {
+        "pilot-ss-heiyue": assetBase + "pilot/pilot-ss-heiyue.png",
+        "ship-ss-lingguang": assetBase + "ship/lobby/ship-lobby-ss-lingguang.png",
+        "sss_fighter_module": assetBase + "inventory/items/sss-weapon-module.png",
+        "sss_pilot_medal": assetBase + "inventory/items/sss-pilot-medal.png",
+        "active_weapon_module": assetBase + "shop/items/active-skill-module-a.png",
+        "auto_weapon_module_purple": assetBase + "shop/items/auto-weapon-module-purple.png",
+        "tactical_core": assetBase + "shop/items/tactical-core.png",
+        "gold_10000": assetBase + "shop/items/gold-small.png",
+        "gold_30000": assetBase + "shop/items/gold-medium.png",
+        "gold_50000": assetBase + "shop/items/gold-large.png",
+        "stamina_potion": assetBase + "shop/items/energy-potion-inventory.png"
+      };
+      var history = Array.from({ length: 100 }, function (_, index) {
+        var rewardIndex = index % rewardIds.length;
+        return { drawNumber: 640 - index, tier: tiers[rewardIndex], rewardId: rewardIds[rewardIndex], label: labels[rewardIndex], quantity: 1, at: Date.now() - index * 60000 };
+      });
+      RXGame.gachaView.create({
+        mount: document.querySelector("#gachaMount"), config: RXGame.gachaConfig,
+        uiAssets: { backdrop: assetBase + "gacha/ui/gacha-backdrop.png", summonDevice: assetBase + "gacha/ui/summon-device.png", cardBlue: assetBase + "gacha/ui/card-blue.png", cardPurple: assetBase + "gacha/ui/card-purple.png", cardGold: assetBase + "gacha/ui/card-gold.png", cardUltimate: assetBase + "gacha/ui/card-rainbow.png", ultimateBurst: assetBase + "gacha/ui/ultimate-burst.png", unknownReward: assetBase + "inventory/ui/unknown-item.png", resourceTicket: assetBase + "shop/items/starlink-ticket-v2.png", resourceDiamond: assetBase + "Shared/lobby-icons/diamond-gem.png", rewardIcons: rewardIcons }
+      }).render({
+        state: { target: "pilot", pity: 36, history: history }, tickets: 18, diamonds: 960, cloudMode: false,
+        targets: { pilot: { name: "黑月", codeName: "蚀夜", src: assetBase + "pilot/pilot-ss-heiyue.png", owned: false }, ship: { name: "凌光", codeName: "零界", src: assetBase + "ship/lobby/ship-lobby-ss-lingguang.png", owned: false } },
+        results: mode === "gacha-main" || mode === "gacha-topup" ? [] : results, lastDrawCount: 10,
+        pendingTopUp: mode === "gacha-topup" ? { count: 10, ticketCost: 9, missingTickets: 5, diamondCost: 600, canAfford: true } : null,
+        message: mode === "gacha-topup" ? "研究券不足：还差 5 张，可用 600 钻石补足。" : "跃迁完成，奖励已写入当前存档。", isError: false
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, "..");
 
 function loadCollisionSystem() {
   const previous = global.RXGame;
-  const collisionPath = path.join(root, "src/h5/battle/collisionSystem.js");
+  const collisionPath = path.join(root, "src/h5/Gameplay/Combat/collisionSystem.js");
   delete require.cache[require.resolve(collisionPath)];
   global.RXGame = { levels: {}, fxSystem: { burst() {}, shockwave() {} } };
   return { previous, collisionSystem: require(collisionPath) };

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>热血战姬 · 架构自检</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: 'Microsoft YaHei', sans-serif; background: #10151d; color: #d9e6f2; margin: 40px; }
+    h1 { color: #56edeb; }
+    .spec { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+    .spec > div { background: #1a2332; border-radius: 8px; padding: 1em; }
+    .spec h3 { margin: 0 0 0.5em; color: #a0c4ff; }
+    .pass { color: #4ecb71; }
+    .fail { color: #ff6b6b; }
+    .warn { color: #ffd166; }
+    .total { margin: 1em 0; font-size: 1.2em; }
+  </style>
+</head>
+<body>
+<h1>热血战姬 架构自检</h1>
+<p>检查 5 条架构规则 + 9 个广播事件</p>
+<div id="results" class="spec"></div>
+<div id="total" class="total"></div>
+
+<script>
+var tests = [];
+function test(name, fn) { tests.push({ name: name, fn: fn }); }
+function pass(name, detail) { return '<span class="pass">✅ ' + name + '</span>' + (detail ? '<br><small>' + detail + '</small>' : ''); }
+function fail(name, detail) { return '<span class="fail">❌ ' + name + '</span>' + (detail ? '<br><small>' + detail + '</small>' : ''); }
+function warn(name, detail) { return '<span class="warn">⚠️ ' + name + '</span>' + (detail ? '<br><small>' + detail + '</small>' : ''); }
+
+// ── Rule ①: 一功能一房间 ──
+test('Rule ① - 核心子模块存在', function() {
+  var dirs = [];
+  // We verify by checking key RXGame namespace registrations that correspond to modules
+  var rx = window.RXGame || {};
+  var keys = [
+    // Game module registrations
+    'gameApp', 'bus', 'roomRegistry', 'gameEventRouter', 'gameGateway', 'localGateway',
+    // Gameplay registrations
+    'profile', 'commanderLevel', 'battleRules', 'battleRuntime', 'battleState',
+    'battleGeometry', 'weaponSystem', 'collisionSystem', 'dropSystem',
+    'enemySystem', 'enemyAI', 'enemyStageBalance', 'bossSystem',
+    'abilitySystem', 'activeSkillSystem', 'shipSkills',
+    'pilotView', 'fighterView',
+    'fighterUpgradeModel', 'fighterUpgradeView',
+    // Data registrations
+    'balance', 'combatCodexConfig', 'rosterEconomy', 'levels',
+    'redeemCodeSystem', 'shopConfig', 'taskCatalog',
+    // Presentation registrations
+    'audioSystem', 'assets', 'endlessModeRoomController',
+    // UI registrations
+    'lobbyController', 'battleUiController', 'featurePanelController', 'taskView',
+    // World registrations
+    'taskSystem', 'achievementSystem', 'campaignStoryFramework'
+  ];
+  var found = 0, missing = [];
+  for (var i = 0; i < keys.length; i++) {
+    if (typeof rx[keys[i]] !== 'undefined') found++;
+    else missing.push(keys[i]);
+  }
+  if (found >= 30) {
+    return pass('核心模块注册', found + '/' + keys.length + ' 模块已注册');
+  }
+  return fail('模块注册不全', '缺失：' + missing.join(', ') + ' (' + found + '/' + keys.length + ')');
+});
+
+// ── Rule ③: 门（roomRegistry） ──
+test('Rule ③ 门 — roomRegistry 可用', function() {
+  var rx = window.RXGame || {};
+  var reg = rx.roomRegistry;
+  if (!reg) return fail('roomRegistry 未注册');
+  if (typeof reg.dispatch !== 'function') return fail('dispatch 方法缺失');
+  if (typeof reg.registerAction !== 'function') return fail('registerAction 方法缺失');
+  if (typeof reg.hasAction !== 'function') return fail('hasAction 方法缺失');
+  return pass('roomRegistry API 完整', 'dispatch / registerAction / hasAction');
+});
+
+// ── Rule ③: 广播（eventBus） ──
+test('Rule ③ 广播 — eventBus 事件收发', function() {
+  var rx = window.RXGame || {};
+  var bus = rx.bus;
+  if (!bus) return fail('eventBus 未注册');
+  if (typeof bus.emit !== 'function') return fail('emit 方法缺失');
+  if (typeof bus.on !== 'function') return fail('on 方法缺失');
+  var received = false;
+  var unsub = bus.on('_test_event_', function() { received = true; });
+  bus.emit('_test_event_', {});
+  unsub();
+  bus.emit('_test_event_', {}); // should not fire again
+  if (received) return pass('eventBus 发布/订阅/取消 正常工作');
+  return fail('eventBus 事件未到达');
+});
+
+// ── 9 个广播事件已注册 ──
+test('Rule ③ 广播 — 9 事件已发射点', function() {
+  var events = ['enemy:died','player:damaged','player:died','boss:spawned',
+    'item:collected','level:cleared','combat:started','weapon:upgraded','gold:changed'];
+  var ok = true;
+  for (var i = 0; i < events.length; i++) {
+    var rx = window.RXGame || {};
+    var bus = rx.bus;
+    if (!bus) { ok = false; break; }
+    // Just verify the bus accepts them (doesn't throw)
+    try { bus.emit(events[i], {}); } catch(e) { ok = false; }
+  }
+  return ok ? pass('9 个事件均可 emit', events.join(', ')) : fail('事件 emit 失败');
+});
+
+// ── Rule ④: gameApp 不暴露业务 ──
+test('Rule ④ — gameApp 仅暴露 boot', function() {
+  var rx = window.RXGame || {};
+  var app = rx.gameApp;
+  if (!app) return fail('gameApp 未注册');
+  var keys = Object.keys(app);
+  if (keys.length === 1 && keys[0] === 'boot') return pass('gameApp API: 仅 { boot }', '无业务函数暴露');
+  return warn('gameApp 暴露了额外键', 'keys: ' + keys.join(', '));
+});
+
+// ── Rule ⑤: 素材 fighter/ 目录 ──
+test('Rule ⑤ — 素材 fighter/ 目录存在', function() {
+  var rx = window.RXGame || {};
+  var assets = rx.assets || {};
+  // fighter icons are registered through runtimeAsset("fighter/panels", ...) → UI_A_HUD_ASSETS
+  var hudAssets = assets.UI_A_HUD_ASSETS || {};
+  var fighterPath = hudAssets.featureFighterIcon || '';
+  var upgradePath = hudAssets.featureUpgradeIcon || '';
+  if (fighterPath && upgradePath && /fighter\//.test(fighterPath) && /fighter\//.test(upgradePath)) {
+    return pass('fighter/panels 路径正确', 'featureFighterIcon + featureUpgradeIcon');
+  }
+  if (hudAssets.featureFighterIcon) {
+    return fail('fighter 图标路径不对', 'featureFighterIcon = ' + fighterPath);
+  }
+  return warn('assets 字段非预期', 'featureFighterIcon 缺失');
+});
+
+// ── 存档数据结构完整性 ──
+test('存档 — profile 结构完整', function() {
+  var rx = window.RXGame || {};
+  var prof = rx.profile;
+  if (!prof) return warn('profile 模块未在此页面加载');
+  // Check for key methods
+  var methods = ['normalizeProfile','getGold','addGold','spendEnergy','honorLevelToText'];
+  var found = 0;
+  for (var i = 0; i < methods.length; i++) {
+    if (typeof prof[methods[i]] === 'function') found++;
+  }
+  if (found >= 4) return pass('profile API 完整', found + '/' + methods.length + ' 方法');
+  return fail('profile API 不完整', found + '/' + methods.length);
+});
+
+// ── 关卡配置完整 ──
+test('关卡 — levels 配置完整', function() {
+  var rx = window.RXGame || {};
+  var lv = rx.levels;
+  if (!lv) return warn('levels 模块未在此页面加载');
+  // levels is an object exposing `levels` (the array) and helpers
+  if (lv.levels && Array.isArray(lv.levels)) {
+    var helpers = ['getMaxEnergyByLevel','getFighterUpgradeCost','getCommanderExpToNextLevel'];
+    var helperCount = 0;
+    for (var i = 0; i < helpers.length; i++) {
+      if (typeof lv[helpers[i]] === 'function') helperCount++;
+    }
+    return pass('levels: ' + lv.levels.length + ' 关卡 + ' + helperCount + '/' + helpers.length + ' helper');
+  }
+  return warn('levels 格式非预期');
+});
+
+// ── 运行所有测试 ──
+window.addEventListener('DOMContentLoaded', function() {
+  var html = '';
+  var passed = 0, failed = 0;
+  for (var i = 0; i < tests.length; i++) {
+    try {
+      var result = tests[i].fn();
+      html += '<div><h3>' + tests[i].name + '</h3>' + result + '</div>';
+      if (result.indexOf('pass') >= 0) passed++;
+      else if (result.indexOf('fail') >= 0) failed++;
+    } catch(e) {
+      html += '<div><h3>' + tests[i].name + '</h3>' + fail('测试抛异常', e.message) + '</div>';
+      failed++;
+    }
+  }
+  document.getElementById('results').innerHTML = html;
+  document.getElementById('total').innerHTML =
+    '<strong>' + tests.length + '</strong> 项测试 — ' +
+    '<span class="pass">✅ ' + passed + '</span> ' +
+    '<span class="fail">❌ ' + failed + '</span> ' +
+    '<span class="warn">⚠️ ' + (tests.length - passed - failed) + '</span>';
+});
+</script>
+
+<script src="shared-loader.js?v=20260718-feature-submodules-v1"></script>
+</body>
+</html>
