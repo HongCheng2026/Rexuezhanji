@@ -24,8 +24,6 @@
         ? options.shared.shopConfig.getShopItem(value) : null;
       var purchaseQuote = purchaseItem && shopView && shopView.getPurchaseQuote
         ? shopView.getPurchaseQuote(options.getProfile(), purchaseItem, quantity) : null;
-      var completed = 0;
-      var lastCloudResult = null;
       lock.busy = true;
       var previousText = button.textContent;
       button.disabled = true;
@@ -38,28 +36,17 @@
       options.ensureGameGateway().then(function performCloudAction() {
         var gateway = options.getGameGateway();
         if (!gateway || typeof gateway[method] !== "function") throw new Error("云端接口尚未就绪。");
-        var sequence = Promise.resolve();
-        for (var i = 0; i < quantity; i++) {
-          sequence = sequence.then(function buyNext() { return gateway[method](value); }).then(function rememberResult(result) {
-            if (!result || !result.profile) throw new Error("云端返回的存档无效。");
-            completed += 1;
-            lastCloudResult = result;
-            return result;
-          });
-        }
-        return sequence;
-      }).then(function applyCloudResult() {
-        var result = lastCloudResult;
+        return method === "buyShopItem" ? gateway[method](value, quantity) : gateway[method](value);
+      }).then(function applyCloudResult(result) {
         if (!result || !result.profile) throw new Error("云端返回的存档无效。");
         options.applyGatewayProfile(result.profile);
-        options.saveProfile();
         options.renderLobby();
         if (options.updateHud) options.updateHud(true);
         renderPanel(panel);
         if (method === "buyShopItem" && shopView && shopView.showPurchaseResult) {
           shopView.showPurchaseResult(options.dom.featurePanelSlots, {
             itemId: value,
-            quantity: completed,
+            quantity: Math.max(1, Math.floor(Number(result.quantity) || quantity)),
             price: purchaseQuote ? purchaseQuote.totalPrice : 0
           }, options.shared.assets);
         } else {

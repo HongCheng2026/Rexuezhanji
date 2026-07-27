@@ -9,6 +9,7 @@
     var levels = options.levels || [];
     var assets = options.assets || {};
     var demoConfig = options.demoConfig || { enabled: false };
+    var lastPersistedJson = "";
 
     function cloneProfile(source) {
       try { return JSON.parse(JSON.stringify(source || {})); }
@@ -57,15 +58,23 @@
     function saveProfile(profile) {
       if (demoConfig.enabled) return profile;
       var normalized = normalize(profile);
-      if (shared.profileRuntime && shared.profileRuntime.saveProfile) shared.profileRuntime.saveProfile(normalized);
-      else root.localStorage.setItem(shared.profileRuntime.STORAGE_KEY, JSON.stringify(normalized));
+      persistNormalized(normalized);
       return normalized;
     }
 
     function applyGatewayProfile(nextProfile) {
       var normalized = normalize(nextProfile);
-      root.localStorage.setItem(shared.profileRuntime.STORAGE_KEY, JSON.stringify(normalized));
+      persistNormalized(normalized);
       return normalized;
+    }
+
+    function persistNormalized(normalized) {
+      var serialized = JSON.stringify(normalized);
+      if (serialized === lastPersistedJson) return false;
+      if (shared.profileRuntime && shared.profileRuntime.saveProfile) shared.profileRuntime.saveProfile(normalized);
+      else root.localStorage.setItem(shared.profileRuntime.STORAGE_KEY, serialized);
+      lastPersistedJson = serialized;
+      return true;
     }
 
     function mergeLocalCosmetics(cloudProfile, localProfile) {

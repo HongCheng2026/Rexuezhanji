@@ -14,6 +14,7 @@ function createAdapter(label, calls) {
   return {
     configured: () => true,
     bootstrap: record("bootstrap", { profile: { player: { name: label } } }),
+    syncProfile: record("syncProfile", { profile: { player: { name: label } } }),
     identity: record("identity"),
     startBattle: record("startBattle", { ticket: label + "-ticket" }),
     finishBattle: record("finishBattle"),
@@ -28,6 +29,7 @@ function createAdapter(label, calls) {
     starUpFighter: record("starUpFighter"),
     saveFighterSkillLoadout: record("saveFighterSkillLoadout"),
     upgradeAutoWeapon: record("upgradeAutoWeapon"),
+    buyShopItem: record("buyShopItem"),
     redeem: record("redeem"),
     saveCosmetics: record("saveCosmetics")
   };
@@ -108,6 +110,7 @@ test("结算、升级和外观接口完整透传参数", async () => {
   const loadout = { activeSlots: [null, null, null, null], autoWeaponIds: [null, null, null] };
 
   await gateway.finishBattle("ticket-1", 5, rating, details);
+  await gateway.syncProfile(30000);
   await gateway.sweep(5, 4);
   await gateway.upgrade("fire");
   await gateway.upgradeFighter("attack");
@@ -118,11 +121,13 @@ test("结算、升级和外观接口完整透传参数", async () => {
   await gateway.starUpFighter("ship-ss-lingguang");
   await gateway.saveFighterSkillLoadout("ship-b-01", loadout);
   await gateway.upgradeAutoWeapon("weapon_module_04", "operation-1");
+  await gateway.buyShopItem("gold_small", 5);
   await gateway.redeem("svip0903");
   await gateway.saveCosmetics(profile);
 
   assert.deepEqual(calls.map((item) => [item.method, item.args]), [
     ["finishBattle", ["ticket-1", 5, rating, details]],
+    ["syncProfile", [30000]],
     ["sweep", [5, 4]],
     ["upgrade", ["fire"]],
     ["upgradeFighter", ["attack"]],
@@ -133,6 +138,7 @@ test("结算、升级和外观接口完整透传参数", async () => {
     ["starUpFighter", ["ship-ss-lingguang"]],
     ["saveFighterSkillLoadout", ["ship-b-01", loadout]],
     ["upgradeAutoWeapon", ["weapon_module_04", "operation-1"]],
+    ["buyShopItem", ["gold_small", 5]],
     ["redeem", ["svip0903"]],
     ["saveCosmetics", [profile]]
   ]);

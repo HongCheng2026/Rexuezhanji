@@ -244,6 +244,7 @@
     persistProfileMetadata: function persistProfileMetadata() { return battleFlowController.persistProfileMetadata(); },
     gatewayActionLock: gatewayActionLock,
     ensureGameGateway: ensureGameGateway,
+    syncGatewayProfile: syncGatewayProfile,
     getGameGateway: function getGameGateway() { return gameGateway; },
     applyGatewayProfile: applyGatewayProfile,
     saveProfile: saveProfile,
@@ -377,6 +378,7 @@
       getPilotAsset: getPilotAsset,
       getShipAsset: getShipAsset,
       ensureGameGateway: ensureGameGateway,
+      syncGatewayProfile: syncGatewayProfile,
       applyGatewayProfile: applyGatewayProfile,
       saveProfile: saveProfile,
       renderLobby: lobbyController.renderLobby,
@@ -396,6 +398,7 @@
     pilot: {
       getProfile: function getPilotProfile() { return profile; },
       ensureGameGateway: ensureGameGateway,
+      syncGatewayProfile: syncGatewayProfile,
       getGameGateway: function getPilotGateway() { return gameGateway; },
       applyGatewayProfile: applyGatewayProfile,
       saveProfile: saveProfile,
@@ -409,6 +412,7 @@
       gatewayActionLock: gatewayActionLock,
       getProfile: function getFighterProfile() { return profile; },
       ensureGameGateway: ensureGameGateway,
+      syncGatewayProfile: syncGatewayProfile,
       getGameGateway: function getFighterGateway() { return gameGateway; },
       applyGatewayProfile: applyGatewayProfile,
       saveProfile: saveProfile,
@@ -545,6 +549,16 @@
     if (gatewayCoordinator) return gatewayCoordinator.ensure();
     if (!gatewayReadyPromise) return initializeGameGateway();
     return gatewayReadyPromise;
+  }
+
+  function syncGatewayProfile(maxAgeMs) {
+    return ensureGameGateway().then(function syncReadyGateway(gateway) {
+      if (!gateway || typeof gateway.syncProfile !== "function") return { profile: profile };
+      return gateway.syncProfile(maxAgeMs == null ? 30000 : maxAgeMs);
+    }).then(function applySyncedProfile(result) {
+      if (result && result.profile) applyGatewayProfile(result.profile);
+      return result;
+    });
   }
 
   function createLocalGatewayAdapter() {

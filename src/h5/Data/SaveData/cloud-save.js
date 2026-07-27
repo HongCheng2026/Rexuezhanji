@@ -1,7 +1,12 @@
 (function registerCloudSave(root) {
   const config = root.RXSupabaseConfig;
   const SESSION_KEY = "rexuezhanjiSupabaseSession";
+  const DEFAULT_PROFILE_SNAPSHOT_MAX_AGE = 30_000;
   let session = readSession();
+  let sessionPromise = null;
+  let profileSnapshot = null;
+  let profileSnapshotAt = 0;
+  let profileSyncPromise = null;
 
   function readSession() {
     try {
@@ -57,29 +62,42 @@
   async function ensureSession() {
     if (!configured()) return null;
     if (session?.access_token && Number(session.expires_at || 0) * 1000 > Date.now() + 60_000) return session;
-    if (session?.refresh_token) {
-      try {
-        const refreshed = await request("/auth/v1/token?grant_type=refresh_token", {
-          method: "POST",
-          body: { refresh_token: session.refresh_token },
-          token: null
-        });
-        return saveSession(refreshed);
-      } catch {
-        saveSession(null);
+    if (sessionPromise) return sessionPromise;
+    sessionPromise = (async function establishSession() {
+      if (session?.refresh_token) {
+        try {
+          const refreshed = await request("/auth/v1/token?grant_type=refresh_token", {
+            method: "POST",
+            body: { refresh_token: session.refresh_token },
+            token: null
+          });
+          return saveSession(refreshed);
+        } catch {
+          saveSession(null);
+        }
       }
+      const created = await request("/auth/v1/signup", { method: "POST", body: {}, token: null });
+      return saveSession(created);
+    })();
+    try {
+      return await sessionPromise;
+    } finally {
+      sessionPromise = null;
     }
-    const created = await request("/auth/v1/signup", { method: "POST", body: {}, token: null });
-    return saveSession(created);
   }
 
   async function api(action, payload = {}, options = {}) {
     await ensureSession();
-    return request(`/functions/v1/game-api?action=${encodeURIComponent(action)}`, {
+    const result = await request(`/functions/v1/game-api?action=${encodeURIComponent(action)}`, {
       method: "POST",
       body: payload,
       ...options
     });
+    if (result?.profile) {
+      profileSnapshot = result;
+      profileSnapshotAt = Date.now();
+    }
+    return result;
   }
 
   function createOperationId() {
@@ -90,9 +108,20 @@
     });
   }
 
+  async function syncProfile(maxAgeMs = DEFAULT_PROFILE_SNAPSHOT_MAX_AGE) {
+    const maxAge = Math.max(0, Number(maxAgeMs) || 0);
+    if (profileSnapshot && Date.now() - profileSnapshotAt <= maxAge) return profileSnapshot;
+    return bootstrap();
+  }
+
   async function bootstrap() {
-    await ensureSession();
-    return api("bootstrap");
+    if (profileSyncPromise) return profileSyncPromise;
+    profileSyncPromise = api("bootstrap");
+    try {
+      return await profileSyncPromise;
+    } finally {
+      profileSyncPromise = null;
+    }
   }
 
   async function identity() {
@@ -130,6 +159,7 @@
   root.RXCloud = {
     configured,
     bootstrap,
+    syncProfile,
     identity,
     startBattle: (levelId) => api("start-battle", { levelId }),
     finishBattle: (ticket, levelId, rating) => api("finish-battle", { ticket, levelId, rating }),
@@ -150,7 +180,11 @@
     upgradeActiveSkillGrade: (shipId, slotIndex, targetGrade, operationId = createOperationId()) => api("upgrade-active-skill-grade", { shipId, slotIndex, targetGrade, operationId }, { timeoutMs: 8000 }),
     upgradePassiveSkill: (skillId, operationId = createOperationId()) => api("upgrade-passive-skill", { skillId, operationId }, { timeoutMs: 8000 }),
     redeem: (code) => api("redeem", { code }),
-    buyShopItem: (itemId, operationId = createOperationId()) => api("shop-buy", { itemId, operationId }),
+    buyShopItem: (itemId, quantity = 1, operationId = createOperationId()) => api("shop-buy", {
+      itemId,
+      quantity: Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1))),
+      operationId
+    }),
     promoteUnit: (kind, itemId, tokenId, operationId = createOperationId()) => api("promote-unit", { kind, itemId, tokenId, operationId }),
     starUpPilot: (pilotId, operationId = createOperationId()) => api("pilot-star-up", { pilotId, operationId }),
     starUpFighter: (shipId, operationId = createOperationId()) => api("fighter-star-up", { shipId, operationId }),

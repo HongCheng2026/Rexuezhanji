@@ -24,6 +24,8 @@
     var updateHud = options.updateHud;
     var renderProfilePanel = options.renderProfilePanel;
     var calculateTotalPower = options.calculateTotalPower;
+    var activePanelKey = "";
+    var resourcePanels = { profile: true, shop: true, task: true, achievement: true, redeem: true };
 
     // Social click delegation
     var socialClickState = { options: null };
@@ -76,7 +78,6 @@
           }
         });
         applyGatewayProfile(result.profile);
-        saveProfile();
         renderLobby();
         renderChapterSelect();
         updateHud();
@@ -86,8 +87,14 @@
       });
     }
 
-  function openFeaturePanel(key) {
+  function openFeaturePanel(key, skipModuleSync) {
+    activePanelKey = key;
     syncProfile();
+    if (!skipModuleSync && resourcePanels[key] && options.syncGatewayProfile) {
+      Promise.resolve(options.syncGatewayProfile(30000)).then(function renderSyncedPanel() {
+        if (activePanelKey === key) openFeaturePanel(key, true);
+      }).catch(function keepCurrentSnapshot() {});
+    }
     if (dom.featurePanelTitle) dom.featurePanelTitle.classList.remove("event-mode-title");
     if (key === "profile") {
       renderProfilePanel();
@@ -189,6 +196,7 @@
       shared.mainFeaturePanelsView.stopChatPolling(dom);
     }
     socialClickState.options = null;
+    activePanelKey = "";
     if (dom.featurePanel) dom.featurePanel.classList.add("hidden");
     if (dom.lobbyScreen) dom.lobbyScreen.classList.remove("panel-open", "shop-panel-open");
   }

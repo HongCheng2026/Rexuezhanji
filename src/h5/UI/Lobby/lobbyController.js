@@ -288,7 +288,6 @@
     }).then(function onSweepComplete(response) {
       if (response && response.profile) applyGatewayProfile(response.profile);
       var settlement = response && response.settlement || {};
-      saveProfile();
       renderLobby();
       renderChapterSelect();
       syncContext();
@@ -404,7 +403,6 @@
       return options.getGameGateway().upgrade(key);
     }).then(function onUpgradeComplete(response) {
       if (response && response.profile) applyGatewayProfile(response.profile);
-      saveProfile();
       renderShop(upgrades[key].name + " 已升级。");
       renderLobby();
       renderChapterSelect();

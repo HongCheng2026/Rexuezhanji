@@ -53,6 +53,9 @@
       bootstrap: function bootstrap() {
         return callAdapter(adapter, "bootstrap", [], mode);
       },
+      syncProfile: function syncProfile(maxAgeMs) {
+        return callAdapter(adapter, "syncProfile", [maxAgeMs], mode);
+      },
       identity: function identity() {
         return callAdapter(adapter, "identity", [], mode);
       },
@@ -101,8 +104,8 @@
       saveCosmetics: function saveCosmetics(profile) {
         return callAdapter(adapter, "saveCosmetics", [profile], mode);
       },
-      buyShopItem: function buyShopItem(itemId) {
-        return callAdapter(adapter, "buyShopItem", [itemId], mode);
+      buyShopItem: function buyShopItem(itemId, quantity) {
+        return callAdapter(adapter, "buyShopItem", [itemId, quantity], mode);
       },
       promoteUnit: function promoteUnit(kind, itemId, tokenId) {
         return callAdapter(adapter, "promoteUnit", [kind, itemId, tokenId], mode);

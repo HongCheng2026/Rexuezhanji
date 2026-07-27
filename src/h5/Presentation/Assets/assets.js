@@ -8,7 +8,10 @@
   const LOBBY_REFERENCE = Object.freeze({ width: 1600, height: 900 });
   const pagePath = root.location?.pathname ? decodeURIComponent(root.location.pathname).replace(/\\/g, "/") : "";
   const isSourceH5 = /(?:^|\/)src\/h5(?:\/|$)/i.test(pagePath);
-  const isShellPage = /(?:^|\/)Shell(?:\/|$)/.test(pagePath);
+  // Netlify Pretty URLs normalizes /Shell/game-frame.html to /shell/game-frame.
+  // Match the shell segment case-insensitively so runtime assets still resolve
+  // from the deployment root after that redirect.
+  const isShellPage = /(?:^|\/)shell(?:\/|$)/i.test(pagePath);
   const runtimeRelativeBase = isSourceH5 ? "../../../assets/runtime/" : (isShellPage ? "../assets/runtime/" : "assets/runtime/");
   const runtimeBase = root.location?.href ? new URL(runtimeRelativeBase, root.location.href).href : runtimeRelativeBase;
   // 规则⑤：资产按功能分房间。GROUP_MAP 把旧 group 名映射到新的功能目录。

@@ -10,6 +10,7 @@
     var dom = context.dom || {};
     var capabilities = context.fighterUpgrade || {};
     var gatewayLock = capabilities.gatewayActionLock || { busy: false };
+    var isOpen = false;
 
     if (!shared.fighterUpgradeModel || !shared.fighterUpgradeView) {
       return { actions: {
@@ -39,13 +40,20 @@
     });
 
     function open() {
+      isOpen = true;
       render();
       if (dom.lobbyScreen) dom.lobbyScreen.classList.add("panel-open");
       if (dom.fighterUpgradeScreen) dom.fighterUpgradeScreen.classList.remove("hidden");
+      if (capabilities.syncGatewayProfile) {
+        Promise.resolve(capabilities.syncGatewayProfile(30000)).then(function renderSyncedUpgrade() {
+          if (isOpen) render();
+        }).catch(function keepUpgradeSnapshot() {});
+      }
       return true;
     }
 
     function close() {
+      isOpen = false;
       if (dom.fighterUpgradeScreen) dom.fighterUpgradeScreen.classList.add("hidden");
       if (dom.lobbyScreen) dom.lobbyScreen.classList.remove("panel-open");
       return true;
@@ -316,28 +324,14 @@
       var qty = Math.max(1, Math.floor(Number(parts[1]) || 1));
       var retry = buildRetryAction();
       closePurchaseOverlay();
-      var initialInv = capabilities.getProfile ? ((capabilities.getProfile().resources || {}).inventory || {}) : {};
-      var initialOwned = Math.max(0, Math.floor(Number(initialInv[itemId]) || 0));
-      var origItemCount = initialOwned + qty;
       gatewayLock.busy = true;
       model.setPending("buy", "正在购入材料…");
       render();
       capabilities.ensureGameGateway().then(function (gw) {
-        var bought = 0;
-        function step() {
-          if (bought >= qty) return Promise.resolve();
-          return Promise.resolve().then(function () { return gw.buyShopItem(itemId); }).then(function (response) {
-            if (response && response.profile && capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(response.profile);
-            if (capabilities.saveProfile) capabilities.saveProfile();
-            bought += 1;
-            // 每次购买后重读背包：若已满足原始缺口则提前停止（兜底限购/重复发放）
-            var inv = capabilities.getProfile ? ((capabilities.getProfile().resources || {}).inventory || {}) : {};
-            var ownedNow = Math.max(0, Math.floor(Number(inv[itemId]) || 0));
-            if (bought < qty && ownedNow >= (origItemCount || 0)) return Promise.resolve();
-            return step();
-          });
-        }
-        return step();
+        return gw.buyShopItem(itemId, qty);
+      }).then(function applyPurchase(response) {
+        if (!response || !response.profile) throw new Error("云端返回的存档无效。");
+        if (capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(response.profile);
       }).then(function () {
         gatewayLock.busy = false;
         model.finish("材料已购入，正在重试升级…");
@@ -359,7 +353,6 @@
       var completedMessage = "";
       return Promise.resolve().then(task).then(function applyResult(response) {
         if (response && response.profile && capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(response.profile);
-        if (capabilities.saveProfile) capabilities.saveProfile();
         completedMessage = successMessage(response);
         return response;
       }).catch(function showFailure(error) {

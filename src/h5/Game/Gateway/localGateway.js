@@ -41,6 +41,9 @@
       bootstrap: function bootstrapLocal() {
         return { profile: getProfile() };
       },
+      syncProfile: function syncLocalProfile() {
+        return { profile: getProfile() };
+      },
       identity: function identityLocal() {
         var p = getProfile();
         return { uid: p.player && p.player.uid || "" };

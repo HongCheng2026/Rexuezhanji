@@ -42,6 +42,11 @@
       isOpen = true;
       render();
       if (capabilities.openShell) capabilities.openShell("ship-hangar-panel");
+      if (capabilities.syncGatewayProfile) {
+        Promise.resolve(capabilities.syncGatewayProfile(30000)).then(function renderSyncedFighter() {
+          if (isOpen) render();
+        }).catch(function keepFighterSnapshot() {});
+      }
       return true;
     }
 
@@ -126,7 +131,6 @@
       }).then(function applyResult(result) {
         if (!result || !result.profile) throw new Error("操作结果无效。");
         if (capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(result.profile);
-        if (capabilities.saveProfile) capabilities.saveProfile();
         message = successMessage(result);
         refreshViews();
         return result;

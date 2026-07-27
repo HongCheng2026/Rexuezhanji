@@ -95,6 +95,42 @@ export function createEconomyService(deps: Dependencies) {
   async function buyShopItem(ctx: Context, body: Json) {
     const itemId = String(body.itemId || "");
     const item = shopItems[itemId];
+    const quantity = Math.max(1, Math.min(99, Math.floor(Number(body.quantity) || 1)));
+    if (item && quantity > 1) {
+      if (item.daily) return deps.error("每日补给每次只能领取 1 份。", 409);
+      const { profile, revision } = await deps.loadProfile(ctx);
+      const totalPrice = item.priceAmount * quantity;
+      if (item.priceCurrency === "diamonds" && Number(profile.resources.diamonds || 0) < totalPrice) {
+        return deps.error("钻石不足。", 409);
+      }
+      if (item.priceCurrency === "gold" && deps.getGold(profile) < totalPrice) {
+        return deps.error("金币不足。", 409);
+      }
+      if (item.priceCurrency === "diamonds") profile.resources.diamonds -= totalPrice;
+      if (item.priceCurrency === "gold") deps.setGold(profile, deps.getGold(profile) - totalPrice);
+      const rewards = item.rewards.map((reward) => ({ ...reward, amount: reward.amount * quantity }));
+      applyRewards(profile, rewards, true);
+      const delta = rewardDeltas(rewards);
+      const saved = await deps.commitProfileOperation(
+        ctx,
+        profile,
+        revision,
+        body,
+        "shop-buy",
+        delta.gold - (item.priceCurrency === "gold" ? totalPrice : 0),
+        delta.energy,
+        {
+          itemId,
+          quantity,
+          priceCurrency: item.priceCurrency,
+          unitPrice: item.priceAmount,
+          priceAmount: totalPrice,
+          rewards
+        }
+      );
+      await deps.refreshLeaderboard(ctx, saved);
+      return deps.reply({ profile: deps.publicProfile(saved), itemId, quantity, rewards });
+    }
     if (!item) return deps.error("商品不存在。", 404);
     const { profile, revision } = await deps.loadProfile(ctx);
     const today = shanghaiDateKey();

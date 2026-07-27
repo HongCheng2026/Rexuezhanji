@@ -46,6 +46,11 @@
       setMessage("查看战姬档案、成长属性与当前出战状态。");
       render();
       capabilities.openShell("pilot-dossier-panel");
+      if (capabilities.syncGatewayProfile) {
+        Promise.resolve(capabilities.syncGatewayProfile(30000)).then(function renderSyncedPilot() {
+          render();
+        }).catch(function keepPilotSnapshot() {});
+      }
       return true;
     }
 
@@ -75,7 +80,6 @@
       }).then(task).then(function applyResult(result) {
         if (!result || !result.profile) throw new Error("战姬操作结果无效。");
         if (capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(result.profile);
-        if (capabilities.saveProfile) capabilities.saveProfile();
         refreshScreens();
         setMessage(successMessage(result));
         return result;
