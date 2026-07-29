@@ -22,15 +22,34 @@
         if (element.dataset.shopConfirmed === "true") {
           return context.claimEconomy(element, "buyShopItem", "shop", "shopBuy", false);
         }
+        var itemId = element.dataset.shopBuy;
+        if (!itemId) return false;
         var shopView = context.shared && context.shared.shopView;
+        var shopConfig = context.shared && context.shared.shopConfig;
+        var item = shopConfig && shopConfig.getShopItem ? shopConfig.getShopItem(itemId) : null;
+        if (item && item.priceCurrency === "item" && shopView && shopView.openExchangeDialog) {
+          return Boolean(shopView.openExchangeDialog(
+            context.dom && context.dom.featurePanelSlots,
+            context.getProfile(),
+            itemId,
+            context.shared.assets
+          ));
+        }
         return Boolean(shopView && shopView.openPurchaseDialog && shopView.openPurchaseDialog(
           context.dom && context.dom.featurePanelSlots,
           context.getProfile(),
-          element.dataset.shopBuy,
+          itemId,
           context.shared.assets
         ));
       },
-      dailyFree: function dailyFree(element) { return context.claimEconomy(element, "claimDailyShopItem", "shop", "shopBuy", true); }
+      dailyFree: function dailyFree(element) { return context.claimEconomy(element, "claimDailyShopItem", "shop", "shopBuy", true); },
+      exchange: function exchange(element) {
+        if (!element || !element.dataset) return false;
+        if (element.dataset.shopExchangeConfirmed === "true") {
+          return context.claimEconomy(element, "shopExchange", "shop", "shopExchange", false);
+        }
+        return false;
+      }
     } };
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);

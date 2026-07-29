@@ -154,12 +154,12 @@ test("19 件商品均有存在的运行时图片，兑换商品沿用现有物�
   for (const item of shopConfig.SHOP_CONTENT) {
     const assetPath = assets.SHOP_ITEM_ASSETS[item.image];
     assert.ok(assetPath, item.id + " 缺少 SHOP_ITEM_ASSETS 映射");
-    assert.ok(fs.existsSync(path.join(__dirname, "..", assetPath)), item.id + " 图片不存在：" + assetPath);
+    assert.ok(fs.existsSync(path.join(__dirname, "..", assetPath.split("?")[0])), item.id + " 图片不存在：" + assetPath);
     assetPaths.push(assetPath);
   }
   assert.equal(assetPaths.length, 19);
-  assert.match(assets.SHOP_ITEM_ASSETS.sss_fighter_module, /inventory\/items\/sss-weapon-module\.png$/);
-  assert.match(assets.SHOP_ITEM_ASSETS.sss_pilot_medal, /inventory\/items\/sss-pilot-medal\.png$/);
+  assert.match(assets.SHOP_ITEM_ASSETS.sss_fighter_module, /inventory\/items\/sss-weapon-module\.png\?rev=20260729a$/);
+  assert.match(assets.SHOP_ITEM_ASSETS.sss_pilot_medal, /inventory\/items\/sss-pilot-medal\.png\?rev=20260729a$/);
 });
 
 test("三个商店标签等宽且顶部资源块不再绘制左侧竖线", () => {
@@ -171,8 +171,8 @@ test("三个商店标签等宽且顶部资源块不再绘制左侧竖线", () =>
 
 test("商店标题使用独立的星港补给终端徽记", () => {
   const emblem = assets.FEATURE_PANEL_ASSETS.shopHeaderEmblem;
-  assert.match(emblem, /assets\/runtime\/shop\/ui\/shop-terminal-emblem\.png$/);
-  assert.ok(fs.existsSync(path.join(__dirname, "..", emblem)), "商店标题徽记文件不存在：" + emblem);
+  assert.match(emblem, /assets\/runtime\/shop\/ui\/shop-terminal-emblem\.png\?rev=20260729a$/);
+  assert.ok(fs.existsSync(path.join(__dirname, "..", emblem.split("?")[0])), "商店标题徽记文件不存在：" + emblem);
   const css = fs.readFileSync(path.join(__dirname, "../src/h5/UI/FeaturePanels/mainFeaturePanelsView.css"), "utf8");
   assert.match(css, /--rx-fp-shop-header-emblem/);
 });

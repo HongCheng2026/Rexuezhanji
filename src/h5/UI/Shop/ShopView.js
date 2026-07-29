@@ -223,6 +223,62 @@
     };
   }
 
+  // 等价兑换目录：以「交出物资 → 获得物资」为键，给对话框与结果页提供展示元数据。
+  function getExchangeCatalog() {
+    var catalog = {};
+    var items = (scope.shopConfig && scope.shopConfig.SHOP_CONTENT) || [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (item.priceCurrency !== "item" || !item.priceItemId) continue;
+      var reward = item.rewards && item.rewards[0];
+      if (reward && reward.itemId) catalog[reward.itemId] = { id: reward.itemId, title: item.title, image: item.image };
+      catalog[item.priceItemId] = { id: item.priceItemId, title: item.priceItemTitle || item.title, image: item.priceItemImage || item.image };
+    }
+    return catalog;
+  }
+
+  function getExchangeItem(itemId) {
+    return getExchangeCatalog()[itemId] || null;
+  }
+
+  // 等价兑换报价：fromItemId 为兑换商品的 id（如 exchange_sss_fighter_module）。
+  function getExchangeQuote(profile, fromItemId, requestedQuantity) {
+    var exchangeItem = scope.shopConfig && scope.shopConfig.getShopItem ? scope.shopConfig.getShopItem(fromItemId) : null;
+    if (!exchangeItem || exchangeItem.priceCurrency !== "item") {
+      return { quantity: 0, maxQuantity: 0, canExchange: false, fromItem: null, toItem: null };
+    }
+    var reward = exchangeItem.rewards && exchangeItem.rewards[0];
+    var catalog = getExchangeCatalog();
+    var fromItem = catalog[exchangeItem.priceItemId] || null;
+    var toItem = reward ? catalog[reward.itemId] || null : null;
+    if (!fromItem || !toItem) {
+      return { quantity: 0, maxQuantity: 0, canExchange: false, fromItem: fromItem, toItem: toItem };
+    }
+    profile = profile || {};
+    var pricePerSwap = Math.max(1, Math.floor(Number(exchangeItem.priceAmount) || 1));
+    var gainPerSwap = reward ? Math.max(1, Math.floor(Number(reward.amount) || 1)) : 1;
+    var sourceCount = getInventoryAmount(profile, exchangeItem.priceItemId);
+    var targetCount = getInventoryAmount(profile, reward.itemId);
+    var maxSwaps = Math.floor(sourceCount / pricePerSwap);
+    var maxQuantity = Math.max(0, Math.min(99, maxSwaps));
+    var quantity = maxQuantity > 0 ? Math.max(1, Math.min(maxQuantity, Math.floor(Number(requestedQuantity) || 1))) : 0;
+    var spendQuantity = quantity * pricePerSwap;
+    var gainQuantity = quantity * gainPerSwap;
+    return {
+      fromItem: fromItem,
+      toItem: toItem,
+      sourceCount: sourceCount,
+      targetCount: targetCount,
+      pricePerSwap: pricePerSwap,
+      gainPerSwap: gainPerSwap,
+      quantity: quantity,
+      maxQuantity: maxQuantity,
+      spendQuantity: spendQuantity,
+      gainQuantity: gainQuantity,
+      canExchange: quantity > 0 && sourceCount >= spendQuantity
+    };
+  }
+
   // 本地购买：校验货币 / 限购 / 自定义确认后一次性扣费并发放奖励。
   function buyShopItem(profile, itemId, options) {
     options = options || {};
@@ -642,6 +698,8 @@
     applyRewards: applyRewards,
     buyShopItem: buyShopItem,
     getPurchaseQuote: getPurchaseQuote,
+    getExchangeQuote: getExchangeQuote,
+    getExchangeItem: getExchangeItem,
     openPurchaseDialog: openPurchaseDialog,
     closePurchaseDialog: closePurchaseDialog,
     setPurchaseDialogPending: setPurchaseDialogPending,

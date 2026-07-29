@@ -217,7 +217,7 @@ function checkAssets() {
     if (typeof value === "string") {
       const marker = "assets/runtime/";
       const index = value.indexOf(marker);
-      if (index >= 0) refs.add(value.slice(index + marker.length));
+      if (index >= 0) refs.add(value.slice(index + marker.length).split("?")[0]);
       return;
     }
     if (!value || typeof value !== "object" || visited.has(value)) return;

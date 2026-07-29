@@ -1193,6 +1193,12 @@ Deno.serve(async (request) => {
         else if (action === "save-cosmetics") response = await saveCosmetics(ctx, body);
         else if (action === "redeem") response = await redeem(ctx, body);
         else if (action === "shop-buy") response = await economyService.buyShopItem(ctx, body);
+        else if (action === "shop-exchange") response = await economyService.buyShopItem(ctx, body);
+        else if (action === "gacha-draw") response = await economyService.gachaDraw(ctx, body);
+        else if (action === "daily-signin") response = await economyService.claimSignIn(ctx, body);
+        else if (action === "inventory-use") response = await economyService.useInventoryItem(ctx, body);
+        else if (action === "inventory-sell") response = await economyService.sellInventoryItem(ctx, body);
+        else if (action === "exchange-diamonds") response = await economyService.exchangeDiamonds(ctx, body);
         else if (action === "migrate-anonymous") response = await migrateAnonymous(ctx, request);
         else if (action === "leaderboard-submit") response = await socialService.leaderboardSubmit(ctx, body);
         else if (action === "leaderboard-fetch") response = await socialService.leaderboardFetch(ctx, body);

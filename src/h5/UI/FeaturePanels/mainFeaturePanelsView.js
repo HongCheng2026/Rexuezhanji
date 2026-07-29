@@ -435,33 +435,49 @@
     '</section>';
   }
 
-  function renderSigninPanel() {
+  function shanghaiDateKey() {
+    try {
+      var parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+      var values = {};
+      parts.forEach(function collect(part) { values[part.type] = part.value; });
+      return values.year + "-" + values.month + "-" + values.day;
+    } catch (error) {
+      return new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  function renderSigninPanel(profile) {
     var cfg = getConfig();
     var signin = cfg.SIGNIN_CONTENT || [];
-    var todayIndex = 0;
-    var todayDay = signin[0] ? signin[0].day : 1;
+    var record = profile && profile.signIn && typeof profile.signIn === "object" ? profile.signIn : {};
+    var claimedToday = record.lastClaimDate === shanghaiDateKey();
+    var previousDay = Math.max(0, Math.min(7, Math.floor(Number(record.day) || 0)));
+    var todayDay = claimedToday ? Math.max(1, previousDay) : (previousDay % 7) + 1;
     var finalDay = signin.length > 0 ? signin[signin.length - 1] : null;
+    var uiState = scope.signinUiState || {};
     var daysHtml = "";
     for (var i = 0; i < signin.length; i++) {
       var d = signin[i];
-      var isToday = i === 0;
+      var isToday = Number(d.day) === todayDay;
       var isFinal = i === signin.length - 1;
-      var cls = "signin-day" + (isToday ? " is-today" : "") + (isFinal ? " is-final" : "") + (d.claimed ? " is-claimed" : "");
-      var claimBtn = (isToday && !d.claimed) ? '<button type="button" class="signin-claim-btn" data-signin-claim="' + escapeAttr(d.day || (i + 1)) + '">领取</button>' : "";
+      var isClaimed = isToday && claimedToday;
+      var cls = "signin-day" + (isToday ? " is-today" : "") + (isFinal ? " is-final" : "") + (isClaimed ? " is-claimed" : "");
+      var claimBtn = (isToday && !isClaimed) ? '<button type="button" class="signin-claim-btn" data-signin-claim="' + escapeAttr(d.day || (i + 1)) + '"' + (uiState.busy ? " disabled" : "") + '>' + (uiState.busy ? "领取中…" : "领取") + "</button>" : "";
+      var status = isClaimed ? "已领取" : isToday ? "今日" : isFinal ? "大奖" : "待解锁";
       daysHtml += '<article class="' + cls + '" data-signin-day="' + escapeAttr(d.day || (i + 1)) + '">' +
         '<span class="signin-day-badge">DAY ' + (d.day || (i + 1)) + '</span>' +
         '<div class="signin-day-body">' +
           '<strong class="signin-day-title">' + escapeHtml(d.title || "奖励") + '</strong>' +
           '<p class="signin-day-reward">' + escapeHtml(d.reward || "") + '</p>' +
         '</div>' +
-        '<em class="signin-day-status">' + escapeHtml(d.status || (isToday ? "今日" : "未到")) + '</em>' +
+        '<em class="signin-day-status">' + escapeHtml(status) + '</em>' +
         claimBtn +
       '</article>';
     }
     return '<section class="signin-panel">' +
       '<header class="signin-header">' +
         '<div><span>7-DAY ROUTE</span><strong>新兵七日航线</strong></div>' +
-        '<p>签到前 7 日奖励展示，正式领取逻辑可复用任务奖励发放。</p>' +
+        '<p>每日签到由云端校验并立即写入存档；第 7 日领取后开启下一轮。</p>' +
       '</header>' +
       '<div class="signin-cycle">' +
         '<div class="signin-days-grid">' + daysHtml + '</div>' +
@@ -472,6 +488,7 @@
           '<span>今日 <b>DAY ' + todayDay + '</b></span>' +
           '<span>大奖 <b>DAY ' + (finalDay ? finalDay.day : 7) + '</b></span>' +
         '</div>' +
+        (uiState.message ? '<p class="signin-feedback' + (uiState.isError ? " is-error" : "") + '">' + escapeHtml(uiState.message) + "</p>" : "") +
       '</footer>' +
     '</section>';
   }
@@ -543,7 +560,7 @@
     var combatPower = clampNumber(options.combatPower, 0, 9999999);
     var audioSettings = options.audioSettings || {};
     if (key === "mail") return setAndReport(dom, "MAIL", "邮件", "星港邮件中继，展示公告、补给、活动和维护信息。", "terminal-panel-content", renderMailPanel());
-    if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "新兵七日航线奖励展示。", "terminal-panel-content", renderSigninPanel());
+    if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "每日奖励由云端校验并写入存档。", "terminal-panel-content", renderSigninPanel(profile));
     if (key === "setting") return setAndReport(dom, "SETTING", "设置", "音乐和音效设置会立即生效并保存到本地。", "terminal-panel-content", renderSettingPanel(audioSettings));
     if (key === "event" && scope.eventModeHubView) return scope.eventModeHubView.renderPanel(dom, Object.assign({}, options, { profile: profile }));
     if (key === "achievement") return setAndReport(dom, "", "成就", countReady((getConfig().ACHIEVEMENT_CONTENT || []).map(function (item) { var current = getAchievementMetric(item, profile, levels); return { progress: { done: current >= item.target }, claimed: (profile.claimedAchievements || []).indexOf(item.id) >= 0 }; })) + " 项成就奖励可领取", "terminal-panel-content feature-panel-room-content", renderAchievementPanel(profile, levels));

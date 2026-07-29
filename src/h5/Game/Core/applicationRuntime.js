@@ -98,6 +98,9 @@
     clamp: clamp
   });
   if (!battleRenderer) throw new Error("H5 game bootstrap failed: missing canvas renderer.");
+  if (battleRenderer.preloadSkillAssets) {
+    battleRenderer.preloadSkillAssets().catch(function ignoreWingmanPreloadFailure() {});
+  }
   var FEATURE_PANEL_MODE_CLASSES = [
     "pilot-dossier-panel",
     "ship-hangar-panel",
@@ -387,6 +390,11 @@
     },
     resourceExchange: {
       getProfile: function getResourceExchangeProfile() { return profile; },
+      isCloudMode: function isResourceExchangeCloudMode() { return battleFlowController.isCloudMode(); },
+      getGameGateway: function getResourceExchangeGateway() { return gameGateway; },
+      ensureGameGateway: ensureGameGateway,
+      syncGatewayProfile: syncGatewayProfile,
+      applyGatewayProfile: applyGatewayProfile,
       saveProfile: saveProfile,
       renderLobby: lobbyController.renderLobby,
       emitGoldChanged: function emitResourceExchangeGoldChanged() {
@@ -430,14 +438,32 @@
       renderLobby: lobbyController.renderLobby,
       closeFeaturePanel: function closeGachaFeaturePanel() { return featurePanelController && featurePanelController.close(); },
       storage: root.localStorage,
-      profileKey: shared.profileRuntime && shared.profileRuntime.STORAGE_KEY
+      profileKey: shared.profileRuntime && shared.profileRuntime.STORAGE_KEY,
+      getGameGateway: function getGachaGateway() { return gameGateway; },
+      ensureGameGateway: ensureGameGateway,
+      syncGatewayProfile: syncGatewayProfile,
+      applyGatewayProfile: applyGatewayProfile
     },
     inventory: {
       getProfile: function getInventoryProfile() { return profile; },
       commitProfile: commitLocalFeatureProfile,
       isCloudMode: function isInventoryCloudMode() { return battleFlowController.isCloudMode(); },
+      getGameGateway: function getInventoryGateway() { return gameGateway; },
+      ensureGameGateway: ensureGameGateway,
+      syncGatewayProfile: syncGatewayProfile,
+      applyGatewayProfile: applyGatewayProfile,
       renderLobby: lobbyController.renderLobby,
       closeFeaturePanel: function closeInventoryFeaturePanel() { return featurePanelController && featurePanelController.close(); }
+    },
+    signin: {
+      getProfile: function getSigninProfile() { return profile; },
+      isCloudMode: function isSigninCloudMode() { return battleFlowController.isCloudMode(); },
+      getGameGateway: function getSigninGateway() { return gameGateway; },
+      ensureGameGateway: ensureGameGateway,
+      applyGatewayProfile: applyGatewayProfile,
+      saveProfile: saveProfile,
+      renderLobby: lobbyController.renderLobby,
+      renderPanel: function renderSigninPanel() { return featurePanelController && featurePanelController.open("signin", true); }
     },
     profileController: profileController,
     endlessRoomController: endlessRoomController,
@@ -489,7 +515,7 @@
     friend: ["FRIEND", "好友", "云好友系统已开放，搜索玩家 ID 添加好友。"],
     ranking: ["RANKING", "排行榜", "云端实时榜单，通关后自动提交成绩。"],
     mail: ["MAIL", "邮件", "邮件展示公告、补给、活动和维护信息。"],
-    signin: ["SIGN IN", "签到", "七日航线奖励为本地展示态。"],
+    signin: ["SIGN IN", "签到", "七日航线奖励由云端原子发放，同一天不能重复领取。"],
     setting: ["SETTING", "设置", "音乐和音效设置可即时生效并保存到本地。"],
     starWingsGacha: ["STAR WINGS", "星穹之翼", "限时抽取入口已独立接通。"],
     contact: ["CONTACT", "联系我们", "二维码联系入口为本地展示态。"],

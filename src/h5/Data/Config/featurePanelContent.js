@@ -77,13 +77,13 @@
   ];
 
   const SIGNIN_CONTENT = [
-    { day: 1, title: "出击整备", reward: "金币 3,000", status: "今日" },
-    { day: 2, title: "火力校准", reward: "火力素材包", status: "预告" },
-    { day: 3, title: "体力补给", reward: "体力 60", status: "预告" },
-    { day: 4, title: "装甲维护", reward: "装甲素材包", status: "预告" },
-    { day: 5, title: "银翼整备", reward: "银翼整备箱", status: "预告" },
-    { day: 6, title: "星链研究", reward: "星链研究券", status: "预告" },
-    { day: 7, title: "新兵大礼", reward: "钻石 30 / 金币 20,000", status: "大奖" }
+    { day: 1, title: "出击整备", reward: "金币 3,000", rewards: [{ type: "gold", amount: 3000 }] },
+    { day: 2, title: "火力校准", reward: "攻击核心 ×1", rewards: [{ type: "item", itemId: "attack_core", amount: 1 }] },
+    { day: 3, title: "体力补给", reward: "体力 60", rewards: [{ type: "energy", amount: 60 }] },
+    { day: 4, title: "装甲维护", reward: "装甲核心 ×1", rewards: [{ type: "item", itemId: "armor_core", amount: 1 }] },
+    { day: 5, title: "银翼整备", reward: "银翼部件 ×1", rewards: [{ type: "item", itemId: "silver_wing_part", amount: 1 }] },
+    { day: 6, title: "星链研究", reward: "星链研究券 ×1", rewards: [{ type: "item", itemId: "starlink_ticket", amount: 1 }] },
+    { day: 7, title: "新兵大礼", reward: "钻石 30 / 金币 20,000", rewards: [{ type: "diamonds", amount: 30 }, { type: "gold", amount: 20000 }] }
   ];
 
   const api = {

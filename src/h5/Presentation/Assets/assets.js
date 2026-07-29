@@ -14,6 +14,7 @@
   const isShellPage = /(?:^|\/)shell(?:\/|$)/i.test(pagePath);
   const runtimeRelativeBase = isSourceH5 ? "../../../assets/runtime/" : (isShellPage ? "../assets/runtime/" : "assets/runtime/");
   const runtimeBase = root.location?.href ? new URL(runtimeRelativeBase, root.location.href).href : runtimeRelativeBase;
+  const RUNTIME_ASSET_REVISION = "20260729a";
   // 规则⑤：资产按功能分房间。GROUP_MAP 把旧 group 名映射到新的功能目录。
   // 所有运行时引用都经过 runtimeAsset(group,file) 这一单一广播点，故调用点无需改动。
   const GROUP_MAP = {
@@ -49,7 +50,7 @@
   const runtimeAsset = (group, file) => {
     const prefix = GROUP_MAP[group];
     if (!prefix) throw new Error("[assets] unknown asset group: " + group);
-    return runtimeBase + prefix + file;
+    return runtimeBase + prefix + file + "?rev=" + RUNTIME_ASSET_REVISION;
   };
   const shipLobbyAsset = (file) => runtimeAsset("ships/lobby", file);
   const shipBattleAsset = (file) => runtimeAsset("ships/battle", file);

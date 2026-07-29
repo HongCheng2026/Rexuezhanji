@@ -39,19 +39,30 @@ function createHarness(options = {}) {
   context.globalThis = context;
   vm.runInNewContext(source, context, { filename: "gachaRoom.js" });
   let commits = 0;
+  const gachaCapabilities = {
+    getProfile: () => profile,
+    isCloudMode: () => Boolean(options.cloud),
+    commitProfile: (next) => {
+      commits += 1;
+      if (options.commitFails) throw new Error("disk full");
+      Object.keys(profile).forEach((key) => delete profile[key]);
+      Object.assign(profile, JSON.parse(JSON.stringify(next)));
+    },
+    rng: () => 0.99
+  };
+  if (options.cloudGateway) {
+    const gateway = options.cloudGateway;
+    gachaCapabilities.getGameGateway = () => gateway;
+    gachaCapabilities.ensureGameGateway = () => Promise.resolve();
+    gachaCapabilities.applyGatewayProfile = (next) => {
+      Object.keys(profile).forEach((key) => delete profile[key]);
+      Object.assign(profile, JSON.parse(JSON.stringify(next)));
+    };
+    gachaCapabilities.renderLobby = () => {};
+  }
   const room = factory({
     dom: { gachaScreen: screen, gachaMount: {} },
-    gacha: {
-      getProfile: () => profile,
-      isCloudMode: () => Boolean(options.cloud),
-      commitProfile: (next) => {
-        commits += 1;
-        if (options.commitFails) throw new Error("disk full");
-        Object.keys(profile).forEach((key) => delete profile[key]);
-        Object.assign(profile, JSON.parse(JSON.stringify(next)));
-      },
-      rng: () => 0.99
-    }
+    gacha: gachaCapabilities
   });
   return { room, profile, getRaw: () => raw, getCommits: () => commits };
 }
@@ -64,13 +75,53 @@ test("抽卡房间拥有独立动作契约", () => {
   );
 });
 
-test("正式云端模式禁用真实抽取且不扣券", () => {
+test("云端模式无可用网关时拒绝抽取且不扣券", () => {
   const harness = createHarness({ cloud: true });
   const before = JSON.stringify(harness.profile);
   const result = harness.room.actions["gacha.draw"]({ count: 1 });
-  assert.equal(result.reason, "CLOUD_GACHA_DISABLED");
+  assert.equal(result.reason, "GACHA_CLOUD_UNAVAILABLE");
   assert.equal(JSON.stringify(harness.profile), before);
   assert.equal(harness.getCommits(), 0);
+});
+
+test("云端模式经服务端抽取并落档，不依赖本地概率", () => {
+  const cloudState = { target: "pilot", pity: 1, totalDraws: 1, history: [{ result: "standard", item: "gold_10000" }] };
+  let drawArgs = null;
+  const gateway = {
+    gachaDraw: (target, count, buyMissing) => {
+      drawArgs = { target: target, count: count, buyMissing: buyMissing };
+      const cloudProfile = JSON.parse(JSON.stringify(harness.profile));
+      cloudProfile.resources.diamonds = 1000;
+      return Promise.resolve({
+        ok: true,
+        target: target,
+        count: count,
+        cost: 1,
+        ticketCost: 1,
+        missingTickets: 0,
+        purchasedTickets: 0,
+        diamondCost: 0,
+        currency: "ticket",
+        profile: cloudProfile,
+        state: cloudState,
+        results: [{ tier: "standard", label: "金币 ×10,000" }],
+        summary: { legendaries: 0, elites: 0, standards: 1 }
+      });
+    }
+  };
+  const harness = createHarness({ cloud: true, cloudGateway: gateway });
+  const result = harness.room.actions["gacha.draw"]({ count: 1 });
+  assert.equal(typeof result.then, "function", "云端抽取应返回 Promise（跨 realm thenable）");
+  return result.then(function verifyCloudApply(resolved) {
+    assert.equal(resolved.ok, true);
+    assert.equal(drawArgs.target, "pilot");
+    assert.equal(drawArgs.count, 1);
+    assert.equal(harness.getRaw(), JSON.stringify(cloudState), "gacha state 应来自服务端");
+    const expectedProfile = JSON.parse(JSON.stringify(harness.profile));
+    expectedProfile.resources.diamonds = 1000;
+    assert.equal(JSON.stringify(harness.profile), JSON.stringify(expectedProfile), "profile 应由 applyGatewayProfile 落档");
+    assert.equal(harness.getCommits(), 0, "云端模式不调用本地 commitProfile");
+  });
 });
 
 test("玩家档提交失败时恢复保底快照", () => {

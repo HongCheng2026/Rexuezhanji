@@ -175,10 +175,17 @@
         if (taskClaim && !taskClaim.disabled) { dispatch("task.claim", taskClaim); return; }
         var activityClaim = event.target && event.target.closest ? event.target.closest("[data-activity-claim]") : null;
         if (activityClaim && !activityClaim.disabled) { dispatch("activity.claim", activityClaim); return; }
+        var signinClaim = event.target && event.target.closest ? event.target.closest("[data-signin-claim]") : null;
+        if (signinClaim && !signinClaim.disabled) { dispatch("signin.claim", signinClaim); return; }
         var shopBuy = event.target && event.target.closest ? event.target.closest("[data-shop-buy]") : null;
         if (shopBuy && !shopBuy.disabled) {
           if (shopBuy.dataset.shopBuy === "daily_free_supply") dispatch("shop.dailyFree", shopBuy);
           else dispatch("shop.buy", shopBuy);
+          return;
+        }
+        var shopExchange = event.target && event.target.closest ? event.target.closest("[data-shop-exchange]") : null;
+        if (shopExchange && !shopExchange.disabled) {
+          dispatch("shop.exchange", shopExchange);
           return;
         }
         var back = event.target && event.target.closest ? event.target.closest("[data-feature-back]") : null;

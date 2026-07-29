@@ -29,6 +29,10 @@
 
     function getProfile() { return capabilities.getProfile ? capabilities.getProfile() : {}; }
     function isCloudMode() { return Boolean(capabilities.isCloudMode && capabilities.isCloudMode()); }
+    function loadState() {
+      if (isCloudMode() && getProfile().gacha) return model.normalizeState(getProfile().gacha);
+      return store.load();
+    }
     function findAsset(targetKey) {
       if (!config || !config.TARGETS || !config.TARGETS[targetKey]) return { id: "", name: "", codeName: "", src: "", owned: false };
       var target = config.TARGETS[targetKey];
@@ -57,13 +61,19 @@
     function open() {
       if (!screen || !view || !model || !store) return false;
       if (capabilities.closeFeaturePanel) capabilities.closeFeaturePanel();
-      state = store.load();
+      state = loadState();
       results = [];
       pendingTopUp = null;
       message = "";
       isError = false;
       render();
       screen.classList.remove("hidden");
+      if (isCloudMode() && capabilities.syncGatewayProfile) {
+        Promise.resolve(capabilities.syncGatewayProfile(30000)).then(function renderSyncedGacha() {
+          state = loadState();
+          render();
+        }).catch(function keepCurrentGacha() {});
+      }
       return true;
     }
     function close() {
@@ -93,11 +103,63 @@
     }
     function performDraw(count, buyMissingTickets) {
       if (!model || !store) return { ok: false, reason: "GACHA_MODULE_UNAVAILABLE" };
-      if (isCloudMode()) {
-        message = "正式云端抽取尚未开放，本次没有扣券。";
+      var targetKey = state.target;
+      if (!targetKey) {
+        message = "请先选择终极目标。";
         isError = true;
         render();
-        return { ok: false, reason: "CLOUD_GACHA_DISABLED" };
+        return { ok: false, reason: "TARGET_REQUIRED" };
+      }
+      if (isCloudMode()) {
+        if (!capabilities.ensureGameGateway || !capabilities.getGameGateway) {
+          message = "云端抽取服务尚未就绪，请稍后重试。";
+          isError = true;
+          render();
+          return { ok: false, reason: "GACHA_CLOUD_UNAVAILABLE" };
+        }
+        message = "正在连接云端抽取…";
+        render();
+        return Promise.resolve(capabilities.ensureGameGateway())
+          .then(function runCloudDraw() {
+            var gateway = capabilities.getGameGateway();
+            if (!gateway || typeof gateway.gachaDraw !== "function") throw new Error("云端抽取服务尚未就绪。");
+            return gateway.gachaDraw(targetKey, count, Boolean(buyMissingTickets));
+          })
+          .then(function applyCloudResult(result) {
+            if (!result || result.ok === false) {
+              var reason = result && result.reason;
+              if (reason === "TICKET_TOPUP_REQUIRED") {
+                pendingTopUp = result;
+                message = "研究券不足：还差 " + result.missingTickets + " 张，可用 " + result.diamondCost + " 钻石补足。";
+                isError = !result.canAfford;
+                render();
+                return result;
+              }
+              message = (result && result.error) || (result && result.message) || "云端抽取失败，请重试。";
+              isError = true;
+              render();
+              return result || { ok: false, reason: "GACHA_CLOUD_FAILED" };
+            }
+            state = result.state;
+            store.save(state);
+            if (result.profile && capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(result.profile);
+            results = result.results || [];
+            lastDrawCount = result.count;
+            pendingTopUp = null;
+            message = result.purchasedTickets
+              ? "已用 " + result.diamondCost + " 钻石补购 " + result.purchasedTickets + " 张研究券，奖励已入档。"
+              : "跃迁完成，奖励已写入云存档。";
+            isError = false;
+            if (capabilities.renderLobby) capabilities.renderLobby();
+            render();
+            return result;
+          })
+          .catch(function showCloudDrawError(error) {
+            message = error && error.message ? error.message : "云端抽取失败。";
+            isError = true;
+            render();
+            return { ok: false, reason: "GACHA_CLOUD_ERROR", error: error };
+          });
       }
       var beforeRaw = store.snapshot();
       var result = model.draw(getProfile(), state, {

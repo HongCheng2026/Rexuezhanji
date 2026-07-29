@@ -16,6 +16,7 @@
     var message = "";
     var isError = false;
     var feedback = null;
+    var busy = false;
 
     function getProfile() { return capabilities.getProfile ? capabilities.getProfile() : {}; }
     function isCloudMode() { return Boolean(capabilities.isCloudMode && capabilities.isCloudMode()); }
@@ -57,6 +58,11 @@
       feedback = null;
       render();
       screen.classList.remove("hidden");
+      if (isCloudMode() && capabilities.syncGatewayProfile) {
+        Promise.resolve(capabilities.syncGatewayProfile(30000)).then(function renderSyncedInventory() {
+          render();
+        }).catch(function keepCurrentInventory() {});
+      }
       return true;
     }
     function close() { if (!screen) return false; feedback = null; screen.classList.add("hidden"); return true; }
@@ -83,11 +89,7 @@
     function use(payload) {
       var id = typeof payload === "string" ? payload : payload && payload.id || selectedId;
       if (isCloudMode()) {
-        feedback = null;
-        message = "云端道具使用尚未开放，本次没有消耗物品。";
-        isError = true;
-        render();
-        return { ok: false, reason: "CLOUD_INVENTORY_DISABLED" };
+        return runCloudAction("useInventoryItem", id);
       }
       var result = model.use(getProfile(), id, catalog);
       if (!result.ok) {
@@ -116,11 +118,7 @@
     function sell(payload) {
       var id = typeof payload === "string" ? payload : payload && payload.id || selectedId;
       if (isCloudMode()) {
-        feedback = null;
-        message = "云端道具出售尚未开放，本次没有消耗物品。";
-        isError = true;
-        render();
-        return { ok: false, reason: "CLOUD_INVENTORY_DISABLED" };
+        return runCloudAction("sellInventoryItem", id);
       }
       var result = model.sell(getProfile(), id, catalog);
       if (!result.ok) {
@@ -145,6 +143,50 @@
       }
       render();
       return result;
+    }
+    function runCloudAction(method, id) {
+      if (busy) return Promise.resolve({ ok: false, reason: "INVENTORY_BUSY" });
+      if (!capabilities.ensureGameGateway || !capabilities.getGameGateway) {
+        feedback = null;
+        message = "云端背包服务尚未就绪，请稍后重试。";
+        isError = true;
+        render();
+        return { ok: false, reason: "INVENTORY_CLOUD_UNAVAILABLE" };
+      }
+      busy = true;
+      feedback = null;
+      message = method === "useInventoryItem" ? "正在使用物资…" : "正在回收物资…";
+      isError = false;
+      render();
+      return Promise.resolve(capabilities.ensureGameGateway())
+        .then(function commitInventoryAction() {
+          var gateway = capabilities.getGameGateway();
+          if (!gateway || typeof gateway[method] !== "function") throw new Error("云端背包服务尚未就绪。");
+          return gateway[method](id);
+        })
+        .then(function applyCloudInventory(result) {
+          if (!result || !result.profile) throw new Error("云端背包结果无效。");
+          if (capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(result.profile);
+          if (method === "useInventoryItem") {
+            message = "已恢复 " + result.restored + " 点体力，云存档已更新。";
+          } else {
+            feedback = { kind: "sell", currency: result.sellCurrency, amount: result.refunded };
+            message = "";
+          }
+          isError = false;
+          if (capabilities.renderLobby) capabilities.renderLobby();
+          return result;
+        })
+        .catch(function showCloudInventoryError(error) {
+          feedback = null;
+          message = error && error.message ? error.message : "云端背包操作失败。";
+          isError = true;
+          return { ok: false, reason: "INVENTORY_CLOUD_ERROR", error: error };
+        })
+        .finally(function releaseInventoryLock() {
+          busy = false;
+          render();
+        });
     }
     function dismissFeedback() {
       if (!feedback) return false;

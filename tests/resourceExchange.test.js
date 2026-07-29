@@ -75,3 +75,45 @@ test("兑换房间确认后保存当前档案并刷新大厅资源", () => {
   assert.equal(profile.resources.gold, 1200);
   assert.deepEqual(calls, { save: 1, render: 1, emit: 1 });
 });
+
+test("云端兑换只发起一次原子请求并应用响应档案", async () => {
+  const source = fs.readFileSync(path.join(root, "src/h5/UI/Lobby/ResourceExchange/resourceExchangeRoom.js"), "utf8");
+  let roomFactory;
+  let profile = { coins: 200, resources: { diamonds: 2, gold: 200 } };
+  const calls = { ensure: 0, gateway: 0, apply: 0, save: 0 };
+  const context = {
+    console,
+    Promise,
+    globalThis: null,
+    RXGame: {
+      roomRegistry: { defineRoom(name, factory) { assert.equal(name, "resourceExchange"); roomFactory = factory; } },
+      resourceExchangeModel: model,
+      resourceExchangeView: { create() { return { render() {}, clear() {} }; } },
+      assets: { UI_A_HUD_ASSETS: {} }
+    }
+  };
+  context.globalThis = context;
+  vm.runInNewContext(source, context, { filename: "resourceExchangeRoom.js" });
+  const room = roomFactory({
+    dom: { resourceExchangeScreen: { classList: { add() {}, remove() {} } }, resourceExchangeMount: {} },
+    resourceExchange: {
+      getProfile: () => profile,
+      isCloudMode: () => true,
+      async ensureGameGateway() { calls.ensure += 1; },
+      getGameGateway: () => ({
+        async exchangeDiamonds(amount) {
+          calls.gateway += 1;
+          assert.equal(amount, 1);
+          return { ok: true, goldGain: 1000, profile: { coins: 1200, resources: { diamonds: 1, gold: 1200 } } };
+        }
+      }),
+      applyGatewayProfile(next) { calls.apply += 1; profile = next; },
+      saveProfile() { calls.save += 1; }
+    }
+  });
+  const result = await room.actions["resourceExchange.confirm"]();
+  assert.equal(result.ok, true);
+  assert.equal(profile.resources.diamonds, 1);
+  assert.equal(profile.resources.gold, 1200);
+  assert.deepEqual(calls, { ensure: 1, gateway: 1, apply: 1, save: 0 });
+});

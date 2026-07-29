@@ -7,6 +7,27 @@
     return Object.assign({}, localRating || {}, serverRating || {});
   }
 
+  // 连续战斗会产生密集的排行榜提交；节流为至少 3 秒一次，尾沿补发，降低云端压力。
+  var leaderboardThrottle = { last: 0, timer: null };
+  function refreshLeaderboardThrottled(gw) {
+    if (!gw || typeof gw.leaderboardRefresh !== "function") return;
+    var now = Date.now();
+    var minInterval = 3000;
+    if (now - leaderboardThrottle.last < minInterval) {
+      if (!leaderboardThrottle.timer) {
+        var wait = minInterval - (now - leaderboardThrottle.last);
+        leaderboardThrottle.timer = setTimeout(function flushLeaderboard() {
+          leaderboardThrottle.timer = null;
+          leaderboardThrottle.last = Date.now();
+          gw.leaderboardRefresh().catch(function () {});
+        }, wait);
+      }
+      return;
+    }
+    leaderboardThrottle.last = now;
+    gw.leaderboardRefresh().catch(function () {});
+  }
+
   function create(options) {
     options = options || {};
     var shared = options.shared || scope;
@@ -102,6 +123,9 @@
     battleSession = assignBattleSession(null);
     finished = assignFinished(false);
     battleSession = assignBattleSession(createBattleSession(level, ticket));
+    if (shared.mainFeaturePanelsView && shared.mainFeaturePanelsView.stopChatPolling) {
+      shared.mainFeaturePanelsView.stopChatPolling(dom);
+    }
     lobby.hideShop();
     lobby.showBattleScreen();
     playSfx("start");
@@ -194,9 +218,18 @@
     if (!pendingSettlement || gatewayActionLock.busy) return;
     var settlement = pendingSettlement;
     gatewayActionLock.busy = true;
+    var gw = null;
+    var isCloud = false;
+    // 乐观展示：先呈现战报界面（使用本地计算结果），不再阻塞首个界面等待云端往返；
+    // 云端返回后再以权威档案对齐（applyGatewayProfile）。排行榜提交改为节流，避免密集请求。
+    state.mode = "shop";
+    presentSettlement(settlement.isWin, settlement.level, settlement.result);
     ensureGameGateway().then(function settleThroughGateway() {
-      if (options.getGameGateway().isCloud && !settlement.isWin) return options.getGameGateway().abandonBattle(settlement.ticket);
-      return options.getGameGateway().finishBattle(
+      gw = options.getGameGateway();
+      if (!gw) throw new Error("游戏数据服务尚未就绪。");
+      isCloud = Boolean(gw.isCloud);
+      if (isCloud && !settlement.isWin) return gw.abandonBattle(settlement.ticket);
+      return gw.finishBattle(
         settlement.ticket,
         settlement.level.id,
         settlement.result.rating || { stars: settlement.isWin ? 1 : 0 },
@@ -208,13 +241,7 @@
       pendingSettlement = assignPendingSettlement(null);
       battleContext = assignBattleContext(null);
       battleSession = assignBattleSession(null);
-      state.mode = "shop";
-      presentSettlement(settlement.isWin, settlement.level, settlement.result);
-      // Ask the server to refresh all categories from the authoritative profile.
-      if (options.getGameGateway() && options.getGameGateway().isCloud) {
-        var gw = options.getGameGateway();
-        if (gw.leaderboardRefresh) gw.leaderboardRefresh().catch(function () {});
-      }
+      if (isCloud) refreshLeaderboardThrottled(gw);
     }).catch(function onSettlementError(error) {
       state.mode = "settlement-error";
       lobby.showBattleScreen();

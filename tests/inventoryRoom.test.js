@@ -44,6 +44,23 @@ function createHarness(options = {}) {
     inventory: {
       getProfile: () => currentProfile,
       isCloudMode: () => Boolean(options.cloud),
+      ensureGameGateway: async () => true,
+      getGameGateway: () => ({
+        async useInventoryItem(id) {
+          const next = JSON.parse(JSON.stringify(currentProfile));
+          next.resources.inventory[id] -= 1;
+          next.resources.energy += 30;
+          return { ok: true, profile: next, restored: 30 };
+        },
+        async sellInventoryItem(id) {
+          const next = JSON.parse(JSON.stringify(currentProfile));
+          next.resources.inventory[id] -= 1;
+          next.resources.gold += 10000;
+          return { ok: true, profile: next, sellCurrency: "gold", refunded: 10000 };
+        }
+      }),
+      applyGatewayProfile(next) { currentProfile = next; },
+      syncGatewayProfile: async () => currentProfile,
       commitProfile(next) {
         commits += 1;
         if (options.commitFails) throw new Error("disk full");
@@ -87,16 +104,18 @@ test("背包房间成功使用体力药水后只提交一次", () => {
   assert.equal(harness.getProfile().resources.inventory.energy_small, 0);
 });
 
-test("体力满值与云端模式均不提交道具消耗", () => {
+test("体力满值不消耗，本地与云端各走自己的单次提交路径", async () => {
   const full = createHarness({ energy: 100 });
   assert.equal(full.room.actions["inventory.use"]({ id: "energy_small" }).reason, "ENERGY_FULL");
   assert.equal(full.getCommits(), 0);
   assert.equal(full.getProfile().resources.inventory.energy_small, 1);
 
   const cloud = createHarness({ cloud: true });
-  assert.equal(cloud.room.actions["inventory.use"]({ id: "energy_small" }).reason, "CLOUD_INVENTORY_DISABLED");
+  const cloudResult = await cloud.room.actions["inventory.use"]({ id: "energy_small" });
+  assert.equal(cloudResult.ok, true);
   assert.equal(cloud.getCommits(), 0);
-  assert.equal(cloud.getProfile().resources.inventory.energy_small, 1);
+  assert.equal(cloud.getProfile().resources.inventory.energy_small, 0);
+  assert.equal(cloud.getProfile().resources.energy, 50);
 });
 
 test("背包存储失败时保留使用前玩家档", () => {

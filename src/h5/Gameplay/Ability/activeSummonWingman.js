@@ -14,9 +14,8 @@
   function canCast(context) {
     var gs = gradeStats(context);
     var cap = Math.max(1, Math.floor(Number(gs && gs.maxAllies) || 1));
-    var alive = Array.isArray(context.state && context.state.allies)
-      ? context.state.allies.filter(function isLive(ally) { return ally && !ally.dead && ally.skillId === SKILL_ID; }).length
-      : 0;
+    var allies = Array.isArray(context.state && context.state.allies) ? context.state.allies : [];
+    var alive = countLiveWingmen(allies);
     return alive < cap;
   }
 
@@ -41,7 +40,7 @@
     });
     state.shake = Math.max(Number(state.shake) || 0, 0.28);
     var cap = Math.max(1, Math.floor(Number(gs.maxAllies) || 1));
-    var existing = state.allies.filter(function isLive(ally) { return ally && !ally.dead && ally.skillId === SKILL_ID; }).length;
+    var existing = countLiveWingmen(state.allies);
     if (existing >= cap) return false;
     var elapsed = Number(state.elapsed) || 0;
     var maxHp = Math.max(80, Math.round((Number(context.loadout && context.loadout.finalStats && context.loadout.finalStats.maxHp) || 100) * (0.28 + cap * 0.04)));
@@ -97,7 +96,13 @@
       }
       applyBlock(state, ally, dt);
     }
-    state.allies = allies.filter(function keepAlive(ally) { return ally && !ally.dead && Number(ally.hp) > 0; });
+    var write = 0;
+    for (var read = 0; read < allies.length; read += 1) {
+      var current = allies[read];
+      if (current && !current.dead && Number(current.hp) > 0) allies[write++] = current;
+    }
+    allies.length = write;
+    state.allies = allies;
   }
 
   function fireAllyVolley(state, ally, primaryTarget) {
@@ -159,9 +164,23 @@
   }
 
   function getEnemies(state) {
-    var list = Array.isArray(state.enemies) ? state.enemies.filter(isValidTarget) : [];
+    var list = state._wingmanTargets || (state._wingmanTargets = []);
+    list.length = 0;
+    var enemies = Array.isArray(state.enemies) ? state.enemies : [];
+    for (var i = 0; i < enemies.length; i += 1) {
+      if (isValidTarget(enemies[i])) list.push(enemies[i]);
+    }
     if (state.boss && isValidTarget(state.boss)) list.push(state.boss);
     return list;
+  }
+
+  function countLiveWingmen(allies) {
+    var count = 0;
+    for (var i = 0; i < allies.length; i += 1) {
+      var ally = allies[i];
+      if (ally && !ally.dead && ally.skillId === SKILL_ID) count += 1;
+    }
+    return count;
   }
 
   function selectTargetForAlly(targets, ally) {

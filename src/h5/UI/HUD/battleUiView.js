@@ -44,9 +44,12 @@
     target.appendChild(frame);
 
     var canvas = frame.querySelector('[data-ui="canvas"]');
-    // 逻辑战场仍保持 960×473，画布用 1.5x 像素缓冲：在被大厅宿主放大后依旧清晰，
-    // 同时把后台缓冲像素量降到 2x 的 ~56%，显著缓解战斗卡顿。
-    var renderScale = 1.5;
+    // 逻辑战场保持 960×473；低配设备使用 1x 缓冲，其余设备使用 1.25x，
+    // 避免 2x 后台缓冲在弹幕密集时制造额外像素填充压力。
+    var navigatorInfo = root.navigator || {};
+    var lowSpecDevice = (Number(navigatorInfo.deviceMemory) > 0 && Number(navigatorInfo.deviceMemory) <= 4)
+      || (Number(navigatorInfo.hardwareConcurrency) > 0 && Number(navigatorInfo.hardwareConcurrency) <= 4);
+    var renderScale = lowSpecDevice ? 1 : 1.25;
     canvas.width = field.width * renderScale;
     canvas.height = field.height * renderScale;
     canvas.dataset.logicalWidth = String(field.width);

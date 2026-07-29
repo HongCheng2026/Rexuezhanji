@@ -63,7 +63,7 @@
         resourceChip(uiAssets.resourceTicket, "星链研究券", resources.tickets, "is-ticket");
       var status = model.message ? '<footer class="inventory-status ' + (model.isError ? 'is-error' : '') + '">' + escapeHtml(model.message) + '</footer>' : '';
       mount.innerHTML = '<article class="inventory-terminal"' + terminalStyle + '><header><div class="inventory-heading"><small>STARPORT STORAGE / INDEPENDENT ROOM</small><h1>背包终端</h1></div><div class="inventory-resource-summary">' + resourceSummary + '</div><button class="inventory-close" type="button" data-inventory-action="close" aria-label="关闭背包"><span aria-hidden="true"></span></button></header>' +
-        '<div class="inventory-cloud-notice' + (model.cloudMode ? ' is-visible' : '') + '">云端道具使用尚未开放；当前背包只读。</div>' +
+        '<div class="inventory-cloud-notice' + (model.cloudMode ? ' is-visible' : '') + '">云端背包已启用：使用与出售均由服务器原子校验并写入存档。</div>' +
         '<div class="inventory-layout"><nav class="inventory-filters" aria-label="背包分类">' + filters(model.filter) + '</nav><main class="inventory-grid" aria-label="物资列表">' + cards(model.items, model.selectedId) + '</main><aside class="inventory-detail">' + detail(model.selected, model.cloudMode) + '</aside></div>' +
         status + feedback(model.feedback) + '</article>';
     }

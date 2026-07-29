@@ -25,6 +25,7 @@
     var PREMIUM_CAST_BURST_SECONDS = 0.32;
     var PREMIUM_FOCUS_SECONDS = 0.18;
     var backgroundGradient = null;
+    var wingmanSpriteSrc = assetsConfig.COMBAT_SKILL_VFX_ASSETS && assetsConfig.COMBAT_SKILL_VFX_ASSETS.wingmanSprite;
 
     if (!ctx) throw new Error("Canvas renderer requires a 2D context.");
     ctx.imageSmoothingEnabled = true;
@@ -318,17 +319,26 @@
   }
 
   function drawSkillFocusBackdrop() {
-    if (highDensityMode) return;
     var effects = state && state.skillEffects ? state.skillEffects : [];
     var strongest = null;
     var strength = 0;
+    var hasBlackHole = false;
     for (var i = 0; i < effects.length; i += 1) {
       var effect = effects[i];
+      if (effect && effect.activeSkillId === "active-black-hole" && Number(effect.life) > 0) hasBlackHole = true;
       if (!isPremiumSkillEffect(effect)) continue;
       var age = getSkillEffectAge(effect);
       var next = Math.max(0, 1 - age / PREMIUM_FOCUS_SECONDS);
       if (next > strength) { strongest = effect; strength = next; }
     }
+    if (hasBlackHole) {
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(0,2,10,0.09)";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      ctx.restore();
+    }
+    if (highDensityMode) return;
     if (!strongest || strength <= 0) return;
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
@@ -542,6 +552,8 @@
   function drawAllies() {
     var allies = state && Array.isArray(state.allies) ? state.allies : [];
     if (!allies.length) return;
+    var wingmanSprite = getImage(wingmanSpriteSrc);
+    var hasWingmanSprite = Boolean(wingmanSprite && wingmanSprite.complete && wingmanSprite.naturalWidth);
     for (var i = 0; i < allies.length; i += 1) {
       var ally = allies[i];
       if (!ally || ally.dead) continue;
@@ -550,24 +562,32 @@
       ctx.save();
       ctx.translate(ally.x, ally.y);
       ctx.rotate(angle);
+      if (hasWingmanSprite) {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.shadowColor = "#63ffb4";
+        ctx.shadowBlur = highDensityMode ? 2 : 8;
+        ctx.drawImage(wingmanSprite, -38, -28, 76, 56);
+      } else {
+        ctx.globalCompositeOperation = "screen";
+        ctx.strokeStyle = "#f4fffb";
+        ctx.fillStyle = "rgba(58,232,181,0.78)";
+        ctx.shadowColor = "#63ffb4";
+        ctx.shadowBlur = highDensityMode ? 4 : 18;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(25, 0);
+        ctx.lineTo(-8, -17);
+        ctx.lineTo(-3, -6);
+        ctx.lineTo(-22, -3);
+        ctx.lineTo(-29, 0);
+        ctx.lineTo(-22, 3);
+        ctx.lineTo(-3, 6);
+        ctx.lineTo(-8, 17);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
       ctx.globalCompositeOperation = "screen";
-      ctx.strokeStyle = "#f4fffb";
-      ctx.fillStyle = "rgba(58,232,181,0.78)";
-      ctx.shadowColor = "#63ffb4";
-      ctx.shadowBlur = highDensityMode ? 4 : 18;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(25, 0);
-      ctx.lineTo(-8, -17);
-      ctx.lineTo(-3, -6);
-      ctx.lineTo(-22, -3);
-      ctx.lineTo(-29, 0);
-      ctx.lineTo(-22, 3);
-      ctx.lineTo(-3, 6);
-      ctx.lineTo(-8, 17);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
       ctx.fillStyle = "rgba(218,255,244," + pulse.toFixed(3) + ")";
       ctx.beginPath();
       ctx.arc(4, 0, 4.5, 0, Math.PI * 2);
@@ -602,7 +622,7 @@
     }
     for (var i = 0; i < list.length; i += 1) {
       var bullet = list[i];
-      if (enemy) drawEnemyBullet(bullet);
+      if (enemy) drawEnemyBullet(bullet, bulletFxStride === 1 || i % bulletFxStride === 0);
       else drawPlayerBullet(bullet, bulletFxStride === 1 || i % bulletFxStride === 0);
     }
     if (!enemy && list.length) ctx.restore();
@@ -655,13 +675,17 @@
     ctx.restore();
   }
 
-  function drawEnemyBullet(bullet) {
+  function drawEnemyBullet(bullet, showSprite) {
     var visual = getEnemyBulletRenderProfile(bullet);
+    if (highDensityMode && visual.shape === "orb") {
+      drawFastEnemyOrb(bullet, visual);
+      return;
+    }
     var sprite = getEnemyBulletSprite(bullet);
     ctx.save();
     ctx.translate(bullet.x, bullet.y);
     ctx.rotate(bullet.angle || 0);
-    if (sprite && sprite.complete && sprite.naturalWidth) {
+    if (showSprite && sprite && sprite.complete && sprite.naturalWidth) {
       var spriteSize = visual.spriteSize || Math.max(16, (bullet.radius || 5) * 3.2);
       ctx.globalAlpha = visual.spriteAlpha;
       ctx.drawImage(sprite, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
@@ -675,6 +699,18 @@
       drawEnemyCore(visual);
     }
     ctx.restore();
+  }
+
+  function drawFastEnemyOrb(bullet, visual) {
+    var radius = Math.max(3, Number(visual.radius) || Number(bullet.radius) || 4);
+    ctx.fillStyle = visual.core;
+    ctx.beginPath();
+    ctx.arc(bullet.x, bullet.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = visual.inner;
+    ctx.beginPath();
+    ctx.arc(bullet.x - radius * 0.2, bullet.y - radius * 0.2, Math.max(1.2, radius * 0.36), 0, Math.PI * 2);
+    ctx.fill();
   }
 
   function getPlayerBulletVisual(bullet) {
@@ -1307,8 +1343,16 @@
   }
 
   function preloadSkillAssets() {
-    // 战斗技能全部走 Canvas 矢量路径；保留异步接口仅用于兼容现有启动器。
-    return Promise.resolve([]);
+    // Only the compact wingman body is decoded ahead of combat. Large active
+    // skill artwork stays outside battle; all other effects remain vector-only.
+    if (!wingmanSpriteSrc) return Promise.resolve([]);
+    var image = getImage(wingmanSpriteSrc);
+    if (image.decode) {
+      return image.decode().catch(function ignoreDecodeFailure() {}).then(function finishWingmanPreload() {
+        return [wingmanSpriteSrc];
+      });
+    }
+    return Promise.resolve([wingmanSpriteSrc]);
   }
 
 

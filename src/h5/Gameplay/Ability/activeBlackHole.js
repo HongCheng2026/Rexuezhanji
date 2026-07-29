@@ -136,8 +136,13 @@
     var r = (effect.radius || 60) * (0.92 + Math.sin(progress * Math.PI * 6) * 0.05);
     ctx.save();
     ctx.translate(effect.x, effect.y);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(0,0,8," + (0.72 * alpha).toFixed(3) + ")";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.08, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = "rgba(76,30,130," + (0.18 * alpha).toFixed(3) + ")";
+    ctx.fillStyle = "rgba(120,48,210," + (0.34 * alpha).toFixed(3) + ")";
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
     ctx.fill();
@@ -147,16 +152,16 @@
     ctx.arc(0, 0, r * 0.38, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowColor = "#d88cff";
-    ctx.shadowBlur = 26 * alpha;
+    ctx.shadowBlur = 34 * alpha;
     ctx.strokeStyle = "rgba(245,222,255," + (0.95 * alpha).toFixed(3) + ")";
-    ctx.lineWidth = 3.2;
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.4, 0, Math.PI * 2);
     ctx.stroke();
-    for (var spoke = 0; spoke < 8; spoke += 1) {
-      var spokeAngle = progress * Math.PI * 2 + spoke * Math.PI / 4;
-      ctx.strokeStyle = "rgba(157,108,255," + (0.2 * alpha).toFixed(3) + ")";
-      ctx.lineWidth = 2;
+    for (var spoke = 0; spoke < 6; spoke += 1) {
+      var spokeAngle = progress * Math.PI * 2 + spoke * Math.PI / 3;
+      ctx.strokeStyle = "rgba(157,108,255," + (0.42 * alpha).toFixed(3) + ")";
+      ctx.lineWidth = 2.6;
       ctx.beginPath();
       ctx.moveTo(Math.cos(spokeAngle) * r * 0.46, Math.sin(spokeAngle) * r * 0.46);
       ctx.lineTo(Math.cos(spokeAngle) * r * 1.02, Math.sin(spokeAngle) * r * 1.02);
@@ -169,7 +174,7 @@
       ctx.strokeStyle = ring === 1
         ? "rgba(84,218,255," + (0.82 * alpha).toFixed(3) + ")"
         : "rgba(220,160,255," + ((0.76 - ring * 0.1) * alpha).toFixed(3) + ")";
-      ctx.lineWidth = ring === 1 ? 2.2 : 3;
+      ctx.lineWidth = ring === 1 ? 4 : 5;
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, phase, phase + Math.PI * 1.48);
       ctx.stroke();

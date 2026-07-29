@@ -25,7 +25,7 @@
     var renderProfilePanel = options.renderProfilePanel;
     var calculateTotalPower = options.calculateTotalPower;
     var activePanelKey = "";
-    var resourcePanels = { profile: true, shop: true, task: true, achievement: true, redeem: true };
+    var resourcePanels = { profile: true, shop: true, task: true, achievement: true, redeem: true, signin: true };
 
     // Social click delegation
     var socialClickState = { options: null };

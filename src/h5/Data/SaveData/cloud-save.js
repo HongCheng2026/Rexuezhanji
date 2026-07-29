@@ -185,6 +185,24 @@
       quantity: Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1))),
       operationId
     }),
+    shopExchange: (itemId, quantity = 1, operationId = createOperationId()) => api("shop-exchange", {
+      itemId,
+      quantity: Math.max(1, Math.min(99, Math.floor(Number(quantity) || 1))),
+      operationId
+    }),
+    gachaDraw: (target, count = 1, buyMissingTickets = false, operationId = createOperationId()) => api("gacha-draw", {
+      target,
+      count: Number(count) === 10 ? 10 : 1,
+      buyMissingTickets: Boolean(buyMissingTickets),
+      operationId
+    }),
+    claimSignIn: (operationId = createOperationId()) => api("daily-signin", { operationId }),
+    useInventoryItem: (itemId, operationId = createOperationId()) => api("inventory-use", { itemId, operationId }),
+    sellInventoryItem: (itemId, operationId = createOperationId()) => api("inventory-sell", { itemId, operationId }),
+    exchangeDiamonds: (amount, operationId = createOperationId()) => api("exchange-diamonds", {
+      amount: Math.max(1, Math.min(9999, Math.floor(Number(amount) || 1))),
+      operationId
+    }),
     promoteUnit: (kind, itemId, tokenId, operationId = createOperationId()) => api("promote-unit", { kind, itemId, tokenId, operationId }),
     starUpPilot: (pilotId, operationId = createOperationId()) => api("pilot-star-up", { pilotId, operationId }),
     starUpFighter: (shipId, operationId = createOperationId()) => api("fighter-star-up", { shipId, operationId }),

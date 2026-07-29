@@ -107,6 +107,24 @@
       buyShopItem: function buyShopItem(itemId, quantity) {
         return callAdapter(adapter, "buyShopItem", [itemId, quantity], mode);
       },
+      shopExchange: function shopExchange(itemId, quantity) {
+        return callAdapter(adapter, "shopExchange", [itemId, quantity], mode);
+      },
+      gachaDraw: function gachaDraw(target, count, buyMissingTickets) {
+        return callAdapter(adapter, "gachaDraw", [target, count, buyMissingTickets], mode);
+      },
+      claimSignIn: function claimSignIn() {
+        return callAdapter(adapter, "claimSignIn", [], mode);
+      },
+      useInventoryItem: function useInventoryItem(itemId) {
+        return callAdapter(adapter, "useInventoryItem", [itemId], mode);
+      },
+      sellInventoryItem: function sellInventoryItem(itemId) {
+        return callAdapter(adapter, "sellInventoryItem", [itemId], mode);
+      },
+      exchangeDiamonds: function exchangeDiamonds(amount) {
+        return callAdapter(adapter, "exchangeDiamonds", [amount], mode);
+      },
       promoteUnit: function promoteUnit(kind, itemId, tokenId) {
         return callAdapter(adapter, "promoteUnit", [kind, itemId, tokenId], mode);
       },

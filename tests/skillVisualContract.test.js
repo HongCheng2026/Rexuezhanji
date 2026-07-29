@@ -42,14 +42,16 @@ test("manual active skills are explicitly marked as premium and keep distinct pa
   assert.equal(primaries.size, activeSkillIds.length);
 });
 
-test("renderer layers vector trails and staged effects without battle skill sprites", () => {
+test("renderer keeps large battle effects vector-only and uses only the compact wingman sprite", () => {
   const source = fs.readFileSync(path.join(root, "src", "h5", "Gameplay", "Combat", "canvasRenderer.js"), "utf8");
   assert.match(source, /drawSkillFocusBackdrop\(\)/);
   assert.match(source, /drawPremiumSkillUnderlay\(effect/);
   assert.match(source, /drawPremiumSkillOverlay\(effect/);
   assert.match(source, /drawAutomaticSkillSignature\(effect/);
   assert.match(source, /drawAutomaticBulletAccent\(visual\)/);
-  assert.doesNotMatch(source, /drawSkillEffectSprite|getSkillRenderable|COMBAT_SKILL_VFX_ASSETS/);
+  assert.doesNotMatch(source, /drawSkillEffectSprite|getSkillRenderable/);
+  assert.match(source, /COMBAT_SKILL_VFX_ASSETS[\s\S]*?wingmanSprite/);
+  assert.doesNotMatch(source, /activeDecoy|activeChainLightning|activeBlackHole[^"]*vfx/);
 });
 
 test("premium battle effects stay on the lightweight vector render path", () => {
@@ -73,7 +75,7 @@ test("premium battle effects stay on the lightweight vector render path", () => 
   assert.match(summonSource, /function selectTargetForAlly\(targets, ally\)/);
 });
 
-test("battle renderer compatibility preload does not decode or upload skill textures", async () => {
+test("battle renderer preloads exactly one compact wingman texture without bitmap uploads", async () => {
   const previousImage = global.Image;
   const previousCreateImageBitmap = global.createImageBitmap;
   let decodeCount = 0;
@@ -103,12 +105,12 @@ test("battle renderer compatibility preload does not decode or upload skill text
     const rendererApi = require(rendererPath);
     const renderer = rendererApi.create({
       ctx: {},
-      assetsConfig: { COMBAT_SKILL_VFX_ASSETS: { activeDecoy: "decoy.png" } }
+      assetsConfig: { COMBAT_SKILL_VFX_ASSETS: { activeDecoy: "decoy.png", wingmanSprite: "wingman.png" } }
     });
 
     const prepared = await renderer.preloadSkillAssets();
-    assert.deepEqual(prepared, []);
-    assert.equal(decodeCount, 0);
+    assert.deepEqual(prepared, ["wingman.png"]);
+    assert.equal(decodeCount, 1);
     assert.equal(bitmapCount, 0);
   } finally {
     global.Image = previousImage;

@@ -27,11 +27,11 @@ test("Netlify pretty shell URL resolves runtime assets from the deployment root"
   const assets = loadAssetsAt("https://rexuezhanji.top/shell/game-frame");
   assert.equal(
     assets.FEATURE_PANEL_ASSETS.contactQr,
-    "https://rexuezhanji.top/assets/runtime/social/contact/qq-qr.jpg"
+    "https://rexuezhanji.top/assets/runtime/social/contact/qq-qr.jpg?rev=20260729a"
   );
   assert.equal(
     assets.PILOT_ASSETS[0].src,
-    "https://rexuezhanji.top/assets/runtime/pilot/pilot-ss-heiyue.png"
+    "https://rexuezhanji.top/assets/runtime/pilot/pilot-ss-heiyue.png?rev=20260729a"
   );
 });
 
@@ -39,6 +39,6 @@ test("source H5 shell keeps resolving runtime assets from the workspace root", (
   const assets = loadAssetsAt("http://127.0.0.1:4173/src/h5/Shell/game-frame.html");
   assert.equal(
     assets.FEATURE_PANEL_ASSETS.contactQr,
-    "http://127.0.0.1:4173/assets/runtime/social/contact/qq-qr.jpg"
+    "http://127.0.0.1:4173/assets/runtime/social/contact/qq-qr.jpg?rev=20260729a"
   );
 });

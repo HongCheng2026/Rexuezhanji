@@ -105,13 +105,13 @@
       if (!mount) return;
       var selectedKey = model.state.target;
       var selected = selectedKey && model.targets[selectedKey] || null;
-      var canDraw = !model.cloudMode && Boolean(selectedKey);
+      var canDraw = Boolean(selectedKey);
       var deviceStyle = uiAssets.summonDevice ? ' style="background-image:url(&quot;' + attr(uiAssets.summonDevice) + '&quot;)"' : '';
       var terminalStyle = uiAssets.backdrop ? ' style="--gacha-backdrop:url(&quot;' + attr(uiAssets.backdrop) + '&quot;)"' : '';
       mount.innerHTML =
         '<article class="gacha-terminal"' + terminalStyle + '>' +
           '<header class="gacha-header"><div><small>STAR WINGS / INDEPENDENT SIGNAL ROOM</small><h1>星穹之翼 · 定向跃迁</h1></div><div class="gacha-wallet">' + walletChip(uiAssets.resourceTicket, '星链研究券', model.tickets, 'is-ticket') + walletChip(uiAssets.resourceDiamond, '钻石', model.diamonds, 'is-diamond') + '</div><button type="button" data-gacha-action="close" aria-label="关闭抽卡">×</button></header>' +
-          '<div class="gacha-cloud-notice' + (model.cloudMode ? ' is-visible' : '') + '">正式云端抽取尚未开放；当前界面只读，不会扣券或发奖。</div>' +
+          '<div class="gacha-cloud-notice' + (model.cloudMode ? ' is-visible' : '') + '">云端抽取已启用：抽取概率与保底由服务器校验并发放，结果与全服一致。</div>' +
           '<div class="gacha-layout">' +
             '<aside class="gacha-targets"><h2>选择终极目标</h2>' + targetCard('pilot', model) + targetCard('ship', model) + '<p>每次抽取前均可切换。100 抽必出当前目标；券不足时可按 ' + format(config.TICKET_DIAMOND_PRICE) + ' 钻石/张补购。</p></aside>' +
             '<main class="gacha-core"><div class="gacha-device"' + deviceStyle + '><div class="gacha-device-ring"></div>' +

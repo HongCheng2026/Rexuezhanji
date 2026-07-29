@@ -817,6 +817,16 @@ ranking and codex panels. */
   margin-left: 4px;
 }
 
+.feature-panel.main-feature-panel .signin-feedback {
+  color: #77e8ae;
+  font-size: 12px;
+  margin: 9px 0 0;
+}
+
+.feature-panel.main-feature-panel .signin-feedback.is-error {
+  color: #ff9a9a;
+}
+
 /* ===== 设置面板：独立模块(恢复原三栏布局) ===== */
 .feature-panel.main-feature-panel .settings-panel {
   display: grid;
