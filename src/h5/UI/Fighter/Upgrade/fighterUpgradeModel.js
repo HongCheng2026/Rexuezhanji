@@ -405,11 +405,13 @@
     }
 
     function localDateKey(date) {
+      if (scope.worldTimeSystem && typeof scope.worldTimeSystem.dateKey === "function") return scope.worldTimeSystem.dateKey(date);
       date = date || new Date();
       return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
     }
 
     function isoWeekKey(date) {
+      if (scope.worldTimeSystem && typeof scope.worldTimeSystem.weekKey === "function") return scope.worldTimeSystem.weekKey(date);
       date = date || new Date();
       var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       var day = (d.getDay() + 6) % 7;

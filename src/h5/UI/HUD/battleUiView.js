@@ -8,9 +8,9 @@
   function mount(rootElement) {
     var target = rootElement || (root.document && root.document.querySelector("#battleUiRoot"));
     if (!target) return null;
-    if (target.querySelector('[data-ui="canvas"]')) return createHandle(target);
-
     var field = scope.battleGeometry.DEFAULT_FIELD;
+    if (target.querySelector('[data-ui="canvas"]')) return createHandle(target, field);
+
     var frame = root.document.createElement("div");
     frame.className = "battle-ui-frame";
     frame.innerHTML =
@@ -23,6 +23,9 @@
         '<button class="battle-pause-button" type="button" data-battle-action="pause">暂停</button>' +
       '</header>' +
       '<div class="battle-field" data-ui="field"><canvas data-ui="canvas" aria-label="战斗区域"></canvas></div>' +
+      '<section class="battle-control-hint hidden" data-ui="controlHint" role="status" aria-live="polite">' +
+        '<small>FLIGHT CONTROL</small><strong data-ui="controlHintTitle">操作提示</strong><span data-ui="controlHintText"></span>' +
+      '</section>' +
       '<footer class="battle-rail battle-bottom-rail" aria-label="战斗技能">' +
         '<section class="battle-skill-group battle-active-group" aria-label="主动技能">' +
           '<strong class="battle-group-title">主动技能</strong>' +
@@ -44,21 +47,21 @@
     target.appendChild(frame);
 
     var canvas = frame.querySelector('[data-ui="canvas"]');
-    // 逻辑战场保持 960×473；低配设备使用 1x 缓冲，其余设备使用 1.25x，
-    // 避免 2x 后台缓冲在弹幕密集时制造额外像素填充压力。
-    var navigatorInfo = root.navigator || {};
-    var lowSpecDevice = (Number(navigatorInfo.deviceMemory) > 0 && Number(navigatorInfo.deviceMemory) <= 4)
-      || (Number(navigatorInfo.hardwareConcurrency) > 0 && Number(navigatorInfo.hardwareConcurrency) <= 4);
-    var renderScale = lowSpecDevice ? 1 : 1.25;
+    // 逻辑战场保持 960×473，缓冲倍率由独立画质设置决定。
+    var qualityProfile = scope.visualQualitySystem && scope.visualQualitySystem.getEffectiveProfile
+      ? scope.visualQualitySystem.getEffectiveProfile()
+      : { renderScale: 1.25 };
+    var renderScale = Number(qualityProfile.renderScale) || 1;
     canvas.width = field.width * renderScale;
     canvas.height = field.height * renderScale;
     canvas.dataset.logicalWidth = String(field.width);
     canvas.dataset.logicalHeight = String(field.height);
+    canvas.dataset.renderScale = String(renderScale);
     canvas.tabIndex = 0;
     createActiveSlots(frame.querySelector('[data-ui="activeSlots"]'));
     createInBattleSkillSlots(frame.querySelector('[data-ui="inBattleSkills"]'));
     if (scope.battlePauseView && scope.battlePauseView.mount) scope.battlePauseView.mount(target);
-    return createHandle(target);
+    return createHandle(target, field);
   }
 
   function createActiveSlots(container) {
@@ -73,7 +76,7 @@
       button.disabled = true;
       button.innerHTML =
         '<span class="battle-slot-icon">+</span>' +
-        '<span class="battle-slot-mode">未配置</span>' +
+        '<span class="battle-slot-mode">空槽</span>' +
         '<span class="battle-slot-timer" aria-live="polite"></span>' +
         '<kbd>' + (i + 1) + '</kbd>';
       container.appendChild(button);
@@ -90,7 +93,7 @@
     }
   }
 
-  function createHandle(target) {
+  function createHandle(target, field) {
     var pause = scope.battlePauseView && scope.battlePauseView.mount ? scope.battlePauseView.mount(target) : null;
     var refs = {
       root: target,
@@ -108,14 +111,67 @@
       decisiveCommandIcon: target.querySelector('[data-ui="decisiveCommandIcon"]'),
       decisiveCommandCharges: target.querySelector('[data-ui="decisiveCommandCharges"]'),
       decisiveCommandCooldown: target.querySelector('[data-ui="decisiveCommandCooldown"]'),
-      inBattleSkills: Array.prototype.slice.call(target.querySelectorAll("[data-in-battle-index]"))
+      inBattleSkills: Array.prototype.slice.call(target.querySelectorAll("[data-in-battle-index]")),
+      controlHint: target.querySelector('[data-ui="controlHint"]'),
+      controlHintTitle: target.querySelector('[data-ui="controlHintTitle"]'),
+      controlHintText: target.querySelector('[data-ui="controlHintText"]')
     };
+    var controlHintTimer = null;
     return {
       root: target,
       canvas: refs.canvas,
       elements: refs,
-      render: function render(model) { renderModel(refs, pause, model || {}); }
+      render: function render(model) { renderModel(refs, pause, model || {}); },
+      applyRenderProfile: function applyRenderProfile(profile) {
+        var scale = Math.max(1, Math.min(1.25, Number(profile && profile.renderScale) || 1));
+        var nextWidth = Math.round(field.width * scale);
+        var nextHeight = Math.round(field.height * scale);
+        if (refs.canvas.width !== nextWidth) refs.canvas.width = nextWidth;
+        if (refs.canvas.height !== nextHeight) refs.canvas.height = nextHeight;
+        refs.canvas.dataset.logicalWidth = String(field.width);
+        refs.canvas.dataset.logicalHeight = String(field.height);
+        refs.canvas.dataset.renderScale = String(scale);
+        var nextContext = refs.canvas.getContext("2d");
+        if (nextContext) {
+          nextContext.setTransform(scale, 0, 0, scale, 0, 0);
+          nextContext.imageSmoothingEnabled = true;
+          if ("imageSmoothingQuality" in nextContext) nextContext.imageSmoothingQuality = "medium";
+        }
+        return scale;
+      },
+      showFirstControlHint: function showFirstControlHint(uid) {
+        if (!refs.controlHint) return false;
+        var storageKey = "rx_battle_controls_seen_v1:" + String(uid || "guest");
+        try {
+          if (root.localStorage && root.localStorage.getItem(storageKey)) return false;
+          if (root.localStorage) root.localStorage.setItem(storageKey, "1");
+        } catch (error) { /* 无痕/受限存储仍允许本次提示 */ }
+        var coarse = root.matchMedia && root.matchMedia("(pointer: coarse)").matches;
+        setText(refs.controlHintTitle, coarse ? "拖动战机开始移动" : "WASD / 方向键移动");
+        setText(refs.controlHintText, coarse ? "点击技能与决胜指令释放能力" : "1–4 释放技能｜SPACE 决胜｜P 暂停");
+        refs.controlHint.classList.remove("hidden", "is-leaving");
+        refs.controlHint.classList.add("is-visible");
+        if (controlHintTimer) root.clearTimeout(controlHintTimer);
+        controlHintTimer = root.setTimeout(function autoHideControlHint() { hideControlHint(refs.controlHint); }, 3000);
+        return true;
+      },
+      dismissControlHint: function dismissControlHint() {
+        if (controlHintTimer) root.clearTimeout(controlHintTimer);
+        controlHintTimer = null;
+        return hideControlHint(refs.controlHint);
+      }
     };
+  }
+
+  function hideControlHint(node) {
+    if (!node || node.classList.contains("hidden")) return false;
+    node.classList.remove("is-visible");
+    node.classList.add("is-leaving");
+    root.setTimeout(function finishControlHint() {
+      node.classList.add("hidden");
+      node.classList.remove("is-leaving");
+    }, 180);
+    return true;
   }
 
   function renderModel(refs, pause, model) {
@@ -147,9 +203,9 @@
     node.classList.toggle("is-ready", configured && status === "ready");
     node.title = configured
       ? (slot.name || ("主动技能 " + (index + 1))) + "｜点击切换自动，按 " + (index + 1) + " 手动释放"
-      : "未配置主动技能";
+      : "空技能槽｜可在战机强化中配置";
     setText(node.querySelector(".battle-slot-icon"), configured ? iconText(slot) : "+");
-    setText(node.querySelector(".battle-slot-mode"), configured ? (slot.autoEnabled ? "自动" : "手动") : "未配置");
+    setText(node.querySelector(".battle-slot-mode"), configured ? (slot.autoEnabled ? "自动" : "手动") : "空槽");
     setText(node.querySelector(".battle-slot-timer"), getActiveStatusText(slot, status));
   }
 

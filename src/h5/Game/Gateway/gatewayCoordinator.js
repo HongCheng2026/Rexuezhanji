@@ -17,9 +17,15 @@
         if (options.onErrorChange) options.onErrorChange(lastError);
         return Promise.reject(lastError);
       }
+      var localAdapter = options.createLocalAdapter();
+      var cloudAdapter = root.RXCloud || null;
+      if (!options.localOnly && options.createCloudAdapter) {
+        cloudAdapter = options.createCloudAdapter(cloudAdapter, localAdapter);
+      }
       gateway = gatewayModule.create({
         mode: options.localOnly ? "local" : undefined,
-        local: options.createLocalAdapter()
+        local: localAdapter,
+        cloud: cloudAdapter
       });
       if (options.onGatewayChange) options.onGatewayChange(gateway);
       readyPromise = gateway.bootstrap().then(function onBootstrap(result) {

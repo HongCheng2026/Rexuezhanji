@@ -99,6 +99,24 @@ test("战机强化以三个等尺寸左侧标签切换独立页面", () => {
   assert.equal((autoHtml.match(/class="fu-auto-slot /g) || []).length, 6);
 });
 
+test("战机强化把处理状态与真实战力增幅显示为非阻塞状态提示", () => {
+  const { model, view } = createFixture();
+  model.setPending("gateway", "处理中…");
+  const pendingHtml = view.render(model.snapshot());
+  assert.match(pendingHtml, /class="fu-action-notice is-pending"/);
+  assert.match(pendingHtml, /role="status" aria-live="polite"/);
+  assert.match(pendingHtml, /处理中…/);
+
+  model.finish("战机强化完成。｜战力 2,517 → 2,524（+7 / +0%）");
+  const completedHtml = view.render(model.snapshot());
+  assert.match(completedHtml, /class="fu-action-notice is-complete"/);
+  assert.match(completedHtml, /战力 2,517 → 2,524/);
+
+  const roomSource = fs.readFileSync(path.join(root, "src/h5/UI/Fighter/Upgrade/fighterUpgradeRoom.js"), "utf8");
+  assert.match(roomSource, /operation = task\(\);[\s\S]{0,180}render\(\);/);
+  assert.match(roomSource, /model\.finish\(completedMessage\);\s*render\(\);/);
+});
+
 test("点击四个主动技能时显示当前参数、下一品级变化和实战规则", () => {
   const { model, view } = createFixture();
   model.selectPage("active");

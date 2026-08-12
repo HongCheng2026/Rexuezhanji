@@ -28,7 +28,8 @@
       expMax: CL.getCommanderExpToNextLevel ? CL.getCommanderExpToNextLevel(1) : 130,
       totalExp: 0,
       badge: "I",
-      honorLevel: 1
+      honorLevel: 1,
+      equippedHonorLevel: 1
     },
     resources: {
       energy: getEnergyMax(),
@@ -333,7 +334,8 @@
   function normalizeProfile(nextProfile = {}) {
     const incomingVersion = Number(nextProfile.saveVersion) || 0;
     const incomingStaminaRuleVersion = Math.max(0, Math.floor(Number(nextProfile.staminaRuleVersion) || 0));
-    let player = { ...LOBBY_DEFAULTS.player, ...(nextProfile.player || {}) };
+    const incomingPlayer = nextProfile.player || {};
+    let player = { ...LOBBY_DEFAULTS.player, ...incomingPlayer };
     if (incomingVersion < 5 && (player.avatar === "guide.png" || (Number(player.level) === 56 && Number(player.exp) === 12080))) {
       player = { ...LOBBY_DEFAULTS.player };
     }
@@ -346,6 +348,10 @@
     player.signature = String(player.signature || LOBBY_DEFAULTS.player.signature).trim().slice(0, 36) || LOBBY_DEFAULTS.player.signature;
     player.honorLevel = normalizeHonorLevel(player.honorLevel, player.badge);
     player.badge = honorLevelToText(player.honorLevel);
+    const equippedHonorLevel = Math.floor(Number(incomingPlayer.equippedHonorLevel) || 0);
+    player.equippedHonorLevel = equippedHonorLevel >= 1
+      ? clamp(equippedHonorLevel, 1, player.honorLevel)
+      : player.honorLevel;
 
     const resources = { ...LOBBY_DEFAULTS.resources, ...(nextProfile.resources || {}) };
     resources.maxEnergy = CL.getMaxEnergyByLevel ? CL.getMaxEnergyByLevel(player.level) : getEnergyMax();
@@ -400,6 +406,21 @@
     const shipSkillLoadouts = normalizeTacticalLoadouts(nextProfile, owned.ships, scene.shipId, incomingVersion, autoWeaponLevels);
     const pilotProgression = normalizePilotProgression(nextProfile, owned.pilots);
     const shipProgression = normalizeShipProgression(nextProfile, owned.ships);
+    const legacyCodexEntries = uniqueList(nextProfile.codexBonds);
+    const incomingCodex = nextProfile.codex && typeof nextProfile.codex === "object" ? nextProfile.codex : {};
+    const codex = {
+      activatedUnits: uniqueList([
+        ...(Array.isArray(incomingCodex.activatedUnits) ? incomingCodex.activatedUnits : []),
+        ...legacyCodexEntries.filter(function isLegacyUnit(id) { return String(id).indexOf("unit:") === 0; })
+          .map(function stripLegacyUnitPrefix(id) { return String(id).slice(5); })
+      ]).filter(function keepOwnedCodexUnit(id) {
+        return owned.pilots.includes(id) || owned.ships.includes(id);
+      }),
+      activatedBonds: uniqueList([
+        ...(Array.isArray(incomingCodex.activatedBonds) ? incomingCodex.activatedBonds : []),
+        ...legacyCodexEntries.filter(function isLegacyBond(id) { return String(id).indexOf("unit:") !== 0; })
+      ])
+    };
 
     const normalized = {
       ...nextProfile,
@@ -424,6 +445,7 @@
       resources,
       scene,
       owned,
+      codex,
       ratings: nextProfile.ratings || {},
       localEarned: nextProfile.localEarned || { gold: 0, diamonds: 0 }
       ,usedRedeemCodes: uniqueList(nextProfile.usedRedeemCodes)
@@ -431,6 +453,7 @@
     };
     delete normalized.weaponModules;
     delete normalized.pilotCopies;
+    delete normalized.codexBonds;
 
     const stageHonorSystem = getStageHonorSystem();
     if (stageHonorSystem.migrateProfileStageHonors) {

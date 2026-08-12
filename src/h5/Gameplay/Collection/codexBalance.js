@@ -1,16 +1,16 @@
 /**
- * 图鉴模块数值常量 (codexBalance.js) — v3.0（纯点亮 + 羁绊）
+ * 图鉴模块数值常量 (codexBalance.js) — 单位激活 + 羁绊激活
  *
  * 加成只来自两层：
- *   1) 点亮单个单位（UNIT_LIGHT_BONUS_BY_RANK，按原生品阶）
+ *   1) 激活单个单位（UNIT_ACTIVATION_BONUS_BY_RANK，按原生品阶）
  *   2) 组合羁绊（BONDS，覆盖全部 21 名成员）
  *
  * 破甲唯一来源：2 个 SS（黑月 / 凌光）
- *   - 点亮每个 SS 各 +2% 破甲
+ *   - 激活每个 SS 各 +2% 破甲
  *   - 二者互为羁绊（bond_ultimate_starlink）再 +1% 破甲
- *   - 合计 5% 破甲，其它任何点亮 / 羁绊均不给破甲。
+ *   - 合计 5% 破甲，其它任何激活 / 羁绊均不给破甲。
  *
- * 全点亮 + 全羁绊总额：攻击 +50 / 破甲 +5% / 金币 +10%。
+ * 全激活 + 全羁绊总额：攻击 +50 / 破甲 +5% / 金币 +10%。
  *
  * 所有数值均为设计假设 [PLACEHOLDER]，待 playtest 验证后锁定。
  *
@@ -21,10 +21,10 @@
   "use strict";
   var scope = root.RXGame || (root.RXGame = {});
 
-  // 点亮：拥有并手动点亮单个单位后的基础收藏奖励。
+  // 激活：拥有并手动激活单个单位后的基础收藏奖励。
   // 只读取单位的原生品阶；后续养成升品不会放大这份收藏奖励。
-  // 仅 SS 点亮附带破甲（每个 +2%）。
-  var UNIT_LIGHT_BONUS_BY_RANK = Object.freeze({
+  // 仅 SS 激活附带破甲（每个 +2%）。
+  var UNIT_ACTIVATION_BONUS_BY_RANK = Object.freeze({
     B: Object.freeze({ attackFlat: 1 }),
     A: Object.freeze({ attackFlat: 2 }),
     S: Object.freeze({ attackFlat: 2 }),
@@ -114,7 +114,7 @@
     }
   ]);
 
-  // 全点亮 + 全羁绊上限（用于校验 / 展示）。
+  // 全激活 + 全羁绊上限（用于校验 / 展示）。
   var MAX_BONUSES = Object.freeze({
     attackFlat: 50,
     armorPenetrationFlat: 0.05,
@@ -122,7 +122,7 @@
   });
 
   var api = {
-    UNIT_LIGHT_BONUS_BY_RANK: UNIT_LIGHT_BONUS_BY_RANK,
+    UNIT_ACTIVATION_BONUS_BY_RANK: UNIT_ACTIVATION_BONUS_BY_RANK,
     BONDS: BONDS,
     MAX_BONUSES: MAX_BONUSES
   };

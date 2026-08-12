@@ -1,5 +1,5 @@
 /**
- * 图鉴模块单元测试 (codex.test.js) — v3.0（纯点亮 + 羁绊）
+ * 图鉴模块单元测试 (codex.test.js) — 独立激活状态 + 羁绊
  *
  * v3.0 起加成只来自两层：
  *   1) 点亮单个单位（按原生品阶）
@@ -69,14 +69,14 @@ var ALL_PILOT_IDS = ["pilot-ss-heiyue","pilot-s-lingyan","pilot-s-luoqi","pilot-
 var ALL_SHIP_IDS = ["ship-ss-lingguang","ship-s-09","ship-s-08","ship-b-04","ship-a-07","ship-a-06","ship-b-02","ship-b-01","ship-b-03","ship-b-05"];
 var ALL_BOND_IDS = ["bond_starter","bond_fire_duo","bond_azure_pact","bond_shadow_strike","bond_royal_phalanx","bond_crimson_verdict","bond_coldmoon_lance","bond_bluebird_bastion","bond_peach_shadow","bond_starlight_escort","bond_ultimate_starlink"];
 
-function mockProfile(pilotIds, shipIds, litUnits, litBonds) {
+function mockProfile(pilotIds, shipIds, activatedUnits, activatedBonds) {
   var pilots = pilotIds || [];
   var ships = shipIds || [];
-  var units = litUnits || pilots.concat(ships);
-  var bonds = litBonds || [];
+  var units = activatedUnits || pilots.concat(ships);
+  var bonds = activatedBonds || [];
   return {
     owned: { pilots: pilots, ships: ships },
-    codexBonds: units.map(function (id) { return "unit:" + id; }).concat(bonds)
+    codex: { activatedUnits: units, activatedBonds: bonds }
   };
 }
 
@@ -280,15 +280,37 @@ describe("codexConfig — 全收集与羁绊状态", function () {
     var state = system.getBondsState(p);
     var bond = state.bonds.filter(function (b) { return b.def.id === "bond_starter"; })[0];
     assert.strictEqual(bond.ownedAll, true);
-    assert.strictEqual(bond.lit, false);
-    assert.strictEqual(bond.lightable, true);
-    assert.strictEqual(state.anyLightable, true);
+    assert.strictEqual(bond.activated, false);
+    assert.strictEqual(bond.activatable, true);
+    assert.strictEqual(state.anyActivatable, true);
 
     var p2 = mockProfile(["pilot-b-bailing"], ["ship-b-01"], [], ["bond_starter"]);
     var state2 = system.getBondsState(p2);
     var bond2 = state2.bonds.filter(function (b) { return b.def.id === "bond_starter"; })[0];
-    assert.strictEqual(bond2.lit, true);
-    assert.strictEqual(bond2.lightable, false);
-    assert.strictEqual(state2.anyLightable, false);
+    assert.strictEqual(bond2.activated, true);
+    assert.strictEqual(bond2.activatable, false);
+    assert.strictEqual(state2.anyActivatable, false);
+  });
+
+  it("单位与羁绊分别维护激活状态，激活后可激活标记消失", function () {
+    var p = mockProfile(["pilot-b-bailing"], ["ship-b-01"], [], []);
+    assert.strictEqual(system.canActivate(p, "unit", "pilot-b-bailing"), true);
+    assert.strictEqual(system.activateEntry(p, "unit", "pilot-b-bailing"), true);
+    assert.strictEqual(system.canActivate(p, "unit", "pilot-b-bailing"), false);
+    assert.deepStrictEqual(Array.from(system.getActivationState(p).activatedUnits), ["pilot-b-bailing"]);
+
+    assert.strictEqual(system.canActivate(p, "bond", "bond_starter"), true);
+    assert.strictEqual(system.activateEntry(p, "bond", "bond_starter"), true);
+    assert.strictEqual(system.getBondsState(p).anyActivatable, false);
+  });
+
+  it("旧 codexBonds 只用于迁移读取，不影响新状态的分栏结果", function () {
+    var legacy = {
+      owned: { pilots: ["pilot-b-bailing"], ships: ["ship-b-01"] },
+      codexBonds: ["unit:pilot-b-bailing", "bond_starter"]
+    };
+    var state = system.getActivationState(legacy);
+    assert.deepStrictEqual(Array.from(state.activatedUnits), ["pilot-b-bailing"]);
+    assert.deepStrictEqual(Array.from(state.activatedBonds), ["bond_starter"]);
   });
 });

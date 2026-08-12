@@ -3,11 +3,27 @@ import { createSocialService } from "./services/social.ts";
 import { createEndlessService } from "./services/endless.ts";
 import { createEconomyService } from "./services/economy.ts";
 import { createProfileTransactionService } from "./services/profileTransaction.ts";
+import { createPaymentService } from "./services/payments.ts";
 
 type Json = Record<string, unknown>;
-type Context = { userId: string; admin: ReturnType<typeof createClient> };
+type EconomyAudit = {
+  sessionId: string;
+  sequence: number;
+  baseRevision: number;
+  rulesVersion: string;
+  commandHash: string;
+};
+type Context = {
+  userId: string;
+  userEmail?: string;
+  emailVerified?: boolean;
+  clientIp?: string;
+  admin: ReturnType<typeof createClient>;
+  economyAudit?: EconomyAudit;
+};
 
 const ENERGY_COST = 5;
+const ECONOMY_RULES_VERSION = "economy-2026-07-30-v1";
 const COMMANDER_MAX_LEVEL = 60;
 const STAMINA_LEVEL_ONE_MAX = 120;
 const STAMINA_PER_LEVEL = 5;
@@ -15,9 +31,28 @@ const STAMINA_MAX_LEVEL_BONUS = 5;
 const STAMINA_RULE_VERSION = 2;
 const COMMANDER_EXP_TO_NEXT_LEVEL = [0, 130, 190, 224, 246, 266, 282, 298, 310, 322, 334, 344, 354, 362, 370, 378, 386, 394, 400, 410, 1000, 1100, 1200, 1300, 1400, 1000, 1100, 1200, 1300, 1400, 2736, 3548, 3938, 4214, 4432, 4614, 4772, 4910, 5034, 5148, 5252, 5348, 5438, 5524, 5602, 5678, 5750, 5818, 5882, 5944, 6004, 6062, 6118, 6172, 6222, 6272, 6322, 6370, 6416, 6460, 0];
 const COMMANDER_TOTAL_EXP_BY_LEVEL = [0, 0, 130, 320, 544, 790, 1056, 1338, 1636, 1946, 2268, 2602, 2946, 3300, 3662, 4032, 4410, 4796, 5190, 5590, 6000, 7000, 8100, 9300, 10600, 12000, 13000, 14100, 15300, 16600, 18000, 20736, 24284, 28222, 32436, 36868, 41482, 46254, 51164, 56198, 61346, 66598, 71946, 77384, 82908, 88510, 94188, 99938, 105756, 111638, 117582, 123586, 129648, 135766, 141938, 148160, 154432, 160754, 167124, 173540, 180000];
+const CODEX_BOND_REQUIREMENTS: Record<string, { pilots: string[]; ships: string[] }> = {
+  bond_starter: { pilots: ["pilot-b-bailing"], ships: ["ship-b-01"] },
+  bond_fire_duo: { pilots: ["pilot-s-lingyan"], ships: ["ship-s-09"] },
+  bond_azure_pact: { pilots: ["pilot-a-yelan"], ships: ["ship-a-06"] },
+  bond_shadow_strike: { pilots: ["pilot-s-luoqi"], ships: ["ship-s-08"] },
+  bond_royal_phalanx: { pilots: ["pilot-a-shenyao"], ships: ["ship-a-07"] },
+  bond_crimson_verdict: { pilots: ["pilot-a-luofeiyin"], ships: ["ship-b-04"] },
+  bond_coldmoon_lance: { pilots: ["pilot-b-shenqingyao"], ships: ["ship-b-02"] },
+  bond_bluebird_bastion: { pilots: ["pilot-b-linzhihan"], ships: ["ship-b-03"] },
+  bond_peach_shadow: { pilots: ["pilot-b-xingtao"], ships: ["ship-b-05"] },
+  bond_starlight_escort: { pilots: ["pilot-b-sumianxing"], ships: ["ship-b-01"] },
+  bond_ultimate_starlink: { pilots: ["pilot-ss-heiyue"], ships: ["ship-ss-lingguang"] }
+};
 const getMaxEnergyByLevel = (level: number) => {
   const safeLevel = Math.max(1, Math.min(COMMANDER_MAX_LEVEL, Math.floor(level || 1)));
   return STAMINA_LEVEL_ONE_MAX + (safeLevel - 1) * STAMINA_PER_LEVEL + (safeLevel >= COMMANDER_MAX_LEVEL ? STAMINA_MAX_LEVEL_BONUS : 0);
+};
+const HONOR_ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+const getPlayerHonorLevelByCommanderLevel = (level: number) => Math.max(1, Math.min(10, Math.floor((Math.max(1, Math.floor(Number(level) || 1)) - 1) / 6) + 1));
+const normalizeEquippedHonorLevel = (value: unknown, acquiredLevel: number) => {
+  const requestedLevel = Math.floor(Number(value) || 0);
+  return requestedLevel >= 1 ? Math.min(requestedLevel, acquiredLevel) : acquiredLevel;
 };
 const ENERGY_MAX = getMaxEnergyByLevel(1);
 const ENERGY_RECOVER_MS = 5 * 60 * 1000;
@@ -184,7 +219,7 @@ function baseProfile() {
     activeSkillGrades: { "active-summon-wingman": "D", "active-decoy": "D", "active-chain-lightning": "D", "active-black-hole": "D" },
     autoWeaponLevels: { ...AUTO_SKILL_DEFAULT_LEVEL },
     migrationFlags: { weaponModulesV7Refunded: true, activeSkillGradesV8Migrated: true, autoSkillLevelsV8Migrated: true },
-    player: { uid: "", name: "王牌飞行员", signature: "保持航线，火力覆盖。", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I" },
+    player: { uid: "", name: "王牌飞行员", signature: "保持航线，火力覆盖。", avatar: "", level: 1, exp: 0, expMax: 130, totalExp: 0, badge: "I", honorLevel: 1, equippedHonorLevel: 1 },
     resources: { energy: ENERGY_MAX, maxEnergy: ENERGY_MAX, gold: 0, diamonds: 0, lastEnergyAt: now, inventory: {} as Record<string, number> },
     scene: { pilotId: "pilot-b-linzhihan", shipId: "ship-b-01", backgroundId: "bg-hangar-01" },
     owned: { pilots: ["pilot-b-linzhihan"], ships: ["ship-b-01"], backgrounds: ["bg-hangar-01"] },
@@ -194,6 +229,7 @@ function baseProfile() {
     shipStars: {} as Record<string, number>,
     ratings: {},
     progress: { clearedStageIds: [] as string[], clearedChapterIds: [] as number[], stageStars: {}, stageHonors: {}, perfectClearCount: 0, noDamageBossClearCount: 0, clearCount: 0 },
+    codex: { activatedUnits: [] as string[], activatedBonds: [] as string[] },
     localEarned: { gold: 0, diamonds: 0 }
   };
 }
@@ -368,6 +404,9 @@ function normalizeProfile(input: any = {}) {
   while (profile.player.level < COMMANDER_MAX_LEVEL && profile.player.totalExp >= COMMANDER_TOTAL_EXP_BY_LEVEL[profile.player.level + 1]) profile.player.level += 1;
   profile.player.expMax = COMMANDER_EXP_TO_NEXT_LEVEL[profile.player.level];
   profile.player.exp = profile.player.level >= COMMANDER_MAX_LEVEL ? 0 : profile.player.totalExp - COMMANDER_TOTAL_EXP_BY_LEVEL[profile.player.level];
+  profile.player.honorLevel = getPlayerHonorLevelByCommanderLevel(profile.player.level);
+  profile.player.badge = HONOR_ROMAN[profile.player.honorLevel] || "I";
+  profile.player.equippedHonorLevel = normalizeEquippedHonorLevel(input.player?.equippedHonorLevel, profile.player.honorLevel);
   profile.resources.maxEnergy = getMaxEnergyByLevel(profile.player.level);
   profile.resources.energy = Math.max(0, Math.floor(Number(profile.resources.energy) || 0));
   profile.resources.gold = Math.max(0, Math.floor(Number(profile.resources.gold ?? profile.coins) || 0));
@@ -390,6 +429,8 @@ function normalizeProfile(input: any = {}) {
     ...base.owned.ships,
     ...incomingOwnedShips
   ].filter((id) => Boolean(SHIP_RANK_BY_ID[id]))));
+  profile.codex = sanitizeCodexActivation(profile, input.codex, input.codexBonds);
+  delete profile.codexBonds;
   const normalizedPilotRanks: Record<string, string> = {};
   const normalizedShipRanks: Record<string, string> = {};
   const normalizedPilotStars: Record<string, number> = {};
@@ -504,7 +545,9 @@ function applyExperience(player: any, amount: number) {
   while (player.level < COMMANDER_MAX_LEVEL && player.totalExp >= COMMANDER_TOTAL_EXP_BY_LEVEL[player.level + 1]) player.level += 1;
   player.expMax = COMMANDER_EXP_TO_NEXT_LEVEL[player.level];
   player.exp = player.level >= COMMANDER_MAX_LEVEL ? 0 : player.totalExp - COMMANDER_TOTAL_EXP_BY_LEVEL[player.level];
-  player.badge = player.level >= 30 ? "V" : player.level >= 20 ? "IV" : player.level >= 12 ? "III" : player.level >= 6 ? "II" : "I";
+  player.honorLevel = getPlayerHonorLevelByCommanderLevel(player.level);
+  player.badge = HONOR_ROMAN[player.honorLevel] || "I";
+  player.equippedHonorLevel = normalizeEquippedHonorLevel(player.equippedHonorLevel, player.honorLevel);
 }
 
 function applyProfileExperience(profile: any, amount: number) {
@@ -564,7 +607,7 @@ function corsHeaders(request: Request) {
   return {
     "Access-Control-Allow-Origin": allowedOrigins.has(origin) || isLocal || isDeployPreview ? origin : "https://rexuezhanji.top",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rexuezhanji-source-token",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Vary": "Origin"
   };
 }
@@ -576,11 +619,21 @@ function withCors(response: Response, request: Request) {
 }
 
 function reply(body: Json, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const payload = body.worldTime ? body : {
+    ...body,
+    worldTime: { unixMs: Date.now(), timeZone: "Asia/Shanghai", source: "server" }
+  };
+  return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } });
 }
 
 function error(message: string, status = 400) {
   return reply({ error: message }, status);
+}
+
+function runBackground(label: string, task: Promise<unknown>) {
+  const guarded = task.catch((caught) => console.error(`[background:${label}]`, caught));
+  const edgeRuntime = (globalThis as any).EdgeRuntime;
+  if (edgeRuntime && typeof edgeRuntime.waitUntil === "function") edgeRuntime.waitUntil(guarded);
 }
 
 async function sha256(value: string) {
@@ -628,7 +681,19 @@ async function context(request: Request): Promise<Context | Response> {
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error: authError } = await admin.auth.getUser(token);
   if (authError || !data.user) return error("登录已过期，请重新登录。", 401);
-  return { userId: data.user.id, admin };
+  return {
+    userId: data.user.id,
+    userEmail: String(data.user.email || ""),
+    emailVerified: Boolean(data.user.email && data.user.email_confirmed_at),
+    clientIp: String(request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "").split(",")[0].trim(),
+    admin
+  };
+}
+
+function publicAdmin() {
+  const url = Deno.env.get("SUPABASE_URL") || "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  return createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 async function loadProfile(ctx: Context) {
@@ -696,6 +761,7 @@ const economyService = createEconomyService({
   commitProfileOperation: profileTransaction.commit,
   publicProfile,
   refreshLeaderboard: socialService.refreshLeaderboard,
+  runBackground,
   getGold: game.profile.getGold,
   setGold: game.profile.setGold,
   getStageAliases,
@@ -704,12 +770,26 @@ const economyService = createEconomyService({
   pilotRankById: PILOT_RANK_BY_ID,
   shipRankById: SHIP_RANK_BY_ID
 });
+const paymentService = createPaymentService({ reply, sha256, publicProfile, loadProfile });
 
 async function bootstrap(ctx: Context) {
   const { profile, revision, uid } = await loadProfile(ctx);
   const saved = await saveProfile(ctx, profile, revision);
   saved.player.uid = uid;
-  return reply({ profile: publicProfile(saved), uid });
+  return reply({
+    profile: publicProfile(saved),
+    uid,
+    revision: revision + 1,
+    worldTime: {
+      unixMs: Date.now(),
+      timeZone: "Asia/Shanghai",
+      source: "server"
+    },
+    economySession: {
+      id: crypto.randomUUID(),
+      rulesVersion: ECONOMY_RULES_VERSION
+    }
+  });
 }
 
 async function identity(ctx: Context) {
@@ -849,8 +929,7 @@ async function upgrade(ctx: Context, body: Json) {
   if (game.profile.getGold(profile) < cost) return error("金币不足。", 409);
   game.profile.setGold(profile, game.profile.getGold(profile) - cost);
   profile.upgrades[key] = current + 1;
-  const saved = await saveProfile(ctx, profile, revision);
-  await ledger(ctx, "upgrade", -cost, 0, { key, level: current + 1 });
+  const saved = await profileTransaction.commit(ctx, profile, revision, body, "upgrade", -cost, 0, { key, level: current + 1 });
   return reply({ profile: publicProfile(saved), cost, key, level: current + 1 });
 }
 
@@ -870,7 +949,7 @@ async function upgradeFighter(ctx: Context, body: Json) {
   profile.fighterUpgrades = profile.fighterUpgrades || {};
   profile.fighterUpgrades[statType] = targetLevel;
   const saved = await profileTransaction.commit(ctx, profile, revision, body, "upgrade-fighter", -cost, 0, { statType, level: targetLevel });
-  await socialService.refreshLeaderboard(ctx, saved);
+  runBackground("leaderboard-upgrade", socialService.refreshLeaderboard(ctx, saved));
   return reply({ profile: publicProfile(saved), cost, statType, level: targetLevel });
 }
 
@@ -893,8 +972,16 @@ async function buyRosterItem(ctx: Context, body: Json, type: "pilot" | "ship") {
   profile.owned[ownedField] = [...ownedIds, itemId];
   profile.scene = profile.scene || {};
   profile.scene[type === "pilot" ? "pilotId" : "shipId"] = itemId;
-  const saved = await saveProfile(ctx, profile, revision);
-  await ledger(ctx, type === "pilot" ? "buy-pilot" : "buy-ship", -cost, 0, { itemId, rank });
+  const saved = await profileTransaction.commit(
+    ctx,
+    profile,
+    revision,
+    body,
+    type === "pilot" ? "buy-pilot" : "buy-ship",
+    -cost,
+    0,
+    { itemId, rank }
+  );
   return reply({ profile: publicProfile(saved), cost, [idField]: itemId, rank });
 }
 
@@ -993,7 +1080,16 @@ async function saveFighterSkillLoadout(ctx: Context, body: Json) {
   }
   profile.shipSkillLoadouts = profile.shipSkillLoadouts || {};
   profile.shipSkillLoadouts[shipId] = loadout;
-  const saved = await saveProfile(ctx, profile, revision);
+  const saved = await profileTransaction.commit(
+    ctx,
+    profile,
+    revision,
+    body,
+    "save-fighter-skill-loadout",
+    0,
+    0,
+    { shipId, loadout }
+  );
   return reply({ profile: publicProfile(saved), shipId, loadout });
 }
 
@@ -1098,12 +1194,78 @@ async function upgradePassiveSkill(ctx: Context, body: Json) {
   return reply({ profile: publicProfile(saved), skillId, currentGrade: currentLevel, targetGrade: targetLevel, blueCount: itemCount, purpleCount, goldCost });
 }
 
+function codexEntryAllowed(profile: any, kind: string, entryId: string) {
+  const ownedPilots = new Set((Array.isArray(profile.owned?.pilots) ? profile.owned.pilots : []).map(String));
+  const ownedShips = new Set((Array.isArray(profile.owned?.ships) ? profile.owned.ships : []).map(String));
+  if (kind === "unit") {
+    return Boolean(entryId) && (ownedPilots.has(entryId) || ownedShips.has(entryId));
+  }
+  if (kind !== "bond") return false;
+  const requirement = CODEX_BOND_REQUIREMENTS[entryId];
+  return Boolean(requirement) &&
+    requirement.pilots.every((id) => ownedPilots.has(id)) &&
+    requirement.ships.every((id) => ownedShips.has(id));
+}
+
+function sanitizeCodexActivation(profile: any, input: any, legacyEntries: unknown = []) {
+  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const legacy = Array.isArray(legacyEntries) ? legacyEntries.map(String) : [];
+  const units = [
+    ...(Array.isArray(source.activatedUnits) ? source.activatedUnits : []),
+    ...legacy.filter((id) => id.startsWith("unit:")).map((id) => id.slice(5))
+  ].map(String).map((id) => id.slice(0, 80)).filter(Boolean);
+  const bonds = [
+    ...(Array.isArray(source.activatedBonds) ? source.activatedBonds : []),
+    ...legacy.filter((id) => !id.startsWith("unit:"))
+  ].map(String).map((id) => id.slice(0, 80)).filter(Boolean);
+  return {
+    activatedUnits: Array.from(new Set(units.filter((id) => codexEntryAllowed(profile, "unit", id)))).slice(0, 64),
+    activatedBonds: Array.from(new Set(bonds.filter((id) => codexEntryAllowed(profile, "bond", id)))).slice(0, 64)
+  };
+}
+
+async function activateCodexEntry(ctx: Context, body: Json) {
+  const kind = String(body.kind || "");
+  const entryId = String(body.entryId || "").slice(0, 80);
+  if ((kind !== "unit" && kind !== "bond") || !entryId) return error("图鉴激活参数不合法。", 400);
+  const { profile } = await loadProfile(ctx);
+  if (!codexEntryAllowed(profile, kind, entryId)) return error("图鉴激活条件校验失败。", 403);
+  const suppliedOperationId = String(body.operationId || "");
+  const operationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(suppliedOperationId)
+    ? suppliedOperationId
+    : crypto.randomUUID();
+  const { data, error: activationError } = await ctx.admin.rpc("activate_codex_entry", {
+    p_user_id: ctx.userId,
+    p_operation_id: operationId,
+    p_kind: kind,
+    p_entry_id: entryId
+  });
+  if (activationError) throw activationError;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.profile) throw new Error("云端图鉴事务未返回存档。");
+  return reply({
+    profile: publicProfile(row.profile),
+    revision: Math.max(0, Math.floor(Number(row.revision) || 0)),
+    kind,
+    entryId,
+    duplicate: !row.applied
+  });
+}
+
 async function saveCosmetics(ctx: Context, body: Json) {
   const { profile, revision } = await loadProfile(ctx);
   const incoming = (body.profile || {}) as any;
   if (typeof incoming.player?.name === "string") profile.player.name = incoming.player.name.trim().slice(0, 20) || profile.player.name;
   if (typeof incoming.player?.signature === "string") profile.player.signature = incoming.player.signature.trim().slice(0, 36) || profile.player.signature;
   if (typeof incoming.player?.avatar === "string" && incoming.player.avatar.length <= 400_000) profile.player.avatar = incoming.player.avatar;
+  if (incoming.player?.equippedHonorLevel != null) {
+    const requestedHonorLevel = Math.floor(Number(incoming.player.equippedHonorLevel) || 0);
+    const acquiredHonorLevel = getPlayerHonorLevelByCommanderLevel(profile.player.level);
+    if (requestedHonorLevel < 1 || requestedHonorLevel > acquiredHonorLevel) return error("不能佩戴尚未获得的荣誉勋章。", 403);
+    profile.player.honorLevel = acquiredHonorLevel;
+    profile.player.badge = HONOR_ROMAN[acquiredHonorLevel] || "I";
+    profile.player.equippedHonorLevel = requestedHonorLevel;
+  }
   const ownershipFields: Record<string, string> = { pilotId: "pilots", shipId: "ships", backgroundId: "backgrounds" };
   for (const field of ["pilotId", "shipId", "backgroundId"]) {
     if (typeof incoming.scene?.[field] !== "string") continue;
@@ -1148,6 +1310,9 @@ async function migrateAnonymous(ctx: Context, request: Request) {
   if (!sourceToken) return error("缺少游客账号凭据。", 401);
   const { data: sourceData, error: sourceError } = await ctx.admin.auth.getUser(sourceToken);
   if (sourceError || !sourceData.user || sourceData.user.id === ctx.userId) return error("游客账号迁移校验失败。", 401);
+  if (sourceData.user.is_anonymous !== true) {
+    return reply({ error: "只能迁移未绑定的游客存档。", code: "SOURCE_ACCOUNT_NOT_ANONYMOUS" }, 403);
+  }
   const { data: destination } = await ctx.admin.from("player_profiles").select("user_id").eq("user_id", ctx.userId).maybeSingle();
   if (destination) return bootstrap(ctx);
   const { data: source, error: readError } = await ctx.admin.from("player_profiles").select("user_id").eq("user_id", sourceData.user.id).maybeSingle();
@@ -1159,63 +1324,375 @@ async function migrateAnonymous(ctx: Context, request: Request) {
   return bootstrap(ctx);
 }
 
+const PAYMENT_DEBT_BLOCKED_ACTIONS = new Set([
+  "shop-buy", "shop-exchange", "gacha-draw", "inventory-use", "inventory-sell", "exchange-diamonds"
+]);
+
+const ECONOMY_BATCH_ACTIONS = new Set([
+  "upgrade",
+  "upgrade-fighter",
+  "buy-pilot",
+  "buy-ship",
+  "promote-unit",
+  "pilot-star-up",
+  "fighter-star-up",
+  "save-fighter-skill-loadout",
+  "upgrade-auto-weapon",
+  "upgrade-auto-weapon-components",
+  "upgrade-active-skill-grade",
+  "upgrade-passive-skill",
+  "shop-buy",
+  "shop-exchange",
+  "daily-signin",
+  "inventory-use",
+  "inventory-sell",
+  "exchange-diamonds",
+  "claim-task",
+  "claim-achievement",
+  "claim-activity-reward"
+]);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.keys(value as Json).sort().reduce((result: Json, key) => {
+    if (key !== "operationId" && key !== "__economy") result[key] = canonicalValue((value as Json)[key]);
+    return result;
+  }, {});
+}
+
+async function responsePayload(response: Response) {
+  return await response.clone().json().catch(() => ({})) as Json;
+}
+
+async function recordEconomyRisk(ctx: Context, sessionId: string, points: number, code: string, details: Json = {}) {
+  if (points <= 0) return { riskScore: 0, revoked: false };
+  const { data, error: riskError } = await ctx.admin.rpc("record_economy_risk", {
+    p_session_id: sessionId,
+    p_user_id: ctx.userId,
+    p_points: Math.max(0, Math.floor(points)),
+    p_code: String(code || "UNKNOWN").slice(0, 80),
+    p_details: details
+  });
+  if (riskError) throw riskError;
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    riskScore: Math.max(0, Math.floor(Number(row?.risk_score) || 0)),
+    revoked: Boolean(row?.revoked)
+  };
+}
+
+async function ensureEconomySession(ctx: Context, sessionId: string, baseRevision: number, rulesVersion: string) {
+  const { data: existing, error: readError } = await ctx.admin.from("economy_sessions")
+    .select("id, player_id, state, risk_score, last_sequence")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (readError) throw readError;
+  if (existing) {
+    if (String(existing.player_id) !== ctx.userId) return { forbidden: true, revoked: true, riskScore: 100, lastSequence: 0 };
+    return {
+      forbidden: false,
+      revoked: existing.state === "revoked",
+      riskScore: Math.max(0, Math.floor(Number(existing.risk_score) || 0)),
+      lastSequence: Math.max(0, Math.floor(Number(existing.last_sequence) || 0))
+    };
+  }
+  const { error: insertError } = await ctx.admin.from("economy_sessions").insert({
+    id: sessionId,
+    player_id: ctx.userId,
+    base_revision: baseRevision,
+    rules_version: rulesVersion,
+    state: "active",
+    risk_score: 0,
+    last_sequence: 0
+  });
+  if (insertError) throw insertError;
+  return { forbidden: false, revoked: false, riskScore: 0, lastSequence: 0 };
+}
+
+async function dispatchGameAction(ctx: Context, action: string, body: Json, request: Request): Promise<Response> {
+  if (PAYMENT_DEBT_BLOCKED_ACTIONS.has(action)) {
+    const current = await loadProfile(ctx);
+    if (current.profile && current.profile.paymentDebtLocked) {
+      return reply({ error: "账户存在退款资源欠账，暂停充值和相关消费。", code: "PAYMENT_DEBT_LOCKED" }, 423);
+    }
+  }
+  if (action === "bootstrap") return bootstrap(ctx);
+  if (action === "identity") return identity(ctx);
+  if (action === "start-battle") return startBattle(ctx, body);
+  if (action === "finish-battle") return finishBattle(ctx, body);
+  if (action === "abandon-battle") return abandonBattle(ctx, body);
+  if (action === "sweep") return sweep(ctx, body);
+  if (action === "upgrade") return upgrade(ctx, body);
+  if (action === "upgrade-fighter") return upgradeFighter(ctx, body);
+  if (action === "buy-pilot") return buyPilot(ctx, body);
+  if (action === "buy-ship") return buyShip(ctx, body);
+  if (action === "promote-unit") return promoteUnit(ctx, body);
+  if (action === "pilot-star-up") return pilotStarUp(ctx, body);
+  if (action === "fighter-star-up") return fighterStarUp(ctx, body);
+  if (action === "save-fighter-skill-loadout") return saveFighterSkillLoadout(ctx, body);
+  if (action === "upgrade-auto-weapon") return upgradeAutoWeapon(ctx, body);
+  if (action === "upgrade-auto-weapon-components") return upgradeAutoWeaponWithComponents(ctx, body);
+  if (action === "upgrade-active-skill-grade") return upgradeActiveSkillGrade(ctx, body);
+  if (action === "upgrade-passive-skill") return upgradePassiveSkill(ctx, body);
+  if (action === "codex-activate") return activateCodexEntry(ctx, body);
+  if (action === "save-cosmetics") return saveCosmetics(ctx, body);
+  if (action === "redeem") return redeem(ctx, body);
+  if (action === "shop-buy" || action === "shop-exchange") return economyService.buyShopItem(ctx, body);
+  if (action === "gacha-draw") return economyService.gachaDraw(ctx, body);
+  if (action === "daily-signin") return economyService.claimSignIn(ctx, body);
+  if (action === "inventory-use") return economyService.useInventoryItem(ctx, body);
+  if (action === "inventory-sell") return economyService.sellInventoryItem(ctx, body);
+  if (action === "exchange-diamonds") return economyService.exchangeDiamonds(ctx, body);
+  if (action === "migrate-anonymous") return migrateAnonymous(ctx, request);
+  if (action === "leaderboard-submit") return socialService.leaderboardSubmit(ctx, body);
+  if (action === "leaderboard-fetch") return socialService.leaderboardFetch(ctx, body);
+  if (action === "friend-search") return socialService.friendSearch(ctx, body);
+  if (action === "friend-request") return socialService.friendRequest(ctx, body);
+  if (action === "friend-respond") return socialService.friendRespond(ctx, body);
+  if (action === "friend-list") return socialService.friendList(ctx);
+  if (action === "friend-remove") return socialService.friendRemove(ctx, body);
+  if (action === "chat-send") return socialService.chatSend(ctx, body);
+  if (action === "chat-poll") return socialService.chatPoll(ctx, body);
+  if (action === "start-endless") return endlessService.start(ctx);
+  if (action === "finish-endless") return endlessService.finish(ctx, body);
+  if (action === "get-endless-record") return endlessService.getRecord(ctx);
+  if (action === "claim-task") return economyService.claimTask(ctx, body);
+  if (action === "claim-achievement") return economyService.claimAchievement(ctx, body);
+  if (action === "claim-activity-reward") return economyService.claimActivityReward(ctx, body);
+  if (action === "payment-catalog") return paymentService.catalog(ctx, body);
+  if (action === "payment-order-create") return paymentService.createOrder(ctx, body);
+  if (action === "payment-paypal-capture") return paymentService.capturePaypal(ctx, body);
+  if (action === "payment-order-status") return paymentService.status(ctx, body);
+  return error("未知操作。", 404);
+}
+
+async function economyBatch(ctx: Context, body: Json, request: Request) {
+  const sessionId = String(body.sessionId || "");
+  const rulesVersion = String(body.rulesVersion || "");
+  const baseRevision = Math.max(0, Math.floor(Number(body.baseRevision) || 0));
+  const commands = Array.isArray(body.commands) ? body.commands.slice(0, 100) as Json[] : [];
+  if (!UUID_PATTERN.test(sessionId)) return reply({ error: "经济会话标识无效。", code: "ECONOMY_SESSION_INVALID" }, 400);
+  const start = await loadProfile(ctx);
+  if (rulesVersion !== ECONOMY_RULES_VERSION) {
+    return reply({
+      error: "经济规则已更新，请刷新后继续。",
+      code: "ECONOMY_RULES_VERSION_MISMATCH",
+      rulesVersion: ECONOMY_RULES_VERSION,
+      profile: publicProfile(start.profile),
+      revision: start.revision
+    }, 409);
+  }
+  if (!commands.length) {
+    return reply({
+      ok: true,
+      sessionId,
+      profile: publicProfile(start.profile),
+      revision: start.revision,
+      acceptedOperationIds: [],
+      duplicateOperationIds: [],
+      rejected: []
+    });
+  }
+  const session = await ensureEconomySession(ctx, sessionId, baseRevision, rulesVersion);
+  if (session.forbidden || session.revoked) {
+    return reply({
+      error: "经济会话已撤销，请重新登录。",
+      code: "ECONOMY_SESSION_REVOKED",
+      profile: publicProfile(start.profile),
+      revision: start.revision
+    }, 403);
+  }
+  if (baseRevision > start.revision) {
+    await recordEconomyRisk(ctx, sessionId, 25, "FUTURE_BASE_REVISION", { baseRevision, serverRevision: start.revision });
+    return reply({
+      error: "客户端存档版本异常，请重新同步。",
+      code: "ECONOMY_REVISION_INVALID",
+      profile: publicProfile(start.profile),
+      revision: start.revision
+    }, 409);
+  }
+
+  const operationIds = commands.map((command) => String(command.operationId || "")).filter((id) => UUID_PATTERN.test(id));
+  const existingById = new Map<string, any>();
+  if (operationIds.length) {
+    const { data: existingRows, error: ledgerError } = await ctx.admin.from("reward_ledger")
+      .select("operation_id, action, payload")
+      .eq("player_id", ctx.userId)
+      .in("operation_id", operationIds);
+    if (ledgerError) throw ledgerError;
+    for (const row of existingRows || []) existingById.set(String(row.operation_id), row);
+  }
+
+  const acceptedOperationIds: string[] = [];
+  const duplicateOperationIds: string[] = [];
+  const rejected: Json[] = [];
+  let maximumSequence = session.lastSequence;
+  let riskPoints = 0;
+  let authoritativeRejectionCount = 0;
+  const riskCodes: string[] = [];
+  const seenOperationHashes = new Map<string, { action: string; commandHash: string; sequence: number }>();
+
+  for (const rawCommand of commands) {
+    const operationId = String(rawCommand.operationId || "");
+    const action = String(rawCommand.action || "");
+    const sequence = Math.max(0, Math.floor(Number(rawCommand.sequence) || 0));
+    const commandBody = rawCommand.body && typeof rawCommand.body === "object" && !Array.isArray(rawCommand.body)
+      ? { ...(rawCommand.body as Json) }
+      : {};
+    if (!UUID_PATTERN.test(operationId) || sequence <= 0) {
+      rejected.push({ operationId, action, code: "COMMAND_IDENTITY_INVALID" });
+      riskPoints += 40;
+      riskCodes.push("COMMAND_IDENTITY_INVALID");
+      continue;
+    }
+    if (!ECONOMY_BATCH_ACTIONS.has(action)) {
+      rejected.push({ operationId, action, code: "COMMAND_ACTION_FORBIDDEN" });
+      riskPoints += 50;
+      riskCodes.push("COMMAND_ACTION_FORBIDDEN");
+      continue;
+    }
+    if (JSON.stringify(commandBody).length > 20000) {
+      rejected.push({ operationId, action, code: "COMMAND_PAYLOAD_TOO_LARGE" });
+      riskPoints += 30;
+      riskCodes.push("COMMAND_PAYLOAD_TOO_LARGE");
+      continue;
+    }
+    const commandHash = await sha256(JSON.stringify({ action, body: canonicalValue(commandBody) }));
+    const seen = seenOperationHashes.get(operationId);
+    if (seen) {
+      if (seen.action !== action || seen.commandHash !== commandHash || seen.sequence !== sequence) {
+        rejected.push({ operationId, action, code: "OPERATION_ID_PAYLOAD_MISMATCH" });
+        riskPoints += 100;
+        riskCodes.push("OPERATION_ID_PAYLOAD_MISMATCH");
+      } else {
+        duplicateOperationIds.push(operationId);
+      }
+      continue;
+    }
+    seenOperationHashes.set(operationId, { action, commandHash, sequence });
+    const existing = existingById.get(operationId);
+    if (existing) {
+      const previousHash = String(existing.payload?._economy?.commandHash || "");
+      const previousSequence = Math.max(0, Math.floor(Number(existing.payload?._economy?.sequence) || 0));
+      if (
+        String(existing.action) !== action ||
+        (previousHash && previousHash !== commandHash) ||
+        (previousSequence > 0 && previousSequence !== sequence)
+      ) {
+        rejected.push({ operationId, action, code: "OPERATION_ID_PAYLOAD_MISMATCH" });
+        riskPoints += 100;
+        riskCodes.push("OPERATION_ID_PAYLOAD_MISMATCH");
+      } else {
+        duplicateOperationIds.push(operationId);
+        maximumSequence = Math.max(maximumSequence, previousSequence);
+      }
+      continue;
+    }
+    if (sequence <= maximumSequence) {
+      rejected.push({ operationId, action, code: "COMMAND_SEQUENCE_REWIND" });
+      continue;
+    }
+    maximumSequence = Math.max(maximumSequence, sequence);
+    commandBody.operationId = operationId;
+    ctx.economyAudit = { sessionId, sequence, baseRevision, rulesVersion, commandHash };
+    let actionResponse: Response;
+    try {
+      actionResponse = await dispatchGameAction(ctx, action, commandBody, request);
+    } finally {
+      delete ctx.economyAudit;
+    }
+    const actionPayload = await responsePayload(actionResponse);
+    if (actionResponse.status >= 500) throw new Error(String(actionPayload.error || "经济操作提交失败。"));
+    if (!actionResponse.ok) {
+      rejected.push({
+        operationId,
+        action,
+        status: actionResponse.status,
+        code: String(actionPayload.code || "COMMAND_REJECTED"),
+        error: String(actionPayload.error || "经济操作被拒绝。")
+      });
+      if (actionResponse.status >= 400 && actionResponse.status < 500) authoritativeRejectionCount += 1;
+      continue;
+    }
+    acceptedOperationIds.push(operationId);
+  }
+
+  const finalState = await loadProfile(ctx);
+  const expectedRevisionWithoutExternalWrites = start.revision + acceptedOperationIds.length;
+  if (
+    authoritativeRejectionCount > 0 &&
+    baseRevision === start.revision &&
+    finalState.revision === expectedRevisionWithoutExternalWrites
+  ) {
+    riskPoints += 100;
+    riskCodes.push("AUTHORITATIVE_RULE_BYPASS");
+  }
+  let risk = { riskScore: session.riskScore, revoked: false };
+  if (riskPoints > 0) {
+    risk = await recordEconomyRisk(ctx, sessionId, riskPoints, riskCodes.join(",").slice(0, 80), {
+      rejected,
+      baseRevision,
+      serverRevision: start.revision
+    });
+  }
+  await ctx.admin.from("economy_sessions").update({
+    base_revision: finalState.revision,
+    last_sequence: maximumSequence,
+    rules_version: rulesVersion,
+    last_seen_at: new Date().toISOString()
+  }).eq("id", sessionId).eq("player_id", ctx.userId);
+  if (risk.revoked) {
+    return reply({
+      error: "经济会话检测到高风险篡改，已恢复云端数据。",
+      code: "ECONOMY_SESSION_REVOKED",
+      profile: publicProfile(finalState.profile),
+      revision: finalState.revision
+    }, 403);
+  }
+  return reply({
+    ok: true,
+    sessionId,
+    rulesVersion: ECONOMY_RULES_VERSION,
+    rebased: baseRevision !== start.revision,
+    profile: publicProfile(finalState.profile),
+    revision: finalState.revision,
+    acceptedOperationIds,
+    duplicateOperationIds,
+    rejected,
+    riskScore: risk.riskScore
+  });
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(request) });
   let response: Response;
   try {
-    if (request.method !== "POST") {
-      response = error("仅支持 POST 请求。", 405);
+    const url = new URL(request.url);
+    const action = String(url.searchParams.get("action") || "");
+    if (request.method === "GET" && action === "payment-wechat-oauth") {
+      response = await paymentService.wechatOauth(publicAdmin(), url);
+    } else if (request.method !== "POST") {
+      response = error("仅支持 GET 或 POST 请求。", 405);
+    } else if (action === "payment-wechat-notify" || action === "payment-wechat-refund-notify" || action === "payment-paypal-webhook") {
+      const rawBody = await request.text();
+      const admin = publicAdmin();
+      if (action === "payment-paypal-webhook") response = await paymentService.paypalWebhook(admin, request, rawBody);
+      else response = await paymentService.wechatNotify(admin, request, rawBody, action === "payment-wechat-refund-notify");
     } else {
-      const ctx = await context(request);
-      if (ctx instanceof Response) {
-        response = ctx;
+      const body = await request.json().catch(() => ({})) as Json;
+      if (action === "payment-admin-refund") {
+        response = await paymentService.adminRefund(publicAdmin(), request, body);
       } else {
-        const body = await request.json().catch(() => ({}));
-        const action = new URL(request.url).searchParams.get("action");
-        if (action === "bootstrap") response = await bootstrap(ctx);
-        else if (action === "identity") response = await identity(ctx);
-        else if (action === "start-battle") response = await startBattle(ctx, body);
-        else if (action === "finish-battle") response = await finishBattle(ctx, body);
-        else if (action === "abandon-battle") response = await abandonBattle(ctx, body);
-        else if (action === "sweep") response = await sweep(ctx, body);
-        else if (action === "upgrade") response = await upgrade(ctx, body);
-        else if (action === "upgrade-fighter") response = await upgradeFighter(ctx, body);
-        else if (action === "buy-pilot") response = await buyPilot(ctx, body);
-        else if (action === "buy-ship") response = await buyShip(ctx, body);
-        else if (action === "promote-unit") response = await promoteUnit(ctx, body);
-        else if (action === "pilot-star-up") response = await pilotStarUp(ctx, body);
-        else if (action === "fighter-star-up") response = await fighterStarUp(ctx, body);
-        else if (action === "save-fighter-skill-loadout") response = await saveFighterSkillLoadout(ctx, body);
-        else if (action === "upgrade-auto-weapon") response = await upgradeAutoWeapon(ctx, body);
-        else if (action === "upgrade-auto-weapon-components") response = await upgradeAutoWeaponWithComponents(ctx, body);
-        else if (action === "upgrade-active-skill-grade") response = await upgradeActiveSkillGrade(ctx, body);
-        else if (action === "upgrade-passive-skill") response = await upgradePassiveSkill(ctx, body);
-        else if (action === "save-cosmetics") response = await saveCosmetics(ctx, body);
-        else if (action === "redeem") response = await redeem(ctx, body);
-        else if (action === "shop-buy") response = await economyService.buyShopItem(ctx, body);
-        else if (action === "shop-exchange") response = await economyService.buyShopItem(ctx, body);
-        else if (action === "gacha-draw") response = await economyService.gachaDraw(ctx, body);
-        else if (action === "daily-signin") response = await economyService.claimSignIn(ctx, body);
-        else if (action === "inventory-use") response = await economyService.useInventoryItem(ctx, body);
-        else if (action === "inventory-sell") response = await economyService.sellInventoryItem(ctx, body);
-        else if (action === "exchange-diamonds") response = await economyService.exchangeDiamonds(ctx, body);
-        else if (action === "migrate-anonymous") response = await migrateAnonymous(ctx, request);
-        else if (action === "leaderboard-submit") response = await socialService.leaderboardSubmit(ctx, body);
-        else if (action === "leaderboard-fetch") response = await socialService.leaderboardFetch(ctx, body);
-        else if (action === "friend-search") response = await socialService.friendSearch(ctx, body);
-        else if (action === "friend-request") response = await socialService.friendRequest(ctx, body);
-        else if (action === "friend-respond") response = await socialService.friendRespond(ctx, body);
-        else if (action === "friend-list") response = await socialService.friendList(ctx);
-        else if (action === "friend-remove") response = await socialService.friendRemove(ctx, body);
-        else if (action === "chat-send") response = await socialService.chatSend(ctx, body);
-        else if (action === "chat-poll") response = await socialService.chatPoll(ctx, body);
-        else if (action === "start-endless") response = await endlessService.start(ctx);
-        else if (action === "finish-endless") response = await endlessService.finish(ctx, body);
-        else if (action === "get-endless-record") response = await endlessService.getRecord(ctx);
-        else if (action === "claim-task") response = await economyService.claimTask(ctx, body);
-        else if (action === "claim-achievement") response = await economyService.claimAchievement(ctx, body);
-        else if (action === "claim-activity-reward") response = await economyService.claimActivityReward(ctx, body);
-        else response = error("未知操作。", 404);
+        const ctx = await context(request);
+        if (ctx instanceof Response) {
+          response = ctx;
+        } else {
+          response = action === "economy-batch"
+            ? await economyBatch(ctx, body, request)
+            : await dispatchGameAction(ctx, action, body, request);
+        }
       }
     }
   } catch (caught) {

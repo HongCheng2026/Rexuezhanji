@@ -124,9 +124,18 @@ test("quantity purchases use one client request and one server transaction path"
   const upgradeRoom = fs.readFileSync(path.join(root, "src/h5/UI/Fighter/Upgrade/fighterUpgradeRoom.js"), "utf8");
   const economyService = fs.readFileSync(path.join(root, "src/backend/functions/game-api/services/economy.ts"), "utf8");
   assert.match(controller, /gateway\[method\]\(value,\s*quantity\)/);
-  assert.match(upgradeRoom, /buyShopItem\(itemId,\s*qty\)/);
+  assert.match(upgradeRoom, /callGateway\("buyShopItem",\s*\[itemId,\s*qty\]\)/);
   assert.match(economyService, /quantity\s*>\s*1/);
   assert.match(economyService, /totalPrice\s*=\s*item\.priceAmount\s*\*\s*quantity/);
+});
+
+test("shop and fighter upgrades render the local projection without a cloud waiting state", () => {
+  const controller = fs.readFileSync(path.join(root, "src/h5/UI/FeaturePanels/economyFeatureController.js"), "utf8");
+  const upgradeRoom = fs.readFileSync(path.join(root, "src/h5/UI/Fighter/Upgrade/fighterUpgradeRoom.js"), "utf8");
+  assert.match(controller, /var gateway = options\.getGameGateway\(\);/);
+  assert.doesNotMatch(controller, /button\.disabled\s*=\s*true/);
+  assert.match(upgradeRoom, /operation = task\(\);[\s\S]{0,180}render\(\);/);
+  assert.doesNotMatch(upgradeRoom, /model\.setPending\(/);
 });
 
 test("resource-sensitive rooms synchronize once on entry through the shared snapshot", () => {

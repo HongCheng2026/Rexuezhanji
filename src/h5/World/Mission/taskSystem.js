@@ -12,6 +12,7 @@
   }
 
   function shanghaiDateKey(date) {
+    if (scope.worldTimeSystem && typeof scope.worldTimeSystem.dateKey === "function") return scope.worldTimeSystem.dateKey(date);
     if (scope.shanghaiDateKey) return scope.shanghaiDateKey(date);
     var value = date instanceof Date ? date : new Date();
     var utc = value.getTime() + value.getTimezoneOffset() * 60000;

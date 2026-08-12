@@ -21,12 +21,14 @@
   }
 
   function localDateKey(date) {
+    if (scope.worldTimeSystem && typeof scope.worldTimeSystem.dateKey === "function") return scope.worldTimeSystem.dateKey(date);
     date = date || new Date();
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
   }
 
   // 简单稳定周键：取本周四所在年份 + 周序号（与本地日期挂钩即可，用于周限购去重）。
   function isoWeekString(date) {
+    if (scope.worldTimeSystem && typeof scope.worldTimeSystem.weekKey === "function") return scope.worldTimeSystem.weekKey(date);
     date = date || new Date();
     var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     var day = (d.getDay() + 6) % 7; // 周一=0
@@ -407,7 +409,7 @@
           '<div><small>合计支付</small><strong class="shop-purchase-total ' + getPriceCurrencyClass(item) + '">' + priceCurrencyIcon + '<span data-shop-total></span></strong></div>' +
         '</section>' +
         '<p class="shop-purchase-status" data-shop-purchase-status role="status"></p>' +
-        '<footer class="shop-purchase-actions"><button type="button" class="secondary" data-shop-dialog-close>取消</button><button type="button" class="primary" data-shop-buy="' + escapeAttr(item.id) + '" data-shop-confirmed="true" data-shop-quantity="1">确认购买</button></footer>' +
+        '<footer class="shop-purchase-actions"><button type="button" class="secondary" data-shop-dialog-close>取消</button>' + (item.priceCurrency === "diamonds" ? '<button type="button" class="secondary" data-payment-action="open">充值钻石</button>' : '') + '<button type="button" class="primary" data-shop-buy="' + escapeAttr(item.id) + '" data-shop-confirmed="true" data-shop-quantity="1">确认购买</button></footer>' +
       '</div>';
     container.appendChild(modal);
 
@@ -416,6 +418,7 @@
     var plus = modal.querySelector("[data-shop-quantity-plus]");
     var maxButton = modal.querySelector("[data-shop-quantity-max]");
     var confirmButton = modal.querySelector('[data-shop-buy="' + item.id + '"]');
+    var rechargeButton = modal.querySelector("[data-payment-action='open']");
     var status = modal.querySelector("[data-shop-purchase-status]");
     if (input) {
       input.min = initialQuote.maxQuantity > 0 ? "1" : "0";
@@ -434,6 +437,7 @@
       confirmButton.dataset.shopQuantity = String(quote.quantity);
       confirmButton.dataset.available = quote.affordable ? "true" : "false";
       confirmButton.disabled = !quote.affordable;
+      if (rechargeButton) rechargeButton.style.display = quote.affordable ? "none" : "";
       if (item.priceCurrency === "item" && quote.maxQuantity <= 0) status.textContent = currencyLabel + "不足，暂时无法购买。";
       else if (quote.soldOut || quote.maxQuantity <= 0) status.textContent = "当前商品已达到购买上限。";
       else if (!quote.affordable) status.textContent = currencyLabel + "不足，请调整数量。";
@@ -564,29 +568,12 @@
     var quantity = Math.max(1, Math.floor(Number(result.quantity) || 1));
     var fromImage = getShopImage(fromItem, assets);
     var toImage = getShopImage(toItem, assets);
-    var modal = document.createElement("section");
-    modal.className = "shop-purchase-modal is-exchange-result";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-    modal.setAttribute("aria-label", "兑换完成");
-    modal.innerHTML =
-      '<div class="shop-purchase-backdrop"></div>' +
-      '<div class="shop-result-panel shop-exchange-result" tabindex="-1">' +
-        '<span class="shop-result-kicker">EXCHANGE COMPLETE</span><h3>兑换完成</h3>' +
-        '<div class="shop-exchange-result-flow">' +
-          '<figure>' + (fromImage ? '<img src="' + escapeAttr(fromImage) + '" alt="' + escapeAttr(fromItem.title) + '">' : '') + '<figcaption>' + escapeHtml(fromItem.title) + '<strong>−' + formatNumber(quantity) + '</strong></figcaption></figure>' +
-          '<i aria-hidden="true">→</i>' +
-          '<figure>' + (toImage ? '<img src="' + escapeAttr(toImage) + '" alt="' + escapeAttr(toItem.title) + '">' : '') + '<figcaption>' + escapeHtml(toItem.title) + '<strong>＋' + formatNumber(quantity) + '</strong></figcaption></figure>' +
-        '</div>' +
-        '<p>已按 1:1 写入当前档案</p>' +
-        '<button type="button" data-shop-result-close>收下</button>' +
-      '</div>';
-    container.appendChild(modal);
-    function finish() { closePurchaseDialog(container); }
-    modal.querySelector("[data-shop-result-close]").addEventListener("click", finish);
-    modal.addEventListener("keydown", function (event) { if (event.key === "Escape" || event.key === "Enter") finish(); });
-    modal.querySelector("[data-shop-result-close]").focus();
-    return true;
+    return showShopToast(container, {
+      image: toImage || fromImage,
+      title: "兑换完成",
+      detail: fromItem.title + " −" + formatNumber(quantity) + " → " + toItem.title + " ＋" + formatNumber(quantity),
+      focusSelector: '[data-shop-buy="' + escapeAttr(result.fromItemId) + '"]'
+    });
   }
 
   function setPurchaseDialogPending(container, pending) {
@@ -621,27 +608,35 @@
     var quantity = Math.max(1, Math.floor(Number(result.quantity) || 1));
     var image = getShopImage(item, assets);
     var currencyLabel = getPriceCurrencyLabel(item);
-    var modal = document.createElement("section");
-    modal.className = "shop-purchase-modal is-result";
-    modal.setAttribute("role", "dialog");
-    modal.setAttribute("aria-modal", "true");
-    modal.setAttribute("aria-label", "获得 " + item.title);
-    modal.innerHTML =
-      '<div class="shop-purchase-backdrop"></div>' +
-      '<div class="shop-result-panel" tabindex="-1">' +
-        '<span class="shop-result-kicker">ITEM ACQUIRED</span><h3>获得物资</h3>' +
-        '<div class="shop-result-glow" aria-hidden="true"></div>' +
-        (image ? '<img src="' + escapeAttr(image) + '" alt="' + escapeAttr(item.title) + '">' : '') +
-        '<strong>' + escapeHtml(item.title) + '</strong><em>×' + formatNumber(quantity) + '</em>' +
-        '<p>物资已写入当前档案</p>' +
-        '<div class="shop-result-cost"><small>本次支付</small><span>' + renderPriceCurrencyIcon(item, assets) + formatNumber(result.price) + " " + currencyLabel + '</span></div>' +
-        '<button type="button" data-shop-result-close>收下</button>' +
-      '</div>';
-    container.appendChild(modal);
-    function finish() { closePurchaseDialog(container); }
-    modal.querySelector("[data-shop-result-close]").addEventListener("click", finish);
-    modal.addEventListener("keydown", function (event) { if (event.key === "Escape" || event.key === "Enter") finish(); });
-    modal.querySelector("[data-shop-result-close]").focus();
+    return showShopToast(container, {
+      image: image,
+      title: "获得 " + item.title + " ×" + formatNumber(quantity),
+      detail: "支付 " + formatNumber(result.price) + " " + currencyLabel + "｜物资已写入档案",
+      focusSelector: '[data-shop-buy="' + escapeAttr(result.itemId) + '"]'
+    });
+  }
+
+  function showShopToast(container, options) {
+    if (!container || typeof document === "undefined") return false;
+    options = options || {};
+    var previous = container.querySelector && container.querySelector(".shop-purchase-toast");
+    if (previous && previous.parentNode) previous.parentNode.removeChild(previous);
+    var toast = document.createElement("section");
+    toast.className = "shop-purchase-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.innerHTML =
+      (options.image ? '<img src="' + escapeAttr(options.image) + '" alt="">' : '') +
+      '<div><small>SUPPLY UPDATED</small><strong>' + escapeHtml(options.title || "操作完成") + '</strong><span>' + escapeHtml(options.detail || "") + '</span></div>';
+    container.appendChild(toast);
+    var focusTarget = options.focusSelector && container.querySelector ? container.querySelector(options.focusSelector) : null;
+    if (focusTarget && focusTarget.focus) focusTarget.focus({ preventScroll: true });
+    root.setTimeout(function dismissShopToast() {
+      toast.classList.add("is-leaving");
+      root.setTimeout(function removeShopToast() {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 180);
+    }, 1500);
     return true;
   }
 
@@ -701,10 +696,14 @@
     getExchangeQuote: getExchangeQuote,
     getExchangeItem: getExchangeItem,
     openPurchaseDialog: openPurchaseDialog,
+    openExchangeDialog: openExchangeDialog,
     closePurchaseDialog: closePurchaseDialog,
     setPurchaseDialogPending: setPurchaseDialogPending,
     setPurchaseDialogError: setPurchaseDialogError,
-    showPurchaseResult: showPurchaseResult
+    setExchangeDialogPending: setExchangeDialogPending,
+    setExchangeDialogError: setExchangeDialogError,
+    showPurchaseResult: showPurchaseResult,
+    showExchangeResult: showExchangeResult
   };
   scope.shopView = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

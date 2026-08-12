@@ -10,6 +10,7 @@
     var getPilotAsset = options.getPilotAsset || function emptyPilot() { return {}; };
     var getSettlementStoryMessage = options.getSettlementStoryMessage || function fallbackStory(result, fallback) { return fallback || ""; };
     var onResult = options.onResult || function noopResult() {};
+    var currentView = "";
 
     function escapeHtml(value) {
       return String(value == null ? "" : value)
@@ -34,6 +35,8 @@
 
   function renderVictoryIntro(result) {
     result = result || {};
+    currentView = "intro";
+    var syncLocked = isSettlementLocked(result);
     onResult(result);
     var icons = assetsConfig.SETTLEMENT_ICON_ASSETS || {};
     var pilot = getPilotAsset();
@@ -57,48 +60,23 @@
           '</div>' +
         '</section>' +
         renderSettlementRatingStats(rating) +
-        '<button type="button" class="battle-report-primary" data-open-victory-chest="1">领取奖励</button>' +
+        '<button type="button" class="battle-report-primary" data-open-victory-chest="1"' + (syncLocked ? ' disabled' : '') + '>' + (result.syncState === "error" ? '结算失败，请重试' : (isSettlementPending(result) ? '奖励同步中…' : '领取奖励')) + '</button>' +
       '</section>';
-    dom.nextLevelButton.textContent = "领取奖励";
+    dom.nextLevelButton.textContent = result.syncState === "error" ? "结算失败，请重试" : (isSettlementPending(result) ? "奖励同步中…" : "领取奖励");
+    setLegacyActionsPending(syncLocked);
     dom.replayButton.style.display = "none";
     dom.backToChapterButton.textContent = "返回关卡";
   }
 
   function renderSettlementChest(result) {
     result = result || {};
-    if (!result.isWin) {
-      renderSettlement(result);
-      return;
-    }
-    onResult(result);
-    var icons = assetsConfig.SETTLEMENT_ICON_ASSETS || {};
-    setSettlementAssetVars(icons);
-    dom.shopScreen.classList.remove("settlement-victory-intro-mode", "settlement-fail-mode", "settlement-opened-mode");
-    dom.shopScreen.classList.add("settlement-chest-mode", "settlement-ceremony-mode", "settlement-win-mode", "settlement-focused-mode");
-    dom.shopMessageEl.textContent = "胜利奖励舱";
-    dom.shopCoinsEl.textContent = "等待开启";
-    dom.upgradeList.innerHTML = "";
-    dom.upgradeList.className = "settlement-chest-view battle-report-chest-view";
-    dom.upgradeList.innerHTML =
-      '<section class="battle-report-chest">' +
-        '<div class="battle-report-glow" aria-hidden="true"></div>' +
-        '<div class="battle-report-chest-copy">' +
-          '<span>REWARD CACHE</span>' +
-          '<strong>战利品回收完成</strong>' +
-          '<em>开启后查看本关评级、金币、经验与奖励位。</em>' +
-        '</div>' +
-        '<button type="button" class="battle-report-chest-button" data-open-settlement="1">' +
-          '<img src="' + escapeAttr(icons.chestClosed || "") + '" alt="奖励宝箱">' +
-          '<span>开启奖励舱</span>' +
-        '</button>' +
-      '</section>';
-    dom.nextLevelButton.textContent = "开启奖励舱";
-    dom.replayButton.style.display = "none";
-    dom.backToChapterButton.textContent = "返回关卡";
+    // 兼容旧 room 动作；胜利结算已压缩为“战报 → 最终奖励”两步。
+    renderSettlement(result);
   }
 
   function renderSettlement(result) {
     result = result || {};
+    currentView = "result";
     onResult(result);
     var breakdown = result.goldBreakdown || {};
     var icons = assetsConfig.SETTLEMENT_ICON_ASSETS || {};
@@ -111,14 +89,21 @@
     setSettlementAssetVars(icons);
     dom.shopScreen.classList.remove("settlement-victory-intro-mode", "settlement-chest-mode", "settlement-focused-mode");
     dom.shopScreen.classList.add("settlement-ceremony-mode", "settlement-opened-mode", result.isWin ? "settlement-win-mode" : "settlement-fail-mode");
-    dom.shopMessageEl.textContent = title + "：金币 +" + Math.max(0, Math.floor(result.coinsEarned || 0)) + "，经验 +" + Math.max(0, Math.floor(result.expEarned || 0)) + "。";
-    dom.shopCoinsEl.textContent = result.isWin ? "最终结算" : "失败结算";
+    var pending = isSettlementPending(result);
+    var syncError = result.syncState === "error";
+    var syncLocked = pending || syncError;
+    dom.shopMessageEl.textContent = pending
+      ? title + "：奖励正在同步。"
+      : syncError
+        ? title + "：奖励尚未入账，请重试结算。"
+        : title + "：金币 +" + Math.max(0, Math.floor(result.coinsEarned || 0)) + "，经验 +" + Math.max(0, Math.floor(result.expEarned || 0)) + "。";
+    dom.shopCoinsEl.textContent = pending ? "奖励同步中" : (syncError ? "同步失败" : (result.isWin ? "最终结算" : "失败结算"));
     dom.upgradeList.innerHTML = "";
     dom.upgradeList.className = "settlement-result-view battle-report-result-view";
 
     var rewardCards = [
-      { icon: icons.gold || "", label: "金币", value: "+" + Math.max(0, Math.floor(result.coinsEarned || 0)), detail: "击落 +" + (breakdown.killGold || 0) + " / 通关 +" + (breakdown.clearBonus || 0), className: "" },
-      { icon: icons.exp || "", label: "经验", value: "+" + Math.max(0, Math.floor(result.expEarned || 0)), detail: formatLevelProgress(levelProgress), className: " level-progress" },
+      { icon: icons.gold || "", label: "金币", value: syncLocked ? (pending ? "同步中" : "未入账") : "+" + Math.max(0, Math.floor(result.coinsEarned || 0)), detail: syncLocked ? (pending ? "等待云端确认" : "结算失败，重试后更新") : "击落 +" + (breakdown.killGold || 0) + " / 通关 +" + (breakdown.clearBonus || 0), className: syncLocked ? " is-syncing" : "" },
+      { icon: icons.exp || "", label: "经验", value: syncLocked ? (pending ? "同步中" : "未入账") : "+" + Math.max(0, Math.floor(result.expEarned || 0)), detail: syncLocked ? (pending ? "等待云端确认" : "结算失败，重试后更新") : formatLevelProgress(levelProgress), className: syncLocked ? " level-progress is-syncing" : " level-progress" },
       { icon: icons.emptySlot || "", label: "奖励栏位", value: "待解析", detail: "预留道具 / 碎片", className: " empty" },
       { icon: icons.emptySlot || "", label: "奖励栏位", value: "待解析", detail: "预留装备 / 模组", className: " empty" }
     ];
@@ -158,18 +143,42 @@
       button.className = "battle-report-action" + (primary ? " primary" : "");
       button.dataset.settlementAction = action;
       button.textContent = label;
+      button.disabled = syncLocked;
       actionBar.appendChild(button);
     }
     appendReportAction(result.isWin ? "next" : "replay", result.isWin ? "下一关" : "再战", true);
     if (result.isWin) appendReportAction("replay", "再战", false);
+    if (result.isWin && result.hasPostBattleStory) appendReportAction("story", "战后剧情", false);
     appendReportAction("chapter", "返回关卡", false);
     body.appendChild(actionBar);
     dom.upgradeList.appendChild(body);
 
     dom.nextLevelButton.textContent = result.isWin ? "下一关" : "再战";
+    setLegacyActionsPending(syncLocked);
     dom.replayButton.textContent = "再战";
     dom.replayButton.style.display = "";
     dom.backToChapterButton.textContent = "返回关卡";
+  }
+
+  function isSettlementPending(result) {
+    return result && result.syncState === "pending";
+  }
+
+  function isSettlementLocked(result) {
+    return Boolean(result && (result.syncState === "pending" || result.syncState === "error"));
+  }
+
+  function setLegacyActionsPending(pending) {
+    if (dom.nextLevelButton) dom.nextLevelButton.disabled = Boolean(pending);
+    if (dom.replayButton) dom.replayButton.disabled = Boolean(pending);
+    if (dom.backToChapterButton) dom.backToChapterButton.disabled = Boolean(pending);
+  }
+
+  function refresh(result) {
+    if (!currentView) return false;
+    if (currentView === "intro" && result && result.isWin) renderVictoryIntro(result);
+    else renderSettlement(result);
+    return true;
   }
 
   function renderSettlementHonorStars(tier, crownIcon) {
@@ -231,7 +240,8 @@
     return {
       renderVictoryIntro: renderVictoryIntro,
       renderSettlementChest: renderSettlementChest,
-      renderSettlement: renderSettlement
+      renderSettlement: renderSettlement,
+      refresh: refresh
     };
   }
 

@@ -8,19 +8,21 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
-test("diamond plus opens the dedicated contact room", () => {
+test("diamond plus opens the dedicated recharge room while contact keeps its own route", () => {
   const html = read("src/h5/Shell/game-frame.html");
   const diamondResource = html.match(/<div class="resource-unit diamond-resource">[\s\S]*?<\/div>\s*<div class="top-command-crest"/);
   assert.ok(diamondResource);
-  assert.match(diamondResource[0], /data-panel="contact"/);
+  assert.match(diamondResource[0], /data-panel="recharge"/);
   assert.doesNotMatch(diamondResource[0], /data-panel="redeem"/);
 
   const room = read("src/h5/UI/FeaturePanels/featurePanelRoom.js");
+  assert.match(room, /recharge:\s*"recharge\.open"/);
   assert.match(room, /contact:\s*"contact\.open"/);
 
   const loader = read("src/h5/Shell/shared-loader.js");
   assert.match(loader, /UI\/FeaturePanels\/contactView\.js/);
   assert.match(loader, /UI\/FeaturePanels\/contactRoom\.js/);
+  assert.match(loader, /UI\/Payment\/rechargeRoom\.js/);
 });
 
 test("contact view renders only the QR contact content", () => {

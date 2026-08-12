@@ -65,6 +65,19 @@
       return true;
     }
 
+    function callGateway(method, args) {
+      var gateway = capabilities.getGameGateway && capabilities.getGameGateway();
+      if (gateway && typeof gateway[method] === "function") {
+        try { return gateway[method].apply(gateway, args || []); }
+        catch (error) { return Promise.reject(error); }
+      }
+      return capabilities.ensureGameGateway().then(function callReadyGateway(readyGateway) {
+        var activeGateway = readyGateway || (capabilities.getGameGateway && capabilities.getGameGateway());
+        if (!activeGateway || typeof activeGateway[method] !== "function") throw new Error("游戏服务尚未就绪。");
+        return activeGateway[method].apply(activeGateway, args || []);
+      });
+    }
+
     function handleClick(event) {
       var dockRoot = dom.fighterUpgradeMount && dom.fighterUpgradeMount.querySelector
         ? dom.fighterUpgradeMount.querySelector("[data-fighter-upgrade-root]") : null;
@@ -74,13 +87,18 @@
         "[data-dock-equip-active]", "[data-dock-equip-auto]", "[data-dock-unequip]",
         "[data-dock-auto-toggle]", "[data-dock-upgrade-auto]", "[data-dock-upgrade-auto-components]", "[data-dock-upgrade-passive]",
         "[data-dock-upgrade-grade]", "[data-fighter-upgrade]",
-        "[data-dock-buy-material]", "[data-dock-cancel-buy]", "[data-dock-confirm-buy]"
+        "[data-dock-buy-material]", "[data-dock-cancel-buy]", "[data-dock-confirm-buy]", "[data-upgrade-go-battle]"
       ].join(",")) : null;
       if (!target || target.closest("button") && target.closest("button").disabled) return false;
 
       if (target.dataset.dockPage) {
         model.selectPage(target.dataset.dockPage);
         render();
+        return true;
+      }
+      if (target.hasAttribute("data-upgrade-go-battle")) {
+        close();
+        registry.dispatch("lobby.openBattleSelect");
         return true;
       }
       if (target.dataset.dockSelectStat) {
@@ -182,10 +200,8 @@
     }
 
     function saveLoadout(shipId, loadout) {
-      return runGatewayAction("loadout", "正在校验并同步战机配装…", function submitLoadout() {
-        return capabilities.ensureGameGateway().then(function saveWithGateway() {
-          return capabilities.getGameGateway().saveFighterSkillLoadout(shipId, loadout);
-        });
+      return runGatewayAction(function submitLoadout() {
+        return callGateway("saveFighterSkillLoadout", [shipId, loadout]);
       }, function loadoutSuccess() {
         refreshScreens(true);
         return "配装已同步到当前战机。";
@@ -196,10 +212,8 @@
       var operationId = root.crypto && root.crypto.randomUUID
         ? root.crypto.randomUUID()
         : "local-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-      return runGatewayAction("weapon:" + moduleId, "正在提交自动技能升级…", function submitWeaponUpgrade() {
-        return capabilities.ensureGameGateway().then(function upgradeWithGateway() {
-          return capabilities.getGameGateway().upgradeAutoWeapon(moduleId, operationId);
-        });
+      return runGatewayAction(function submitWeaponUpgrade() {
+        return callGateway("upgradeAutoWeapon", [moduleId, operationId]);
       }, function weaponSuccess(response) {
         refreshScreens(false);
         return "自动技能已完成" + (response && Number(response.level) === 1 ? "购买" : "升级") + "。";
@@ -210,10 +224,8 @@
       var operationId = root.crypto && root.crypto.randomUUID
         ? root.crypto.randomUUID()
         : "local-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-      return runGatewayAction("weapon-components:" + moduleId, "正在提交自动技能模块升级…", function submitWeaponUpgrade() {
-        return capabilities.ensureGameGateway().then(function upgradeWithGateway() {
-          return capabilities.getGameGateway().upgradeAutoWeaponWithComponents(moduleId, operationId);
-        });
+      return runGatewayAction(function submitWeaponUpgrade() {
+        return callGateway("upgradeAutoWeaponWithComponents", [moduleId, operationId]);
       }, function weaponComponentsSuccess(response) {
         refreshScreens(false);
         return "自动技能已完成模块" + (response && Number(response.level) === 1 ? "解锁" : "升级") + "。";
@@ -221,10 +233,8 @@
     }
 
     function upgradeFighterStat(statType) {
-      return runGatewayAction("stat:" + statType, "强化请求已发出，正在同步资源…", function submitStatUpgrade() {
-        return capabilities.ensureGameGateway().then(function upgradeWithGateway() {
-          return capabilities.getGameGateway().upgradeFighter(statType);
-        });
+      return runGatewayAction(function submitStatUpgrade() {
+        return callGateway("upgradeFighter", [statType]);
       }, function statSuccess() {
         if (capabilities.updateHud) capabilities.updateHud(true);
         return "战机强化完成。";
@@ -234,11 +244,9 @@
     function upgradeActiveGrade(targetGrade) {
       var data = model.snapshot();
       if (data.selectedSlot.type !== "active") return Promise.resolve(null);
-      return runGatewayAction("grade:" + targetGrade, "正在消耗档案令升级主动技能…", function submitGrade() {
-        return capabilities.ensureGameGateway().then(function gradeWithGateway() {
-          var operationId = root.crypto && root.crypto.randomUUID ? root.crypto.randomUUID() : "active-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-          return capabilities.getGameGateway().upgradeActiveSkillGrade(data.ship.id, data.selectedSlot.index, targetGrade, operationId);
-        });
+      return runGatewayAction(function submitGrade() {
+        var operationId = root.crypto && root.crypto.randomUUID ? root.crypto.randomUUID() : "active-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        return callGateway("upgradeActiveSkillGrade", [data.ship.id, data.selectedSlot.index, targetGrade, operationId]);
       }, function gradeSuccess() {
         refreshScreens(false);
         return "主动技能已升级至 " + targetGrade + " 级。";
@@ -246,11 +254,9 @@
     }
 
     function upgradePassiveSkill(skillId) {
-      return runGatewayAction("passive:" + skillId, "正在消耗战术核心升级自动技能…", function submitPassiveUpgrade() {
-        return capabilities.ensureGameGateway().then(function upgradeWithGateway() {
-          var operationId = root.crypto && root.crypto.randomUUID ? root.crypto.randomUUID() : "auto-" + Date.now() + "-" + Math.random().toString(16).slice(2);
-          return capabilities.getGameGateway().upgradePassiveSkill(skillId, operationId);
-        });
+      return runGatewayAction(function submitPassiveUpgrade() {
+        var operationId = root.crypto && root.crypto.randomUUID ? root.crypto.randomUUID() : "auto-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+        return callGateway("upgradePassiveSkill", [skillId, operationId]);
       }, function passiveSuccess(response) {
         refreshScreens(false);
         return "自动技能已升级至 Lv." + (response && response.targetGrade ? response.targetGrade : 1) + "。";
@@ -325,11 +331,10 @@
       var retry = buildRetryAction();
       closePurchaseOverlay();
       gatewayLock.busy = true;
-      model.setPending("buy", "正在购入材料…");
+      var purchase = callGateway("buyShopItem", [itemId, qty]);
+      // buyShopItem 在当前点击栈内已经完成本地投影，立即刷新材料与资源。
       render();
-      capabilities.ensureGameGateway().then(function (gw) {
-        return gw.buyShopItem(itemId, qty);
-      }).then(function applyPurchase(response) {
+      Promise.resolve(purchase).then(function applyPurchase(response) {
         if (!response || !response.profile) throw new Error("云端返回的存档无效。");
         if (capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(response.profile);
       }).then(function () {
@@ -345,15 +350,22 @@
       });
     }
 
-    function runGatewayAction(action, pendingMessage, task, successMessage, fallbackError) {
+    function runGatewayAction(task, successMessage, fallbackError) {
       if (gatewayLock.busy) return Promise.resolve(null);
+      var powerBefore = readTotalPower();
       gatewayLock.busy = true;
-      model.setPending(action, pendingMessage);
-      render();
       var completedMessage = "";
-      return Promise.resolve().then(task).then(function applyResult(response) {
+      var operation;
+      try {
+        operation = task();
+        // 队列型经济接口会在 task() 返回前完成本地扣费与强化；这一帧直接展示结果。
+        render();
+      } catch (error) {
+        operation = Promise.reject(error);
+      }
+      return Promise.resolve(operation).then(function applyResult(response) {
         if (response && response.profile && capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(response.profile);
-        completedMessage = successMessage(response);
+        completedMessage = successMessage(response) + formatPowerDelta(powerBefore, readTotalPower());
         return response;
       }).catch(function showFailure(error) {
         completedMessage = error && error.message ? error.message : fallbackError;
@@ -363,6 +375,17 @@
         model.finish(completedMessage);
         render();
       });
+    }
+
+    function readTotalPower() {
+      return capabilities.calculateTotalPower ? Math.max(0, Math.round(Number(capabilities.calculateTotalPower()) || 0)) : 0;
+    }
+
+    function formatPowerDelta(before, after) {
+      var delta = Math.max(0, after - before);
+      if (!delta) return "";
+      var percent = before > 0 ? " / +" + Math.round(delta / before * 100) + "%" : "";
+      return "｜战力 " + before.toLocaleString("en-US") + " → " + after.toLocaleString("en-US") + "（+" + delta.toLocaleString("en-US") + percent + "）";
     }
 
     function refreshScreens(includeChapter) {

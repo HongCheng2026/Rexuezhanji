@@ -39,7 +39,10 @@
 
     return {
       bootstrap: function bootstrapLocal() {
-        return { profile: getProfile() };
+        return {
+          profile: getProfile(),
+          worldTime: { unixMs: Date.now(), timeZone: "Asia/Shanghai", source: "device" }
+        };
       },
       syncProfile: function syncLocalProfile() {
         return { profile: getProfile() };
@@ -239,6 +242,20 @@
         }
         saveProfile();
         return { profile: getProfile(), shipId: shipId, toStars: result.toStars, copiesUsed: result.copiesUsed, modulesUsed: result.modulesUsed, attackGained: result.attackGained };
+      },
+      activateCodexEntry: function activateCodexEntryLocal(kind, entryId) {
+        var profile = getProfile();
+        var system = shared.codexSystem;
+        if (!system || (!system.canActivate(profile, kind, entryId) &&
+          !((kind === "unit" && system.isUnitActivated(profile, entryId)) ||
+            (kind === "bond" && system.getActivationState(profile).activatedBonds.indexOf(String(entryId)) >= 0)))) {
+          var activationError = new Error("当前图鉴条目不可激活。");
+          activationError.code = "CODEX_ACTIVATION_UNAVAILABLE";
+          throw activationError;
+        }
+        system.activateEntry(profile, kind, entryId);
+        saveProfile();
+        return { profile: getProfile(), kind: kind, entryId: entryId };
       },
       saveCosmetics: function saveLocalCosmetics(nextProfile) {
         setProfile(shared.profile.normalizeProfile(nextProfile || getProfile()));

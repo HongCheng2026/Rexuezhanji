@@ -12,7 +12,8 @@
         profile: options.getProfile(),
         levels: options.levels || [],
         combatPower: options.calculateTotalPower(),
-        audioSettings: options.audioSystem && options.audioSystem.getSettings ? options.audioSystem.getSettings() : null
+        audioSettings: options.audioSystem && options.audioSystem.getSettings ? options.audioSystem.getSettings() : null,
+        visualSettings: options.visualQualitySystem && options.visualQualitySystem.getSettings ? options.visualQualitySystem.getSettings() : null
       });
     }
 
@@ -24,22 +25,32 @@
         ? options.shared.shopConfig.getShopItem(value) : null;
       var purchaseQuote = purchaseItem && shopView && shopView.getPurchaseQuote
         ? shopView.getPurchaseQuote(options.getProfile(), purchaseItem, quantity) : null;
+      if (method === "buyShopItem" && shopView && shopView.setPurchaseDialogPending) {
+        shopView.setPurchaseDialogPending(options.dom.featurePanelSlots, true);
+      } else if (method === "shopExchange" && shopView && shopView.setExchangeDialogPending) {
+        shopView.setExchangeDialogPending(options.dom.featurePanelSlots, true);
+      }
       lock.busy = true;
-      var previousText = button.textContent;
-      button.disabled = true;
-        if (method === "buyShopItem" && shopView && shopView.setPurchaseDialogPending) {
-          shopView.setPurchaseDialogPending(options.dom.featurePanelSlots, true);
-        } else if (method === "shopExchange" && shopView && shopView.setExchangeDialogPending) {
-          shopView.setExchangeDialogPending(options.dom.featurePanelSlots, true);
+      var gateway = options.getGameGateway();
+      var action;
+      try {
+        if (gateway && typeof gateway[method] === "function") {
+          action = (method === "buyShopItem" || method === "shopExchange")
+            ? gateway[method](value, quantity)
+            : gateway[method](value);
         } else {
-          button.textContent = "领取中…";
-          options.dom.featurePanelBody.textContent = "正在等待云端确认，请勿重复操作。";
+          action = options.ensureGameGateway().then(function performCloudAction(readyGateway) {
+            var activeGateway = readyGateway || options.getGameGateway();
+            if (!activeGateway || typeof activeGateway[method] !== "function") throw new Error("云端接口尚未就绪。");
+            return (method === "buyShopItem" || method === "shopExchange")
+              ? activeGateway[method](value, quantity)
+              : activeGateway[method](value);
+          });
         }
-      options.ensureGameGateway().then(function performCloudAction() {
-        var gateway = options.getGameGateway();
-        if (!gateway || typeof gateway[method] !== "function") throw new Error("云端接口尚未就绪。");
-        return (method === "buyShopItem" || method === "shopExchange") ? gateway[method](value, quantity) : gateway[method](value);
-      }).then(function applyCloudResult(result) {
+      } catch (error) {
+        action = Promise.reject(error);
+      }
+      Promise.resolve(action).then(function applyProjectedResult(result) {
         if (!result || !result.profile) throw new Error("云端返回的存档无效。");
         options.applyGatewayProfile(result.profile);
         options.renderLobby();
@@ -61,15 +72,13 @@
           options.dom.featurePanelBody.textContent = "领取成功，奖励已写入云存档。";
         }
         if (options.playSfx) options.playSfx("button");
-      }).catch(function showCloudError(error) {
-        var message = error && error.message ? error.message : "云端操作失败，请重试。";
+      }).catch(function showProjectedError(error) {
+        var message = error && error.message ? error.message : "操作失败，请重试。";
         if (method === "buyShopItem" && shopView && shopView.setPurchaseDialogError) {
           shopView.setPurchaseDialogError(options.dom.featurePanelSlots, message);
         } else if (method === "shopExchange" && shopView && shopView.setExchangeDialogError) {
           shopView.setExchangeDialogError(options.dom.featurePanelSlots, message);
         } else {
-          button.disabled = false;
-          button.textContent = previousText;
           options.dom.featurePanelBody.textContent = message;
         }
       }).finally(function releaseLock() {

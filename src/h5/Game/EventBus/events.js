@@ -14,6 +14,10 @@
     ITEM_COLLECTED: "item:collected",
     LEVEL_CLEARED: "level:cleared",
     GOLD_CHANGED: "gold:changed",
+    // Real-world calendar shared by lobby, missions and economy projections
+    WORLD_TIME_TICK: "world-time:tick",
+    WORLD_TIME_SYNCED: "world-time:synced",
+    WORLD_DATE_CHANGED: "world-time:date-changed",
     // Semantic events (audio subscribes to these)
     WEAPON_FIRED: "weapon:fired",
     ENEMY_HIT: "enemy:hit",

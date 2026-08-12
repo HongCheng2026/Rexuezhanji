@@ -18,6 +18,7 @@
     var root = options.root || defaultRoot;
     var documentRef = options.document || (root && root.document);
     var viewport = options.viewport;
+    var stage = options.stage;
     var designWidth = Number(options.designWidth) || DESIGN_WIDTH;
     var designHeight = Number(options.designHeight) || DESIGN_HEIGHT;
     var listeners = [];
@@ -33,8 +34,8 @@
       canFullscreen: false
     };
 
-    if (!root || !documentRef || !viewport) {
-      throw new Error("GameViewport requires root, document and viewport.");
+    if (!root || !documentRef || !viewport || !stage) {
+      throw new Error("GameViewport requires root, document, viewport and stage.");
     }
 
     function getFullscreenElement() {
@@ -116,6 +117,11 @@
       viewport.style.setProperty("--game-scale", String(scale));
       viewport.style.setProperty("--game-center-x", safe.left + usableWidth / 2 + "px");
       viewport.style.setProperty("--game-center-y", safe.top + usableHeight / 2 + "px");
+      stage.style.width = designWidth + "px";
+      stage.style.height = designHeight + "px";
+      stage.style.left = safe.left + usableWidth / 2 + "px";
+      stage.style.top = safe.top + usableHeight / 2 + "px";
+      stage.style.transform = "translate3d(-50%, -50%, 0) scale(" + scale + ")";
       viewport.classList.add("is-ready");
       viewport.classList.toggle("is-portrait", state.orientation === "portrait");
       viewport.classList.toggle("is-fullscreen", state.isFullscreen);
@@ -163,8 +169,10 @@
       running = true;
       root.addEventListener("resize", scheduleFit);
       root.addEventListener("orientationchange", scheduleDelayedFit);
+      root.addEventListener("pageshow", scheduleDelayedFit);
       documentRef.addEventListener("fullscreenchange", scheduleDelayedFit);
       documentRef.addEventListener("webkitfullscreenchange", scheduleDelayedFit);
+      documentRef.addEventListener("visibilitychange", scheduleDelayedFit);
       if (root.visualViewport) {
         root.visualViewport.addEventListener("resize", scheduleFit);
         root.visualViewport.addEventListener("scroll", scheduleFit);
@@ -178,8 +186,10 @@
       running = false;
       root.removeEventListener("resize", scheduleFit);
       root.removeEventListener("orientationchange", scheduleDelayedFit);
+      root.removeEventListener("pageshow", scheduleDelayedFit);
       documentRef.removeEventListener("fullscreenchange", scheduleDelayedFit);
       documentRef.removeEventListener("webkitfullscreenchange", scheduleDelayedFit);
+      documentRef.removeEventListener("visibilitychange", scheduleDelayedFit);
       if (root.visualViewport) {
         root.visualViewport.removeEventListener("resize", scheduleFit);
         root.visualViewport.removeEventListener("scroll", scheduleFit);

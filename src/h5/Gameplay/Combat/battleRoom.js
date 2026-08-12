@@ -11,6 +11,7 @@
       pause: function pause() { return lobby.pauseGame(); },
       abort: function abort(target) { return flow.abortBattle(target); },
       settlePending: function settlePending() { return flow.settlePendingBattle(); },
+      playPostSettlementStory: function playPostSettlementStory() { return flow.playPostSettlementStory(); },
       decisiveCommand: context.tryUseDecisiveCommand,
       castActiveSlot: context.tryCastActiveSlot,
       toggleActiveSlotAuto: context.toggleActiveSlotAuto,

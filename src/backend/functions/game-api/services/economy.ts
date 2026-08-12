@@ -20,6 +20,7 @@ type Dependencies = {
   commitProfileOperation: (ctx: Context, profile: any, revision: number, body: Json, action: string, gold: number, energy: number, payload: Json) => Promise<any>;
   publicProfile: (profile: any) => any;
   refreshLeaderboard: (ctx: Context, profile: any) => Promise<unknown>;
+  runBackground: (label: string, task: Promise<unknown>) => void;
   getGold: (profile: any) => number;
   setGold: (profile: any, value: number) => void;
   getStageAliases: (level: { id: number; code: string }) => string[];
@@ -411,7 +412,7 @@ export function createEconomyService(deps: Dependencies) {
         rewards
       }
     );
-    await deps.refreshLeaderboard(ctx, saved);
+    deps.runBackground("leaderboard-shop", deps.refreshLeaderboard(ctx, saved));
     return deps.reply({
       profile: deps.publicProfile(saved),
       itemId,
@@ -625,6 +626,48 @@ export function createEconomyService(deps: Dependencies) {
     if (!targetKey || !GACHA_TARGETS[targetKey]) return deps.error("请先选择终极目标。", 400);
     const count = Number(body.count) === 10 ? 10 : 1;
     const buyMissingTickets = Boolean(body.buyMissingTickets);
+    const operationId = String(body.operationId || "");
+    if (
+      ctx.admin &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operationId)
+    ) {
+      const { data: existing, error: existingError } = await ctx.admin.from("reward_ledger")
+        .select("action, payload")
+        .eq("player_id", ctx.userId)
+        .eq("operation_id", operationId)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      if (existing) {
+        const payload = existing.payload || {};
+        if (
+          String(existing.action) !== "gacha-draw" ||
+          String(payload.target || "") !== targetKey ||
+          Number(payload.count) !== count
+        ) {
+          return deps.reply({
+            error: "同一操作号对应的抽卡参数不一致。",
+            code: "OPERATION_ID_PAYLOAD_MISMATCH"
+          }, 409);
+        }
+        const current = await deps.loadProfile(ctx);
+        return deps.reply({
+          ok: true,
+          duplicate: true,
+          target: targetKey,
+          count,
+          cost: payload.cost,
+          ticketCost: payload.cost,
+          missingTickets: payload.missingTickets,
+          purchasedTickets: payload.missingTickets,
+          diamondCost: payload.diamondCost,
+          currency: "ticket",
+          profile: deps.publicProfile(current.profile),
+          state: current.profile.gacha,
+          results: payload.results || [],
+          summary: gachaSummarize(Array.isArray(payload.results) ? payload.results : [])
+        });
+      }
+    }
 
     const { profile, revision } = await deps.loadProfile(ctx);
     profile.resources = profile.resources || {};

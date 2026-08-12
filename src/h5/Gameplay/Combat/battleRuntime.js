@@ -31,6 +31,12 @@
     if (!state) return null;
 
     state.mode = "fight";
+    if (scope.framePacingMonitor && scope.framePacingMonitor.start) {
+      var qualityProfile = scope.visualQualitySystem && scope.visualQualitySystem.getEffectiveProfile
+        ? scope.visualQualitySystem.getEffectiveProfile()
+        : {};
+      scope.framePacingMonitor.start(qualityProfile);
+    }
     if (scope.bus && typeof scope.bus.emit === "function") {
       scope.bus.emit(events.COMBAT_STARTED, { level: level, mode: state.battleMode });
     }
@@ -96,6 +102,9 @@
     // drawScene 由外部调用
     if (battleContext.callbacks && battleContext.callbacks.onFrame) {
       battleContext.callbacks.onFrame(state, dt);
+    }
+    if (scope.framePacingMonitor && scope.framePacingMonitor.record) {
+      scope.framePacingMonitor.record(now, state);
     }
 
     battleContext.animationId = requestAnimationFrame(function (t) {
@@ -209,6 +218,7 @@
   function pauseBattle(battleContext) {
     if (!battleContext) return;
     cancelAnimationFrame(battleContext.animationId);
+    if (scope.framePacingMonitor && scope.framePacingMonitor.suspend) scope.framePacingMonitor.suspend();
     if (battleContext.callbacks && battleContext.callbacks.onPause) {
       battleContext.callbacks.onPause();
     }
@@ -219,6 +229,7 @@
    */
   function resumeBattle(battleContext) {
     if (!battleContext) return;
+    if (scope.framePacingMonitor && scope.framePacingMonitor.suspend) scope.framePacingMonitor.suspend();
     battleContext.lastTime = performance.now();
     battleContext.animationId = requestAnimationFrame(function (t) {
       loop(battleContext, t);

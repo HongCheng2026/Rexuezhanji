@@ -1,14 +1,5 @@
 /**
- * 图鉴模块核心引擎 (codexSystem.js) — v3.0（纯点亮 + 羁绊）
- *
- * 主入口: calculateBonus(profile) → { attackFlat, armorPenetrationFlat, coinBonusMultiplier }
- * 事件发射: checkAndEmit(profile, prevOwned) → bus.emit(codex events)
- *
- * v3.0 起加成只来自两层：
- *   - 点亮单个单位（UNIT_LIGHT_BONUS_BY_RANK，需玩家在图鉴手动点亮）
- *   - 组合羁绊（BONDS，需玩家手动点亮羁绊）
- * 不再有任何里程碑 / 套装 / 联动 / S 战机数量类加成。
- *
+ * 图鉴模块核心引擎 — 图鉴状态、激活规则与战斗加成的唯一来源。
  * @module codexSystem
  */
 (function registerCodexSystem(root) {
@@ -21,143 +12,167 @@
   function getBus() { return scope.bus; }
   function getEvents() { return scope.events; }
 
-  // ── helpers ──
-
-  function filterValid(ids, assetList) {
-    if (!Array.isArray(ids)) return [];
-    return ids.filter(function (id) {
-      return assetList.some(function (a) { return a && a.id === id; });
-    });
+  function unique(values) {
+    return Array.from(new Set((Array.isArray(values) ? values : []).map(String).filter(Boolean)));
   }
 
-  function getAssetById(id, assetList) {
-    return assetList.find(function (a) { return a && a.id === id; }) || null;
-  }
-
-  // 已点亮的单个单位加成（profile.codexBonds 中的 "unit:<id>" 条目）。
-  function sumLitUnitBonuses(ids, profile, assetList, rankBonuses) {
-    var litIds = Array.isArray(profile && profile.codexBonds) ? profile.codexBonds : [];
-    return ids.reduce(function (total, id) {
-      if (litIds.indexOf("unit:" + id) < 0) return total;
-      var asset = getAssetById(id, assetList);
-      var nativeRank = String(asset && asset.rank || "B").toUpperCase();
-      var bonus = rankBonuses[nativeRank] || {};
-      total.attackFlat += Number(bonus.attackFlat) || 0;
-      total.armorPenetrationFlat += Number(bonus.armorPenetrationFlat) || 0;
-      return total;
-    }, { attackFlat: 0, armorPenetrationFlat: 0 });
-  }
-
-  /**
-   * 主入口：计算图鉴加成（仅点亮 + 羁绊两层）
-   * @param {Object} profile — 规范化后的 player profile
-   * @returns {{ attackFlat: number, armorPenetrationFlat: number, coinBonusMultiplier: number }}
-   */
-  function calculateBonus(profile) {
-    var balance = getBalance();
-    var assets = getAssets();
-    var pilotList = Array.isArray(assets.PILOT_ASSETS) ? assets.PILOT_ASSETS : [];
-    var shipList = Array.isArray(assets.SHIP_ASSETS) ? assets.SHIP_ASSETS : [];
-
-    var owned = (profile && profile.owned) || {};
-    var pilotIds = filterValid(Array.isArray(owned.pilots) ? owned.pilots : [], pilotList);
-    var shipIds = filterValid(Array.isArray(owned.ships) ? owned.ships : [], shipList);
-
-    // 点亮层：每个手动点亮的单个单位，按原生品阶给攻击（SS 另给破甲）。
-    var rankBonuses = balance.UNIT_LIGHT_BONUS_BY_RANK || {};
-    var litPilot = sumLitUnitBonuses(pilotIds, profile, pilotList, rankBonuses);
-    var litShip = sumLitUnitBonuses(shipIds, profile, shipList, rankBonuses);
-
-    var attackFlat = litPilot.attackFlat + litShip.attackFlat;
-    var armorPenetrationFlat = litPilot.armorPenetrationFlat + litShip.armorPenetrationFlat;
-    var coinBonusMultiplier = 0;
-
-    // 羁绊层：玩家手动点亮的羁绊，叠加攻击 / 破甲 / 金币。
-    var config = getConfig();
-    if (config && config.getBondsState) {
-      var bondsState = config.getBondsState(profile);
-      (bondsState.bonds || []).forEach(function (s) {
-        if (!s.lit) return;
-        var b = s.def && s.def.bonus;
-        if (!b) return;
-        attackFlat += (b.attackFlat || 0);
-        armorPenetrationFlat += (b.armorPenetrationFlat || 0);
-        coinBonusMultiplier += (b.coinBonusMultiplier || 0);
-      });
-    }
-
+  function getActivationState(profile) {
+    var codex = profile && profile.codex && typeof profile.codex === "object" ? profile.codex : {};
+    var legacy = Array.isArray(profile && profile.codexBonds) ? profile.codexBonds : [];
     return {
-      attackFlat: attackFlat,
-      armorPenetrationFlat: armorPenetrationFlat,
-      coinBonusMultiplier: coinBonusMultiplier
+      activatedUnits: unique((codex.activatedUnits || []).concat(legacy.filter(function isUnit(id) {
+        return String(id).indexOf("unit:") === 0;
+      }).map(function stripPrefix(id) { return String(id).slice(5); }))),
+      activatedBonds: unique((codex.activatedBonds || []).concat(legacy.filter(function isBond(id) {
+        return String(id).indexOf("unit:") !== 0;
+      })))
     };
   }
 
-  // ── 事件发射 ──
+  function isOwned(profile, id) {
+    var owned = profile && profile.owned || {};
+    return (Array.isArray(owned.pilots) && owned.pilots.indexOf(id) >= 0) ||
+      (Array.isArray(owned.ships) && owned.ships.indexOf(id) >= 0);
+  }
 
-  /**
-   * 检查收集变化并发射 codex 事件。
-   * 应在购买 / 获得新单位成功后调用（确保在用户手势栈内）。
-   *
-   * @param {Object} profile — 当前规范化 profile
-   * @param {Object} prevOwned — 之前的 owned 状态 { pilots: [], ships: [] }
-   */
+  function isUnitActivated(profile, id) {
+    return getActivationState(profile).activatedUnits.indexOf(String(id)) >= 0;
+  }
+
+  function getBondsState(profile) {
+    var config = getConfig();
+    return config && config.getBondsState
+      ? config.getBondsState(profile)
+      : { bonds: [], anyActivatable: false };
+  }
+
+  function canActivate(profile, kind, id) {
+    id = String(id || "");
+    if (kind === "unit") return Boolean(id) && isOwned(profile, id) && !isUnitActivated(profile, id);
+    if (kind !== "bond") return false;
+    var state = getBondsState(profile).bonds.filter(function match(item) {
+      return item.def && item.def.id === id;
+    })[0];
+    return Boolean(state && state.activatable);
+  }
+
+  function activateEntry(profile, kind, id) {
+    if (!canActivate(profile, kind, id)) return false;
+    if (scope.profileStore && scope.profileStore.activateCodexEntry) {
+      return scope.profileStore.activateCodexEntry(profile, kind, id);
+    }
+    profile.codex = profile.codex && typeof profile.codex === "object" ? profile.codex : {};
+    var field = kind === "unit" ? "activatedUnits" : "activatedBonds";
+    profile.codex[field] = unique((profile.codex[field] || []).concat(String(id)));
+    return true;
+  }
+
+  function deactivateEntry(profile, kind, id) {
+    if (scope.profileStore && scope.profileStore.deactivateCodexEntry) {
+      return scope.profileStore.deactivateCodexEntry(profile, kind, id);
+    }
+    if (!profile || !profile.codex) return false;
+    var field = kind === "unit" ? "activatedUnits" : "activatedBonds";
+    var before = Array.isArray(profile.codex[field]) ? profile.codex[field] : [];
+    profile.codex[field] = before.filter(function keep(value) { return value !== String(id); });
+    return profile.codex[field].length !== before.length;
+  }
+
+  function mergeActivationState(profile, entries) {
+    if (!profile) return profile;
+    var current = getActivationState(profile);
+    entries = entries || {};
+    profile.codex = {
+      activatedUnits: unique(current.activatedUnits.concat(entries.activatedUnits || [])),
+      activatedBonds: unique(current.activatedBonds.concat(entries.activatedBonds || []))
+    };
+    delete profile.codexBonds;
+    return profile;
+  }
+
+  function findAsset(id, list) {
+    return list.filter(function match(asset) { return asset && asset.id === id; })[0] || null;
+  }
+
+  function calculateBonus(profile) {
+    var state = getActivationState(profile);
+    var assets = getAssets();
+    var units = (assets.PILOT_ASSETS || []).concat(assets.SHIP_ASSETS || []);
+    var rankBonuses = getBalance().UNIT_ACTIVATION_BONUS_BY_RANK || {};
+    var bonus = { attackFlat: 0, armorPenetrationFlat: 0, coinBonusMultiplier: 0 };
+
+    state.activatedUnits.forEach(function addUnit(id) {
+      if (!isOwned(profile, id)) return;
+      var asset = findAsset(id, units);
+      if (!asset) return;
+      var value = rankBonuses[String(asset.rank || "B").toUpperCase()] || {};
+      bonus.attackFlat += Number(value.attackFlat) || 0;
+      bonus.armorPenetrationFlat += Number(value.armorPenetrationFlat) || 0;
+    });
+
+    getBondsState(profile).bonds.forEach(function addBond(item) {
+      if (!item.activated || !item.def || !item.def.bonus) return;
+      bonus.attackFlat += Number(item.def.bonus.attackFlat) || 0;
+      bonus.armorPenetrationFlat += Number(item.def.bonus.armorPenetrationFlat) || 0;
+      bonus.coinBonusMultiplier += Number(item.def.bonus.coinBonusMultiplier) || 0;
+    });
+    return bonus;
+  }
+
+  function getActivationSummary(profile) {
+    var state = getActivationState(profile);
+    return {
+      activatedUnitCount: state.activatedUnits.length,
+      activatedBondCount: state.activatedBonds.length,
+      bonus: calculateBonus(profile),
+      anyActivatable: hasActivatableEntries(profile)
+    };
+  }
+
+  function hasActivatableEntries(profile) {
+    var assets = getAssets();
+    var owned = profile && profile.owned || {};
+    var unitIds = (Array.isArray(owned.pilots) ? owned.pilots : []).concat(Array.isArray(owned.ships) ? owned.ships : []);
+    if (unitIds.some(function pending(id) { return canActivate(profile, "unit", id); })) return true;
+    return Boolean(getBondsState(profile).anyActivatable);
+  }
+
   function checkAndEmit(profile, prevOwned) {
     var bus = getBus();
     var events = getEvents();
     if (!bus || !events) return;
-
     var assets = getAssets();
-    var pilotList = Array.isArray(assets.PILOT_ASSETS) ? assets.PILOT_ASSETS : [];
-    var shipList = Array.isArray(assets.SHIP_ASSETS) ? assets.SHIP_ASSETS : [];
-
-    var owned = (profile && profile.owned) || {};
-    var curPilotIds = filterValid(Array.isArray(owned.pilots) ? owned.pilots : [], pilotList);
-    var curShipIds = filterValid(Array.isArray(owned.ships) ? owned.ships : [], shipList);
-
-    var prev = prevOwned || { pilots: [], ships: [] };
-    var prevPilotIds = filterValid(prev.pilots || [], pilotList);
-    var prevShipIds = filterValid(prev.ships || [], shipList);
-
-    // 发射 ENTRY_UNLOCKED（获得新单位）
-    curPilotIds.forEach(function (id) {
-      if (prevPilotIds.indexOf(id) < 0) {
-        var asset = getAssetById(id, pilotList);
-        bus.emit(events.CODEX_ENTRY_UNLOCKED, {
-          type: "pilot", id: id,
-          rank: asset ? asset.rank : "?", name: asset ? asset.name : id
-        });
-      }
+    var current = profile && profile.owned || {};
+    var previous = prevOwned || { pilots: [], ships: [] };
+    [["pilot", assets.PILOT_ASSETS || [], current.pilots || [], previous.pilots || []],
+      ["ship", assets.SHIP_ASSETS || [], current.ships || [], previous.ships || []]].forEach(function each(group) {
+      group[2].forEach(function unlocked(id) {
+        if (group[3].indexOf(id) >= 0) return;
+        var asset = findAsset(id, group[1]);
+        if (asset) bus.emit(events.CODEX_ENTRY_UNLOCKED, { type: group[0], id: id, rank: asset.rank, name: asset.name });
+      });
     });
-    curShipIds.forEach(function (id) {
-      if (prevShipIds.indexOf(id) < 0) {
-        var asset = getAssetById(id, shipList);
-        bus.emit(events.CODEX_ENTRY_UNLOCKED, {
-          type: "ship", id: id,
-          rank: asset ? asset.rank : "?", name: asset ? asset.name : id
-        });
-      }
-    });
-
-    // 全收集检测
     var config = getConfig();
-    if (!config) return;
-    var wasFull = config.isFullCollection(prevPilotIds.length, prevShipIds.length, pilotList.length, shipList.length);
-    var isFull = config.isFullCollection(curPilotIds.length, curShipIds.length, pilotList.length, shipList.length);
-    if (!wasFull && isFull) {
-      bus.emit(events.CODEX_FULL_COLLECTION, { totalEntries: curPilotIds.length + curShipIds.length });
+    if (config && config.isFullCollection &&
+      !config.isFullCollection((previous.pilots || []).length, (previous.ships || []).length, (assets.PILOT_ASSETS || []).length, (assets.SHIP_ASSETS || []).length) &&
+      config.isFullCollection((current.pilots || []).length, (current.ships || []).length, (assets.PILOT_ASSETS || []).length, (assets.SHIP_ASSETS || []).length)) {
+      bus.emit(events.CODEX_FULL_COLLECTION, { totalEntries: (current.pilots || []).length + (current.ships || []).length });
     }
   }
 
   var api = {
+    getActivationState: getActivationState,
+    isUnitActivated: isUnitActivated,
+    getBondsState: getBondsState,
+    canActivate: canActivate,
+    activateEntry: activateEntry,
+    deactivateEntry: deactivateEntry,
+    mergeActivationState: mergeActivationState,
     calculateBonus: calculateBonus,
-    checkAndEmit: checkAndEmit,
-    getBondsState: function getBondsState(profile) {
-      var config = getConfig();
-      return config && config.getBondsState ? config.getBondsState(profile) : { bonds: [], anyLightable: false };
-    }
+    getActivationSummary: getActivationSummary,
+    hasActivatableEntries: hasActivatableEntries,
+    checkAndEmit: checkAndEmit
   };
-
   scope.codexSystem = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

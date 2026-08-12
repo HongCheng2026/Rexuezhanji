@@ -59,10 +59,13 @@
     pilotLevel: document.querySelector("#pilotLevel"),
     pilotExpText: document.querySelector("#pilotExpText"),
     pilotExpBar: document.querySelector("#pilotExpBar"),
-    pilotBadge: document.querySelector("#pilotBadge"),
+    pilotHonor: document.querySelector("#pilotHonor"),
     energyValue: document.querySelector("#energyValue"),
     goldValue: document.querySelector("#goldValue"),
     diamondValue: document.querySelector("#diamondValue"),
+    worldClockTime: document.querySelector("#worldClockTime"),
+    worldClockDate: document.querySelector("#worldClockDate"),
+    worldClockSource: document.querySelector("#worldClockSource"),
     energyResourceIcon: document.querySelector("#energyResourceIcon"),
     goldResourceIcon: document.querySelector("#goldResourceIcon"),
     diamondResourceIcon: document.querySelector("#diamondResourceIcon"),
@@ -88,6 +91,8 @@
   var BOSS_SPAWN_TIME = levelsConfig.BOSS_SPAWN_TIME || 60;
   var assetsConfig = shared.assets;
   var audioSystem = shared.audioSystem || null;
+  var visualQualitySystem = shared.visualQualitySystem || null;
+  var framePacingMonitor = shared.framePacingMonitor || null;
   var battleRenderer = shared.canvasRenderer && shared.canvasRenderer.create({
     ctx: ctx,
     width: WIDTH,
@@ -98,6 +103,9 @@
     clamp: clamp
   });
   if (!battleRenderer) throw new Error("H5 game bootstrap failed: missing canvas renderer.");
+  if (battleRenderer.setQualityProfile && visualQualitySystem && visualQualitySystem.getEffectiveProfile) {
+    battleRenderer.setQualityProfile(visualQualitySystem.getEffectiveProfile());
+  }
   if (battleRenderer.preloadSkillAssets) {
     battleRenderer.preloadSkillAssets().catch(function ignoreWingmanPreloadFailure() {});
   }
@@ -109,9 +117,14 @@
     "main-feature-panel",
     "feature-panel-standard",
     "shop-feature-panel",
+    "modal-feature-panel",
+    "ranking-feature-panel",
     "task-feature-panel",
+    "achievement-feature-panel",
     "endless-feature-panel",
     "star-wings-gacha-panel",
+    "recharge-feature-panel",
+    "paycore-host-panel",
     "contact-panel"
   ];
   var demoMode = shared.demoMode && shared.demoMode.create({
@@ -181,6 +194,8 @@
     upgrades: upgrades,
     demoConfig: demoConfig,
     audioSystem: audioSystem,
+    visualQualitySystem: visualQualitySystem,
+    framePacingMonitor: framePacingMonitor,
     gatewayActionLock: gatewayActionLock,
     getProfile: function getProfile() { return profile; },
     getState: function getState() { return state; },
@@ -230,7 +245,11 @@
     openFeaturePanelShell: function openFeaturePanelShell(mode) { return featurePanelController && featurePanelController.openShell(mode); },
     closeFeaturePanel: function closeFeaturePanel() { return featurePanelController && featurePanelController.close(); },
     persistProfileMetadata: function persistProfileMetadata() { return battleFlowController.persistProfileMetadata(); },
-    renderLobby: lobbyController.renderLobby
+    renderLobby: lobbyController.renderLobby,
+    ensureGameGateway: ensureGameGateway,
+    getGameGateway: function getGameGateway() { return gameGateway; },
+    getGatewayError: function getGatewayError() { return gatewayError; },
+    applyGatewayProfile: applyGatewayProfile
   });
   if (!profileController) throw new Error("H5 game bootstrap failed: missing profile controller.");
 
@@ -240,11 +259,12 @@
     assetsConfig: assetsConfig,
     levels: levels,
     audioSystem: audioSystem,
+    visualQualitySystem: visualQualitySystem,
+    framePacingMonitor: framePacingMonitor,
     modeClasses: FEATURE_PANEL_MODE_CLASSES,
     getProfile: function getProfile() { return profile; },
     getFeaturePanels: function getFeaturePanels() { return featurePanels || {}; },
     isCloudMode: function isCloudMode() { return battleFlowController.isCloudMode(); },
-    persistProfileMetadata: function persistProfileMetadata() { return battleFlowController.persistProfileMetadata(); },
     gatewayActionLock: gatewayActionLock,
     ensureGameGateway: ensureGameGateway,
     syncGatewayProfile: syncGatewayProfile,
@@ -299,7 +319,11 @@
     createLevelProgressSnapshot: createLevelProgressSnapshot,
     updateHud: renderBattleUi,
     drawScene: drawScene,
-    playSfx: playSfx
+    playSfx: playSfx,
+    showBattleControlHint: function showBattleControlHint(uid) {
+      return battleUiHandle && battleUiHandle.showFirstControlHint ? battleUiHandle.showFirstControlHint(uid) : false;
+    },
+    applyBattleVisualQuality: function applyBattleVisualQuality() { return applyVisualQuality(null, true); }
   });
   if (!battleFlowController) throw new Error("H5 game bootstrap failed: missing battle flow controller.");
 
@@ -309,6 +333,7 @@
     assetsConfig: assetsConfig,
     levelsConfig: levelsConfig,
     audioSystem: audioSystem,
+    visualQualitySystem: visualQualitySystem,
     getProfile: function getProfileForEndless() { return profile; },
     getGameGateway: function getGatewayForEndless() { return gameGateway; },
     ensureGameGateway: ensureGameGateway,
@@ -333,6 +358,9 @@
     dom: dom,
     levels: levels,
     audioSystem: audioSystem,
+    visualQualitySystem: visualQualitySystem,
+    framePacingMonitor: framePacingMonitor,
+    applyVisualQuality: applyVisualQuality,
     gatewayActionLock: gatewayActionLock,
     calculateTotalPower: profileController.calculateTotalPower,
     getProfile: function getProfile() { return profile; },
@@ -349,6 +377,20 @@
     gatewayModule: shared.gameGateway,
     localOnly: demoConfig.enabled,
     createLocalAdapter: createLocalGatewayAdapter,
+    createCloudAdapter: function createCloudAdapter(remote, localAdapter) {
+      if (!shared.economySession || typeof shared.economySession.create !== "function") {
+        throw new Error("H5 game bootstrap failed: missing economy session.");
+      }
+      return shared.economySession.create({
+        remote: remote,
+        local: localAdapter,
+        shared: shared,
+        storage: root.localStorage,
+        getProfile: function getEconomyProfile() { return profile; },
+        applyProfile: applyGatewayProfile,
+        refreshViews: refreshAllViews
+      });
+    },
     getProfile: function getProfile() { return profile; },
     cloneProfile: cloneProfile,
     mergeLocalCosmetics: mergeLocalCosmetics,
@@ -383,10 +425,21 @@
       ensureGameGateway: ensureGameGateway,
       syncGatewayProfile: syncGatewayProfile,
       applyGatewayProfile: applyGatewayProfile,
+      calculateTotalPower: profileController.calculateTotalPower,
       saveProfile: saveProfile,
       renderLobby: lobbyController.renderLobby,
       renderChapterSelect: lobbyController.renderChapterSelect,
       updateHud: renderBattleUi
+    },
+    codex: {
+      getProfile: function getCodexProfile() { return profile; },
+      ensureGameGateway: ensureGameGateway,
+      getGameGateway: function getCodexGateway() { return gameGateway; },
+      applyGatewayProfile: applyGatewayProfile,
+      saveProfile: saveProfile,
+      renderLobby: lobbyController.renderLobby,
+      updateHud: renderBattleUi,
+      openShell: function openCodexShell(mode) { return featurePanelController && featurePanelController.openShell(mode); }
     },
     resourceExchange: {
       getProfile: function getResourceExchangeProfile() { return profile; },
@@ -403,12 +456,23 @@
         }
       }
     },
+    payment: {
+      getProfile: function getPaymentProfile() { return profile; },
+      isCloudMode: function isPaymentCloudMode() { return battleFlowController.isCloudMode(); },
+      getGameGateway: function getPaymentGateway() { return gameGateway; },
+      ensureGameGateway: ensureGameGateway,
+      applyGatewayProfile: applyGatewayProfile,
+      renderLobby: lobbyController.renderLobby,
+      openShell: function openPaymentShell(mode) { return featurePanelController && featurePanelController.openShell(mode); },
+      closeShell: function closePaymentShell() { return featurePanelController && featurePanelController.close(); }
+    },
     pilot: {
       getProfile: function getPilotProfile() { return profile; },
       ensureGameGateway: ensureGameGateway,
       syncGatewayProfile: syncGatewayProfile,
       getGameGateway: function getPilotGateway() { return gameGateway; },
       applyGatewayProfile: applyGatewayProfile,
+      calculateTotalPower: profileController.calculateTotalPower,
       saveProfile: saveProfile,
       persistProfileMetadata: function persistPilotMetadata() { return battleFlowController.persistProfileMetadata(); },
       renderLobby: lobbyController.renderLobby,
@@ -423,6 +487,7 @@
       syncGatewayProfile: syncGatewayProfile,
       getGameGateway: function getFighterGateway() { return gameGateway; },
       applyGatewayProfile: applyGatewayProfile,
+      calculateTotalPower: profileController.calculateTotalPower,
       saveProfile: saveProfile,
       persistProfileMetadata: function persistFighterMetadata() { return battleFlowController.persistProfileMetadata(); },
       renderLobby: lobbyController.renderLobby,
@@ -468,12 +533,16 @@
     profileController: profileController,
     endlessRoomController: endlessRoomController,
     audioSystem: audioSystem,
+    visualQualitySystem: visualQualitySystem,
+    framePacingMonitor: framePacingMonitor,
+    applyVisualQuality: applyVisualQuality,
     claimEconomy: economyController && economyController.claim,
     renderFeaturePanel: function renderFeaturePanel(key) {
       return featurePanelController && featurePanelController.open(key);
     },
     getState: function getRoomState() { return state; },
     getProfile: function getRoomProfile() { return profile; },
+    getGameGateway: function getRoomGateway() { return gameGateway; },
     calculateTotalPower: profileController.calculateTotalPower,
     getBattleContext: function getRoomBattleContext() { return battleContext; },
     getLastBattleResult: function getRoomLastBattleResult() { return lastBattleResult; },
@@ -497,6 +566,9 @@
     pointer: pointer,
     battleInput: shared.battleInput,
     updatePointer: updatePointer,
+    dismissBattleControlHint: function dismissBattleControlHint() {
+      return battleUiHandle && battleUiHandle.dismissControlHint ? battleUiHandle.dismissControlHint() : false;
+    },
     getState: function getState() { return { mode: state && state.mode, lastBattleResult: lastBattleResult }; },
     isExternalBattleActive: function () { return endlessRoomController && endlessRoomController.isActive(); },
     registry: scope.roomRegistry
@@ -513,7 +585,7 @@
     achievement: ["ACHIEVEMENT", "成就", "成就奖励通过云端验证发放，请保持网络连接。"],
     shop: ["SHOP", "商店", "补给商品通过云端完成购买，请保持网络连接。"],
     friend: ["FRIEND", "好友", "云好友系统已开放，搜索玩家 ID 添加好友。"],
-    ranking: ["RANKING", "排行榜", "云端实时榜单，通关后自动提交成绩。"],
+    ranking: ["RANKING", "全服排行榜", "总战力与无尽挑战由云端权威数据统计。"],
     mail: ["MAIL", "邮件", "邮件展示公告、补给、活动和维护信息。"],
     signin: ["SIGN IN", "签到", "七日航线奖励由云端原子发放，同一天不能重复领取。"],
     setting: ["SETTING", "设置", "音乐和音效设置可即时生效并保存到本地。"],
@@ -544,6 +616,11 @@
       local: createLocalGatewayAdapter()
     });
     gatewayReadyPromise = gameGateway.bootstrap().then(function onGatewayBootstrap(result) {
+      if (shared.worldTimeSystem && typeof shared.worldTimeSystem.sync === "function" && result && result.worldTime) {
+        shared.worldTimeSystem.sync(result.worldTime, {
+          source: result.worldTime.source || (gameGateway.isCloud ? "server" : "device")
+        });
+      }
       var nextProfile = result && result.profile ? result.profile : profile;
       var shouldMigrateCosmetics = gameGateway.isCloud && localStorage.getItem("rxgame_cloud_cosmetics_migrated_v1") !== "1";
       if (shouldMigrateCosmetics) nextProfile = mergeLocalCosmetics(nextProfile, localSnapshot);
@@ -691,6 +768,17 @@
 
   function drawScene() {
     battleRenderer.drawScene(state);
+  }
+
+  function applyVisualQuality(nextMode, force) {
+    if (!visualQualitySystem || !visualQualitySystem.getEffectiveProfile) return null;
+    if (nextMode && visualQualitySystem.setMode) visualQualitySystem.setMode(nextMode);
+    var profile = visualQualitySystem.getEffectiveProfile();
+    var inBattle = state && (state.mode === "fight" || state.mode === "paused" || state.mode === "settling");
+    if (inBattle && !force) return Object.assign({ pending: true }, profile);
+    if (battleUiHandle && battleUiHandle.applyRenderProfile) battleUiHandle.applyRenderProfile(profile);
+    if (battleRenderer && battleRenderer.setQualityProfile) battleRenderer.setQualityProfile(profile);
+    return Object.assign({ pending: false }, profile);
   }
 
   function setImageSource(image, source) {

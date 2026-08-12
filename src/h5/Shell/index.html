@@ -5,20 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" href="data:," />
     <title>热血战姬</title>
-    <link rel="stylesheet" href="viewport.css?rev=20260724d" />
+    <link rel="stylesheet" href="viewport.css?rev=20260806-smoothness-v1" />
   </head>
   <body class="game-viewport-host">
     <main id="gameViewport" class="game-viewport" aria-label="热血战姬游戏窗口">
-      <iframe
-        id="gameFrame"
-        class="game-frame"
-        title="热血战姬"
-        data-src="game-frame.html"
-        allow="autoplay; fullscreen"
-        allowfullscreen
-      ></iframe>
+      <div id="gameStage" class="game-stage">
+        <iframe
+          id="gameFrame"
+          class="game-frame"
+          title="热血战姬"
+          data-src="game-frame.html"
+          allow="autoplay; fullscreen"
+          allowfullscreen
+        ></iframe>
+      </div>
 
-      <button id="fullscreenToggle" class="viewport-fullscreen" type="button" aria-pressed="false">
+      <button id="fullscreenToggle" class="viewport-fullscreen" type="button" aria-pressed="false" aria-label="进入全屏">
         <span class="viewport-fullscreen-icon" aria-hidden="true">⛶</span>
         <span id="fullscreenLabel">全屏</span>
       </button>
@@ -28,6 +30,7 @@
     </main>
 
     <script src="../Game/Camera/gameViewportController.js?rev=20260724d"></script>
+    <script src="../Game/Payment/paymentHostBridge.js?rev=20260805-payment-v1"></script>
     <script src="../Game/Camera/viewportHost.js?rev=20260724d"></script>
   </body>
 </html>

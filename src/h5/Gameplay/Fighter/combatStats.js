@@ -195,6 +195,9 @@
     var codexBonus = (scope.codexSystem && scope.codexSystem.calculateBonus)
       ? (scope.codexSystem.calculateBonus(profile) || {})
       : {};
+    var codexState = (scope.codexSystem && scope.codexSystem.getActivationState)
+      ? scope.codexSystem.getActivationState(profile)
+      : { activatedUnits: [], activatedBonds: [] };
     var coinBonus = 1 + (ups.bounty || 0) * 0.12 + (codexBonus.coinBonusMultiplier || 0);
 
     var agg = StatAggregator.create();
@@ -296,6 +299,15 @@
       ship: { id: ship.id, name: ship.name, rank: shipRank, nativeRank: ship.rank, damage: shipAttack, hp: shipHpBonus, armorPenetration: shipPen, src: ship.src, primaryWeapon: primaryWeapon, decisiveCommandEffect: ship.decisiveCommandEffect || null },
       upgrades: { fire: 0, armor: ups.armor || 0, engine: ups.engine || 0, bounty: ups.bounty || 0 },
       fighterUpgrades: { attack: fighterUps.attack || 1, armorPenetration: fighterUps.armorPenetration || 1, hp: fighterUps.hp || 1 },
+      codexActivation: Object.freeze({
+        activatedUnits: Object.freeze(codexState.activatedUnits.slice()),
+        activatedBonds: Object.freeze(codexState.activatedBonds.slice()),
+        bonus: Object.freeze({
+          attackFlat: Number(codexBonus.attackFlat) || 0,
+          armorPenetrationFlat: Number(codexBonus.armorPenetrationFlat) || 0,
+          coinBonusMultiplier: Number(codexBonus.coinBonusMultiplier) || 0
+        })
+      }),
       finalStats: { maxHp: maxHp, maxLives: Math.max(1, Math.ceil(maxHp / 100)), attack: attack, armorPenetration: totalArmorPenetration, moveSpeed: 300 + (ups.engine || 0) * 15, coinBonus: coinBonus, weaponDamageMultiplier: 1 },
       initialWeapons: initialWeapons,
       disabledWeaponTypes: Object.freeze(disabledWeaponTypes.slice()),

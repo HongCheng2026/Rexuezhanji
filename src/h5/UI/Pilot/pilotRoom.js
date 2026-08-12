@@ -73,6 +73,7 @@
 
     function runGatewayAction(pendingMessage, task, successMessage, fallbackMessage) {
       if (busy) return Promise.resolve(null);
+      var powerBefore = readTotalPower();
       busy = true;
       setMessage(pendingMessage);
       return Promise.resolve().then(function ensureReady() {
@@ -81,7 +82,7 @@
         if (!result || !result.profile) throw new Error("战姬操作结果无效。");
         if (capabilities.applyGatewayProfile) capabilities.applyGatewayProfile(result.profile);
         refreshScreens();
-        setMessage(successMessage(result));
+        setMessage(successMessage(result) + formatPowerDelta(powerBefore, readTotalPower()));
         return result;
       }).catch(function showFailure(error) {
         setMessage(toUserMessage(error, fallbackMessage));
@@ -90,6 +91,17 @@
         busy = false;
         render();
       });
+    }
+
+    function readTotalPower() {
+      return capabilities.calculateTotalPower ? Math.max(0, Math.round(Number(capabilities.calculateTotalPower()) || 0)) : 0;
+    }
+
+    function formatPowerDelta(before, after) {
+      var delta = Math.max(0, after - before);
+      if (!delta) return "";
+      var percent = before > 0 ? " / +" + Math.round(delta / before * 100) + "%" : "";
+      return "｜战力 " + before.toLocaleString("en-US") + " → " + after.toLocaleString("en-US") + "（+" + delta.toLocaleString("en-US") + percent + "）";
     }
 
     function buyPilot(pilotId) {

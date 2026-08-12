@@ -80,10 +80,84 @@ export function createSocialService(deps: Dependencies) {
     return deps.reply({ ok: true, category, score: scores[category as keyof typeof scores] });
   }
 
+  function assignCompetitionRanks<T extends { score: number }>(entries: T[]) {
+    let previousScore: number | null = null;
+    let currentRank = 0;
+    return entries.map((entry, index) => {
+      const score = Math.max(0, Math.floor(Number(entry.score) || 0));
+      if (previousScore === null || score !== previousScore) currentRank = index + 1;
+      previousScore = score;
+      return { ...entry, score, rank: currentRank };
+    });
+  }
+
+  async function endlessLeaderboardFetch(ctx: Context, identity: { profile: any; uid: number }) {
+    const { data: records, error: recordsError } = await ctx.admin.from("endless_records")
+      .select("player_id, best_kills, best_survival_seconds")
+      .order("best_kills", { ascending: false })
+      .order("best_survival_seconds", { ascending: false })
+      .limit(100);
+    if (recordsError) throw recordsError;
+    const playerIds = [...new Set((records || []).map((record: any) => String(record.player_id)))];
+    const profileResult = playerIds.length
+      ? await ctx.admin.from("player_profiles").select("user_id, public_uid, profile").in("user_id", playerIds)
+      : { data: [], error: null };
+    if (profileResult.error) throw profileResult.error;
+    const profilesById = new Map<string, any>((profileResult.data || []).map((row: any) => [String(row.user_id), row]));
+    const rows = assignCompetitionRanks((records || []).map((record: any) => {
+      const player = profilesById.get(String(record.player_id));
+      const kills = Math.max(0, Math.floor(Number(record.best_kills) || 0));
+      const survivalSeconds = Math.max(0, Math.floor(Number(record.best_survival_seconds) || 0));
+      return {
+        publicUid: Math.max(0, Math.floor(Number(player?.public_uid) || 0)),
+        name: String(player?.profile?.player?.name || "指挥官").slice(0, 20),
+        score: kills * 1000000 + survivalSeconds,
+        kills,
+        survivalSeconds
+      };
+    }));
+    const { data: selfRecord, error: selfError } = await ctx.admin.from("endless_records")
+      .select("best_kills, best_survival_seconds")
+      .eq("player_id", ctx.userId)
+      .maybeSingle();
+    if (selfError) throw selfError;
+    let self = null;
+    if (selfRecord) {
+      const kills = Math.max(0, Math.floor(Number(selfRecord.best_kills) || 0));
+      const survivalSeconds = Math.max(0, Math.floor(Number(selfRecord.best_survival_seconds) || 0));
+      const listed = rows.find((row: any) => Number(row.publicUid) === Number(identity.uid));
+      let rank = listed ? listed.rank : -1;
+      if (!listed) {
+        const [higherKills, longerSurvival] = await Promise.all([
+          ctx.admin.from("endless_records").select("*", { count: "exact", head: true }).gt("best_kills", kills),
+          ctx.admin.from("endless_records").select("*", { count: "exact", head: true }).eq("best_kills", kills).gt("best_survival_seconds", survivalSeconds)
+        ]);
+        if (higherKills.error) throw higherKills.error;
+        if (longerSurvival.error) throw longerSurvival.error;
+        rank = (higherKills.count || 0) + (longerSurvival.count || 0) + 1;
+      }
+      self = {
+        publicUid: identity.uid,
+        name: String(identity.profile?.player?.name || "指挥官").slice(0, 20),
+        score: kills * 1000000 + survivalSeconds,
+        rank,
+        kills,
+        survivalSeconds
+      };
+    }
+    return deps.reply({ rows, self, season: 1 });
+  }
+
   async function leaderboardFetch(ctx: Context, body: Json) {
     const category = String(body.category || "power");
     const season = Math.max(1, Math.floor(Number(body.season) || 1));
-    if (!["power", "clear", "honor"].includes(category)) return deps.error("无效的排行榜分类。", 400);
+    if (!["power", "endless", "clear", "honor"].includes(category)) return deps.error("无效的排行榜分类。", 400);
+    const identity = await deps.loadProfile(ctx);
+    if (category === "endless") {
+      const response = await endlessLeaderboardFetch(ctx, identity);
+      await touchLastSeen(ctx);
+      return response;
+    }
     const { data: entries, error } = await ctx.admin.from("leaderboard_entries")
       .select("public_uid, player_name, score")
       .eq("category", category)
@@ -91,25 +165,35 @@ export function createSocialService(deps: Dependencies) {
       .order("score", { ascending: false })
       .limit(100);
     if (error) throw error;
-    await deps.loadProfile(ctx);
-    const { data: selfEntry } = await ctx.admin.from("leaderboard_entries")
+    const { data: selfEntry, error: selfError } = await ctx.admin.from("leaderboard_entries")
       .select("score")
       .eq("player_id", ctx.userId)
       .eq("category", category)
       .eq("season", season)
       .maybeSingle();
-    const rows = (entries || []).map((entry: any, index: number) => ({ rank: index + 1, publicUid: entry.public_uid, name: entry.player_name, score: entry.score }));
+    if (selfError) throw selfError;
+    const rows = assignCompetitionRanks((entries || []).map((entry: any) => ({ publicUid: entry.public_uid, name: entry.player_name, score: entry.score })));
     let selfRank = -1;
     if (selfEntry) {
-      const { count } = await ctx.admin.from("leaderboard_entries")
+      const { count, error: countError } = await ctx.admin.from("leaderboard_entries")
         .select("*", { count: "exact", head: true })
         .eq("category", category)
         .eq("season", season)
         .gt("score", selfEntry.score);
+      if (countError) throw countError;
       selfRank = (count || 0) + 1;
     }
     await touchLastSeen(ctx);
-    return deps.reply({ rows, self: selfEntry ? { score: selfEntry.score, rank: selfRank } : null, season });
+    return deps.reply({
+      rows,
+      self: selfEntry ? {
+        publicUid: identity.uid,
+        name: String(identity.profile?.player?.name || "指挥官").slice(0, 20),
+        score: selfEntry.score,
+        rank: selfRank
+      } : null,
+      season
+    });
   }
 
   async function findFriendRelation(ctx: Context, otherUserId: string) {

@@ -538,6 +538,20 @@
   margin: 0;
 }
 
+.battle-screen .battle-pause-help {
+  background: rgba(3, 22, 36, .88);
+  border: 1px solid rgba(96, 214, 250, .34);
+  color: #98c4d6;
+  display: grid;
+  font-size: 12px;
+  gap: 5px;
+  margin-top: 18px;
+  min-width: 680px;
+  padding: 12px 18px;
+  text-align: center;
+}
+.battle-screen .battle-pause-help strong { color: #f0ce78; font-size: 14px; }
+
 .battle-screen .battle-pause-actions {
   background: rgba(2, 14, 25, 0.96);
   border: 1px solid rgba(107, 220, 255, 0.58);
@@ -545,8 +559,37 @@
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(3, 230px);
-  margin-top: 210px;
+  margin-top: 140px;
   padding: 20px 26px;
+}
+
+.battle-screen .battle-control-hint {
+  background: rgba(3, 21, 35, .91);
+  border: 1px solid rgba(102, 222, 255, .62);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .46), inset 0 0 24px rgba(69, 204, 246, .08);
+  color: #effaff;
+  display: grid;
+  gap: 3px;
+  left: 50%;
+  min-width: 430px;
+  padding: 11px 20px;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  top: 86px;
+  transform: translateX(-50%);
+  z-index: 9;
+}
+.battle-screen .battle-control-hint small { color: #63d7fa; font-size: 9px; letter-spacing: .18em; }
+.battle-screen .battle-control-hint strong { color: #f5d47c; font-size: 15px; }
+.battle-screen .battle-control-hint span { color: #afd0de; font-size: 11px; }
+.battle-screen .battle-control-hint.is-visible { animation: battle-control-hint-in 180ms ease-out both; }
+.battle-screen .battle-control-hint.is-leaving { opacity: 0; transition: opacity 180ms ease; }
+.battle-screen .battle-active-slot.is-empty { opacity: .42; }
+
+@keyframes battle-control-hint-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .battle-screen .battle-pause-actions button {

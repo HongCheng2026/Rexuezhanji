@@ -245,7 +245,7 @@
   background: linear-gradient(180deg, rgba(4, 17, 31, .76), rgba(2, 9, 18, .7));
   border: 1px solid rgba(137, 220, 255, .16);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -276,6 +276,68 @@
   font-size: 9px;
   font-style: normal;
   white-space: nowrap;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary {
+  background: linear-gradient(135deg, rgba(11, 43, 65, .9), rgba(4, 20, 34, .94));
+  border-bottom: 1px solid rgba(112, 214, 255, .16);
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-head {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-head span {
+  color: #5f9fba;
+  font-size: 8px;
+  letter-spacing: 1.2px;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-head strong {
+  color: #dff7ff;
+  font-size: 12px;
+  letter-spacing: .4px;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-grid > div {
+  background: rgba(2, 13, 24, .7);
+  border: 1px solid rgba(102, 196, 231, .15);
+  border-radius: 3px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-grid span {
+  color: #6f9daf;
+  font-size: 8px;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-grid strong {
+  color: #86e8ff;
+  font-size: 14px;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-progress {
+  color: #7195a7;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.feature-panel.codex-panel .codex-bonus-summary-progress.is-error {
+  color: #ff9b8c;
 }
 
 .codex-grid-wrap,
@@ -353,16 +415,16 @@
   box-shadow: 0 0 16px rgba(79, 209, 255, .2), inset 0 0 18px rgba(79, 209, 255, .08);
 }
 
-.codex-card.is-lit::after {
-  background: #59e4bc;
+.codex-card.is-activatable::after {
+  background: #ffd166;
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(89, 228, 188, .72);
+  box-shadow: 0 0 9px rgba(255, 209, 102, .88);
   content: "";
-  height: 5px;
+  height: 7px;
   position: absolute;
   right: 8px;
   top: 8px;
-  width: 5px;
+  width: 7px;
 }
 
 .codex-card.is-locked {
@@ -587,7 +649,7 @@
   z-index: 2;
 }
 
-/* ── 信息卡（右半：出战属性 / 点亮属性 / 参与羁绊） ── */
+/* ── 信息卡（右半：出战属性 / 激活属性 / 参与羁绊） ── */
 .feature-panel.codex-panel .codex-info-card {
   background: transparent;
   border: 0;
@@ -743,10 +805,16 @@
 }
 
 .codex-detail-status.is-unlocked,
-.codex-bond-badge.is-lit {
+.codex-bond-badge.is-activated {
   background: rgba(70, 219, 175, .12);
   border-color: rgba(70, 219, 175, .44);
   color: #9ff3d4;
+}
+
+.codex-bond-badge.is-activatable {
+  background: rgba(255, 209, 102, .1);
+  border-color: rgba(255, 209, 102, .42);
+  color: #ffe29a;
 }
 
 .codex-detail-status.is-locked,
@@ -816,7 +884,7 @@
   display: none;
 }
 
-/* ── 战姬/战机：点亮属性 + 参与羁绊（左右并列，2 卡） ── */
+/* ── 战姬/战机：激活属性 + 参与羁绊（左右并列，2 卡） ── */
 .feature-panel.codex-panel .codex-unit-synergy {
   display: grid;
   gap: 20px;
@@ -898,7 +966,7 @@
   color: #9af0d0;
 }
 
-.codex-unit-light-btn {
+.codex-unit-activate-btn {
   appearance: none;
   background: linear-gradient(90deg, #e5a630, #ffd777);
   border: 0;
@@ -912,13 +980,13 @@
   padding: 4px 12px;
 }
 
-.feature-panel.codex-panel .codex-unit-command .codex-unit-light-btn {
+.feature-panel.codex-panel .codex-unit-command .codex-unit-activate-btn {
   margin-left: 0;
   padding-inline: 8px;
 }
 
-.codex-unit-light-btn:hover,
-.codex-unit-light-btn:focus-visible {
+.codex-unit-activate-btn:hover,
+.codex-unit-activate-btn:focus-visible {
   filter: brightness(1.08);
   outline: 1px solid rgba(255, 227, 168, .7);
 }
@@ -939,13 +1007,13 @@
   padding: 4px 9px;
 }
 
-.codex-unit-bond-chip.is-lit {
+.codex-unit-bond-chip.is-activated {
   background: rgba(70, 219, 175, .1);
   border-color: rgba(70, 219, 175, .34);
   color: #a9efd6;
 }
 
-.codex-unit-bond-chip.is-lightable {
+.codex-unit-bond-chip.is-activatable {
   background: rgba(255, 196, 90, .1);
   border-color: rgba(255, 196, 90, .3);
   color: #ffe2a3;
@@ -1149,8 +1217,21 @@
   display: grid;
   gap: 3px;
   padding: 10px 11px;
+  position: relative;
   text-align: left;
   transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.codex-bond.activatable::after {
+  background: #ffd166;
+  border-radius: 50%;
+  box-shadow: 0 0 9px rgba(255, 209, 102, .88);
+  content: "";
+  height: 7px;
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  width: 7px;
 }
 
 .codex-bond:hover,
@@ -1166,11 +1247,11 @@
   box-shadow: inset 14px 0 20px rgba(79, 209, 255, .08);
 }
 
-.codex-bond.lightable {
+.codex-bond.activatable {
   border-left-color: rgba(255, 196, 90, .62);
 }
 
-.codex-bond.lit {
+.codex-bond.activated {
   border-left-color: rgba(70, 219, 175, .7);
 }
 
@@ -1186,17 +1267,9 @@
   letter-spacing: 1px;
 }
 
-.codex-bond.lightable .codex-bond-state { color: #ffd98a; }
-.codex-bond.lit .codex-bond-state { color: #9ff3d4; }
+.codex-bond.activatable .codex-bond-state { color: #ffd98a; }
+.codex-bond.activated .codex-bond-state { color: #9ff3d4; }
 .codex-bond.locked { opacity: .76; }
-
-.codex-bond-justlit { animation: codex-bond-flash .9s ease-out 1; }
-
-@keyframes codex-bond-flash {
-  0% { box-shadow: 0 0 0 rgba(120, 230, 160, 0); }
-  35% { box-shadow: 0 0 26px rgba(120, 230, 160, .75); }
-  100% { box-shadow: 0 0 0 rgba(120, 230, 160, 0); }
-}
 
 .codex-detail-bond {
   background:
@@ -1362,7 +1435,7 @@
   padding: 4px 9px;
 }
 
-.codex-bond-light-btn {
+.codex-bond-activate-btn {
   appearance: none;
   background: linear-gradient(180deg, #ffda83, #e5a630);
   border: 0;
@@ -1376,7 +1449,7 @@
   width: 100%;
 }
 
-.codex-bond-light-btn:hover { filter: brightness(1.08); }
+.codex-bond-activate-btn:hover { filter: brightness(1.08); }
 
 .codex-bond-record {
   background: transparent;
@@ -1528,5 +1601,4 @@
   .codex-nav-btn,
   .codex-bond { transition: none; }
 
-  .codex-bond-justlit { animation: none; }
 }

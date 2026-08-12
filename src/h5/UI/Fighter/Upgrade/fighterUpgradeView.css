@@ -97,7 +97,32 @@
   border-image-slice: 150;
   border-image-source: var(--rx-td-panel-frame);
   border-image-width: 12px;
+  position: relative;
   width: 100%;
+}
+
+.fu-action-notice {
+  align-items: center;
+  background: rgba(2, 17, 30, .94);
+  border: 1px solid rgba(91, 224, 173, .72);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .36);
+  color: var(--rx-td-c-pos);
+  display: flex;
+  gap: 9px;
+  left: calc(50% + 72px);
+  max-width: min(680px, calc(100% - var(--rx-td-nav-w) - 96px));
+  padding: 9px 14px;
+  pointer-events: none;
+  position: absolute;
+  top: calc(var(--rx-td-pad-y) + var(--rx-td-header-h) + 8px);
+  transform: translateX(-50%);
+  z-index: 8;
+}
+.fu-action-notice span { font-size: 16px; line-height: 1; }
+.fu-action-notice strong { font-size: 12px; line-height: 1.45; }
+.fu-action-notice.is-pending {
+  border-color: rgba(94, 199, 239, .72);
+  color: var(--rx-td-c-blue);
 }
 
 /* —— 区域底色（去框：仅保留底色块，边框统一移到 .fu-dock 大外框）—— */
@@ -279,8 +304,33 @@
 .fu-base-workbench {
   display: grid;
   gap: var(--rx-td-gutter);
-  grid-template-rows: minmax(0, 1.12fr) minmax(0, .88fr);
+  grid-template-rows: minmax(0, 1.12fr) auto minmax(0, .88fr);
   padding: 10px;
+}
+.fighter-upgrade-screen .fu-commander-lock {
+  align-items: center;
+  background: rgba(7, 42, 66, .78);
+  border: 1px solid rgba(93, 205, 241, .42);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 8px 12px;
+}
+.fighter-upgrade-screen .fu-commander-lock small,
+.fighter-upgrade-screen .fu-commander-lock strong,
+.fighter-upgrade-screen .fu-commander-lock p { display: block; margin: 0; }
+.fighter-upgrade-screen .fu-commander-lock small { color: #65caeb; font-size: 9px; letter-spacing: .12em; }
+.fighter-upgrade-screen .fu-commander-lock strong { color: #f3cf74; font-size: 13px; margin-top: 2px; }
+.fighter-upgrade-screen .fu-commander-lock p { color: #8cb5c6; font-size: 10px; margin-top: 2px; }
+.fighter-upgrade-screen .fu-commander-lock button {
+  background: var(--rx-td-c-gold);
+  border: 1px solid var(--rx-td-c-gold-strong);
+  color: #2a1c05;
+  flex: 0 0 auto;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0 18px;
 }
 .fu-fighter-hero {
   background-color: #010a14;
@@ -629,6 +679,7 @@
   .fu-auto-art { height: 72px; width: 92px; }
   .fu-detail-identity > span { height: 110px; width: 110px; }
   .fu-upgrade-art { height: 42px; width: 42px; }
+  .fu-action-notice { left: calc(50% + 56px); }
   .fu-stat-capsules span { height: 28px; width: 28px; }
   .fu-skill-card > span { height: 56px; width: 50px; }
 }

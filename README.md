@@ -38,8 +38,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\sync-release.ps1"
 
 ## 本地预览
 
-- H5 源码预览：打开 `src/h5/index.html`。
+- H5 源码预览：打开 `src/h5/Shell/index.html`（`src/h5/index.html` 为兼容跳转入口）。不要直接打开固定 1600×900 的 `Shell/game-frame.html`，否则会绕过居中缩放壳。
 - 发布版预览：先运行同步脚本，再打开 `release/netlify-h5/index.html`。
+
+整体缩放由外层 `Shell/index.html`、`Game/Camera/` 和 `Shell/viewport.css` 独立负责；大厅、战斗和功能面板只存在于 iframe 内，不应修改外层缩放舞台。
 
 `src/h5/` 使用 `../shared/` 加载共享脚本，发布版使用发布目录根部的共享脚本镜像；运行图片统一来自 `assets/runtime/`。
 

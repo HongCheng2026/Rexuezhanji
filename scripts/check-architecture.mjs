@@ -94,8 +94,7 @@ function checkLoaderOrder() {
 function checkLoaderCoverage(jsFiles) {
   const loaded = new Set(getLoaderEntries().map((entry) => `src/h5/${entry}`));
   const htmlEntrypoints = new Set();
-  for (const htmlName of ["index.html", "game-frame.html"]) {
-    const file = path.join(h5Root, "Shell", htmlName);
+  for (const file of walkFiles(h5Root, (entry) => entry.endsWith(".html"))) {
     for (const match of read(file).matchAll(/src=["']([^"'?]+\.js)(?:\?[^"']*)?["']/g)) {
       htmlEntrypoints.add(relative(path.resolve(path.dirname(file), match[1])));
     }

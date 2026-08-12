@@ -8,7 +8,7 @@
 
 ## 高频入口
 
-- H5 入口：`src/h5/index.html`
+- H5 缩放入口：`src/h5/Shell/index.html`；`src/h5/index.html` 仅作兼容跳转。禁止把 `src/h5/Shell/game-frame.html` 当预览入口，否则会绕过视口缩放壳。
 - 启动器：`src/h5/game.js`；页面协调：`src/h5/app/gameApp.js`（大文件，按需分段读取）
 - 统一数据入口：`src/h5/app/gameGateway.js`
 - 全局样式：`src/h5/style.css`（大文件，按需分段读取）
@@ -28,6 +28,7 @@
 ## UI 样式约束
 
 - 新增或重构 UI 必须使用页面级根类隔离样式。禁止无作用域的组件选择器；禁止用文件末尾追加覆盖代替冲突清理；修改共享选择器前必须审计影响范围，并完成相关页面视觉回归。
+- `Shell/index.html`、`Shell/viewport.css`、`Game/Camera/` 共同构成独立视口壳，只负责固定 1600×900 舞台的居中、缩放、全屏和安全区。业务 UI、玩法模块和功能面板不得向该壳加载样式或接管 `gameStage` 的尺寸与 transform。
 
 ## 禁止与谨慎
 
@@ -47,8 +48,8 @@
 ## 本地验证
 
 ```powershell
-start src/h5/index.html
-node release/local-static-server.js
+start src/h5/Shell/index.html
+node src/local-server.js
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\sync-release.ps1"
 ```
 

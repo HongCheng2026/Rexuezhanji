@@ -48,6 +48,7 @@
     var currentLoadout;
     var selectedLevel;
     var pendingSettlement;
+    var pendingPostBattleStory = null;
     var finished;
     var gatewayActionLock = options.gatewayActionLock || { busy: false };
     var ensureGameGateway = options.ensureGameGateway;
@@ -118,6 +119,7 @@
 
   function beginAuthorizedBattle(level, ticket) {
     syncContext();
+    if (options.applyBattleVisualQuality) options.applyBattleVisualQuality();
     if (battleContext) cancelAnimationFrame(battleContext.animationId);
     battleContext = assignBattleContext(null);
     battleSession = assignBattleSession(null);
@@ -167,6 +169,10 @@
     currentLoadout = assignCurrentLoadout(battleContext.loadout || currentLoadout);
     if (battleSession) battleSession.loadout = currentLoadout;
     updateHud(true);
+    var progress = profile && profile.progress || {};
+    if (Math.max(0, Number(progress.clearCount) || 0) === 0 && options.showBattleControlHint) {
+      options.showBattleControlHint(profile && profile.player && profile.player.uid);
+    }
     battleContext.lastTime = performance.now();
     battleContext.animationId = requestAnimationFrame(function run(t) {
       shared.battleRuntime.loop(battleContext, t);
@@ -190,6 +196,7 @@
     if (gatewayActionLock.busy) return;
     finished = assignFinished(true);
     if (battleContext) cancelAnimationFrame(battleContext.animationId);
+    if (shared.framePacingMonitor && shared.framePacingMonitor.stop) shared.framePacingMonitor.stop();
     state.mode = "settling";
     dom.battleScreen.classList.remove("select-mode", "overlay-active");
     if (battleSession) battleSession.endReason = isWin ? "win" : "fail";
@@ -198,6 +205,7 @@
     var result = shared.settlementSystem && shared.settlementSystem.generateBattleResult
       ? shared.settlementSystem.generateBattleResult(state, level, isWin, isWin ? "win" : "fail")
       : { isWin: isWin, levelId: level.id, coinsEarned: 0, expEarned: 0, rating: { stars: isWin ? 1 : 0 } };
+    result.syncState = "pending";
 
     if (isWin) updateStageHonorRecord(level, result);
     pendingSettlement = assignPendingSettlement({
@@ -218,10 +226,11 @@
     if (!pendingSettlement || gatewayActionLock.busy) return;
     var settlement = pendingSettlement;
     gatewayActionLock.busy = true;
+    settlement.result.syncState = "pending";
     var gw = null;
     var isCloud = false;
-    // 乐观展示：先呈现战报界面（使用本地计算结果），不再阻塞首个界面等待云端往返；
-    // 云端返回后再以权威档案对齐（applyGatewayProfile）。排行榜提交改为节流，避免密集请求。
+    // 先呈现胜负与战绩，奖励保持同步态；云端返回后以权威档案刷新当前战报。
+    // 这样既不阻塞首屏，也不会把本地预估金币/经验误当成已入账奖励。
     state.mode = "shop";
     presentSettlement(settlement.isWin, settlement.level, settlement.result);
     ensureGameGateway().then(function settleThroughGateway() {
@@ -238,11 +247,18 @@
     }).then(function onBattleSettled(response) {
       if (response && response.profile) { applyGatewayProfile(response.profile); syncContext(); }
       applyGatewaySettlement(settlement, response);
+      settlement.result.syncState = "ready";
+      if (settlementController && settlementController.refresh) settlementController.refresh(settlement.result);
       pendingSettlement = assignPendingSettlement(null);
       battleContext = assignBattleContext(null);
       battleSession = assignBattleSession(null);
       if (isCloud) refreshLeaderboardThrottled(gw);
     }).catch(function onSettlementError(error) {
+      settlement.result.coinsEarned = 0;
+      settlement.result.expEarned = 0;
+      settlement.result.goldBreakdown = {};
+      settlement.result.syncState = "error";
+      if (settlementController && settlementController.refresh) settlementController.refresh(settlement.result);
       state.mode = "settlement-error";
       lobby.showBattleScreen();
       lobby.showOverlay("结算未完成", error && error.message ? error.message : "云端结算失败，请重试。", "重试结算");
@@ -288,43 +304,71 @@
 
   function presentSettlement(isWin, level, result) {
     syncContext();
-    var finishSettlement = function finishSettlement() {
-      if (isWin) renderVictoryIntro(result);
-      else renderSettlement(result);
-      if (audioSystem && audioSystem.stopBgm) audioSystem.stopBgm();
-      playSfx(isWin ? "victory" : "defeat");
-      lobby.showShop();
-      updateHud(true);
-      drawScene();
-    };
-
     var postStory = isWin ? getNextCampaignStoryScene(level, "post_win") : null;
+    var framework = shared.campaignStoryFramework;
+    var epilogueStory = isWin && level && level.chapterIndex === 9 && framework && framework.getNextUnseenEpilogueScene
+      ? framework.getNextUnseenEpilogueScene(profile)
+      : null;
+    pendingPostBattleStory = postStory || epilogueStory ? {
+      level: level,
+      result: result,
+      postStory: postStory,
+      includeEpilogue: Boolean(epilogueStory),
+      playing: false
+    } : null;
+    result.hasPostBattleStory = Boolean(pendingPostBattleStory);
+
+    // The battle report is always the first post-combat view. Story remains
+    // available from the authoritative reward page without covering the report.
+    if (isWin) renderVictoryIntro(result);
+    else renderSettlement(result);
+    if (audioSystem && audioSystem.stopBgm) audioSystem.stopBgm();
+    playSfx(isWin ? "victory" : "defeat");
+    lobby.showShop();
+    updateHud(true);
+    drawScene();
+  }
+
+  function playPostSettlementStory() {
+    syncContext();
+    var pending = pendingPostBattleStory;
+    if (!pending || pending.playing) return false;
+    pending.playing = true;
+    pending.result.hasPostBattleStory = false;
+    if (settlementController && settlementController.refresh) settlementController.refresh(pending.result);
+
+    function finishStory() {
+      pendingPostBattleStory = null;
+      pending.result.hasPostBattleStory = false;
+      if (settlementController && settlementController.refresh) settlementController.refresh(pending.result);
+    }
 
     function playEpilogueChain(doneCallback) {
-      if (!level || level.chapterIndex !== 9) { doneCallback(); return; }
+      if (!pending.includeEpilogue || !pending.level || pending.level.chapterIndex !== 9) { doneCallback(); return; }
       var framework = shared.campaignStoryFramework;
       if (!framework || !framework.getNextUnseenEpilogueScene) { doneCallback(); return; }
       var epilogueStory = framework.getNextUnseenEpilogueScene(profile);
       if (!epilogueStory) { doneCallback(); return; }
-      playCampaignStoryScene(epilogueStory, {
+      if (!playCampaignStoryScene(epilogueStory, {
         finishLabel: "继续",
         markSeen: true,
         onDone: function () {
           playEpilogueChain(doneCallback);
         }
-      });
+      })) doneCallback();
     }
 
-    if (postStory && playCampaignStoryScene(postStory, {
-      finishLabel: "领取奖励",
+    if (pending.postStory && playCampaignStoryScene(pending.postStory, {
+      finishLabel: pending.includeEpilogue ? "继续" : "返回战报",
       markSeen: true,
       onDone: function () {
-        playEpilogueChain(finishSettlement);
+        playEpilogueChain(finishStory);
       }
     })) {
-      return;
+      return true;
     }
-    playEpilogueChain(finishSettlement);
+    playEpilogueChain(finishStory);
+    return true;
   }
 
   function formatSettlementBusyMessage(result) {
@@ -471,6 +515,7 @@
     }
     if (gatewayActionLock.busy) return;
     if (battleContext) cancelAnimationFrame(battleContext.animationId);
+    if (shared.framePacingMonitor && shared.framePacingMonitor.suspend) shared.framePacingMonitor.suspend();
     gatewayActionLock.busy = true;
     var ticket = battleSession && battleSession.ticket || "";
     ensureGameGateway().then(function abandonThroughGateway() {
@@ -479,6 +524,7 @@
       if (response && response.profile) { applyGatewayProfile(response.profile); syncContext(); }
       var refunded = Math.max(0, Math.floor(response && response.refundedEnergy || 0));
       battleContext = assignBattleContext(null);
+      if (shared.framePacingMonitor && shared.framePacingMonitor.stop) shared.framePacingMonitor.stop();
       battleSession = assignBattleSession(null);
       finished = assignFinished(true);
       state = assignState(createMenuState(selectedLevel));
@@ -504,6 +550,8 @@
     return {
       startSelectedLevel: startSelectedLevel,
       settlePendingBattle: settlePendingBattle,
+      presentSettlement: presentSettlement,
+      playPostSettlementStory: playPostSettlementStory,
       isCloudMode: isCloudMode,
       persistProfileMetadata: persistProfileMetadata,
       getSettlementStoryMessage: getSettlementStoryMessage,

@@ -36,7 +36,7 @@
       pilotStars: profile.pilotStars,
       shipStars: profile.shipStars,
       owned: profile.owned,
-      codexBonds: profile.codexBonds,
+      codex: profile.codex,
       resources: profile.resources ? { inventory: profile.resources.inventory } : undefined
     };
     try {

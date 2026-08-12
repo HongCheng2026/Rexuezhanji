@@ -37,6 +37,30 @@
     return profile;
   }
 
+  // ── codex activation writer (the ONLY writer of profile.codex) ──
+  function activateCodexEntry(profile, kind, id) {
+    if (!profile || !id || (kind !== "unit" && kind !== "bond")) return false;
+    profile.codex = profile.codex && typeof profile.codex === "object" ? profile.codex : {};
+    var field = kind === "unit" ? "activatedUnits" : "activatedBonds";
+    var values = Array.isArray(profile.codex[field]) ? profile.codex[field] : [];
+    id = String(id);
+    if (values.indexOf(id) >= 0) return false;
+    profile.codex[field] = values.concat(id);
+    bumpVersion(profile);
+    return true;
+  }
+
+  function deactivateCodexEntry(profile, kind, id) {
+    if (!profile || !profile.codex || (kind !== "unit" && kind !== "bond")) return false;
+    var field = kind === "unit" ? "activatedUnits" : "activatedBonds";
+    var values = Array.isArray(profile.codex[field]) ? profile.codex[field] : [];
+    var next = values.filter(function keep(value) { return value !== String(id); });
+    if (next.length === values.length) return false;
+    profile.codex[field] = next;
+    bumpVersion(profile);
+    return true;
+  }
+
   // ── gold writers ──
   function spendGold(profile, amount) {
     if (!profile) return false;
@@ -89,6 +113,8 @@
   var api = {
     bumpVersion: bumpVersion,
     applyFighterUpgrade: applyFighterUpgrade,
+    activateCodexEntry: activateCodexEntry,
+    deactivateCodexEntry: deactivateCodexEntry,
     spendGold: spendGold,
     setGold: setGold,
     spendEnergy: spendEnergy,

@@ -4,23 +4,28 @@
   var shared = root.RXGame || {};
   var module = shared.gameViewportController;
   var viewport = root.document.querySelector("#gameViewport");
+  var stage = root.document.querySelector("#gameStage");
   var frame = root.document.querySelector("#gameFrame");
   var fullscreenButton = root.document.querySelector("#fullscreenToggle");
   var fullscreenLabel = root.document.querySelector("#fullscreenLabel");
   var notice = root.document.querySelector("#viewportNotice");
   var noticeTimer = 0;
 
-  if (!module || !module.create || !viewport || !frame || !fullscreenButton) {
+  if (!module || !module.create || !viewport || !stage || !frame || !fullscreenButton) {
     throw new Error("H5 viewport bootstrap failed.");
   }
-
-  var frameSource = frame.getAttribute("data-src") || "game-frame.html";
-  frame.src = frameSource + (root.location.search || "") + (root.location.hash || "");
 
   var controller = module.create({
     root: root,
     document: root.document,
-    viewport: viewport
+    viewport: viewport,
+    stage: stage
+  });
+
+  var frameSource = frame.getAttribute("data-src") || "game-frame.html";
+  frame.addEventListener("load", function onGameFrameLoad() {
+    controller.fit();
+    viewport.classList.add("is-frame-ready");
   });
 
   function showNotice(message) {
@@ -52,5 +57,6 @@
   });
 
   controller.start();
+  frame.src = frameSource + (root.location.search || "") + (root.location.hash || "");
   root.rxGameViewport = controller;
 })(typeof globalThis !== "undefined" ? globalThis : window);

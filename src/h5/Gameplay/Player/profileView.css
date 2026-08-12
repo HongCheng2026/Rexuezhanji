@@ -168,6 +168,22 @@
   color: #70e3ad;
 }
 
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-email {
+  color: #70e3ad;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-phone {
+  color: #70e3ad;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-guest {
+  color: #ffd166;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-local {
+  color: #8aa8b8;
+}
+
 .feature-panel.profile-dossier-panel .player-profile-page .player-profile-sync-state.is-offline {
   color: #7996a5;
 }
@@ -387,6 +403,331 @@
   margin: 0;
 }
 
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-panel {
+  background:
+    radial-gradient(circle at 8% 15%, rgba(47, 193, 238, 0.12), transparent 34%),
+    linear-gradient(115deg, rgba(5, 24, 40, 0.96), rgba(2, 11, 21, 0.98));
+  border: 1px solid rgba(87, 204, 245, 0.34);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  min-height: 170px;
+  overflow: hidden;
+  padding: 16px;
+  position: relative;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-panel::after {
+  background: linear-gradient(90deg, transparent, rgba(100, 218, 255, 0.36), transparent);
+  content: "";
+  height: 1px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-panel.is-bound {
+  border-color: rgba(79, 224, 159, 0.4);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-panel.is-unavailable {
+  border-color: rgba(126, 159, 177, 0.28);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-heading {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-icon {
+  align-items: center;
+  background: rgba(52, 184, 228, 0.13);
+  border: 1px solid rgba(102, 217, 255, 0.46);
+  border-radius: 50%;
+  color: #8ee4ff;
+  display: flex;
+  font-size: 24px;
+  height: 46px;
+  justify-content: center;
+  width: 46px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-panel.is-bound .player-profile-cloud-icon {
+  background: rgba(60, 207, 143, 0.12);
+  border-color: rgba(95, 232, 170, 0.48);
+  color: #78edb5;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-heading small {
+  color: #67cde9;
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  margin-bottom: 3px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-heading h3 {
+  color: #f0faff;
+  font-size: 19px;
+  margin: 0 0 4px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-heading p,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-hint,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-actions p,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-readonly p {
+  color: #91b8ca;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-heading p strong {
+  color: #d9f6ff;
+  overflow-wrap: anywhere;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-badge {
+  background: rgba(120, 148, 163, 0.12);
+  border: 1px solid rgba(139, 174, 192, 0.36);
+  border-radius: 999px;
+  color: #a8c7d6;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-badge.is-warning {
+  background: rgba(255, 193, 52, 0.1);
+  border-color: rgba(255, 205, 86, 0.42);
+  color: #ffd166;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-badge.is-active {
+  background: rgba(58, 182, 226, 0.1);
+  border-color: rgba(89, 205, 245, 0.42);
+  color: #86e2ff;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-badge.is-bound {
+  background: rgba(60, 207, 143, 0.1);
+  border-color: rgba(95, 232, 170, 0.42);
+  color: #78edb5;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice-bar {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice {
+  align-items: center;
+  background: rgba(1, 11, 20, 0.54);
+  border: 1px solid rgba(91, 198, 235, 0.18);
+  border-radius: 6px;
+  display: grid;
+  gap: 7px;
+  grid-template-columns: auto repeat(2, minmax(0, 1fr));
+  padding: 7px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice > span {
+  color: #80bbd1;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice > button {
+  background: rgba(14, 55, 75, 0.72);
+  border-color: rgba(90, 186, 220, 0.28);
+  color: #a8cada;
+  font-size: 11px;
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice > button.is-selected {
+  background: linear-gradient(180deg, rgba(55, 166, 207, 0.92), rgba(13, 86, 119, 0.96));
+  border-color: rgba(116, 222, 255, 0.7);
+  color: #f2fbff;
+  box-shadow: inset 0 0 0 1px rgba(185, 240, 255, 0.08);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice.is-single {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice.is-single > strong {
+  color: #ecfaff;
+  font-size: 12px;
+  padding: 0 8px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(230px, 0.75fr) minmax(340px, 1.25fr);
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-readonly,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-grid article {
+  background: rgba(1, 11, 20, 0.62);
+  border: 1px solid rgba(91, 198, 235, 0.2);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary {
+  display: grid;
+  gap: 5px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary > span,
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-grid span {
+  color: #80bbd1;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary > strong {
+  color: #f0f8fc;
+  font-size: 19px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary ul {
+  color: #8fb4c5;
+  font-size: 11px;
+  line-height: 1.6;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary li::before {
+  color: #55d6f5;
+  content: "\2022";
+  margin-right: 7px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-summary.is-security li::before {
+  color: #ffd166;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form {
+  align-content: center;
+  display: grid;
+  gap: 8px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form > label {
+  color: #a9d9eb;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row input {
+  background: rgba(0, 7, 14, 0.84);
+  border: 1px solid rgba(100, 203, 241, 0.42);
+  border-radius: 6px;
+  color: #effaff;
+  height: 40px;
+  min-width: 0;
+  padding: 0 12px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row input:focus {
+  border-color: #73dcff;
+  box-shadow: 0 0 0 2px rgba(67, 197, 239, 0.14);
+  outline: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row .player-profile-cloud-code {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row > button {
+  background: linear-gradient(180deg, rgba(56, 174, 215, 0.94), rgba(16, 91, 127, 0.96));
+  min-width: 140px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form-actions button {
+  font-size: 11px;
+  min-height: 30px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-feedback {
+  border-radius: 5px;
+  color: transparent;
+  display: block;
+  font-size: 12px;
+  min-height: 18px;
+  padding: 2px 8px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-feedback.is-success {
+  background: rgba(67, 209, 143, 0.08);
+  color: #77e8b2;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-feedback.is-error {
+  background: rgba(240, 91, 91, 0.09);
+  color: #ff9d9d;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-grid article {
+  display: grid;
+  gap: 6px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-grid strong {
+  color: #edfaff;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-actions {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-actions button {
+  flex: 0 0 auto;
+}
+
 .feature-panel.profile-dossier-panel .player-profile-page .player-profile-actions {
   display: flex;
   gap: 8px;
@@ -432,6 +773,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice-bar {
+    grid-template-columns: 1fr;
+  }
+
   .feature-panel.profile-dossier-panel .player-profile-page .player-profile-active-power {
     grid-column: 1 / -1;
   }
@@ -467,8 +816,61 @@
   }
 
   .feature-panel.profile-dossier-panel .player-profile-page .player-profile-tabs button {
+    font-size: 12px;
     min-width: 0;
-    padding: 0 8px;
+    padding: 0 5px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-panel {
+    padding: 13px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-heading {
+    align-items: start;
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-icon {
+    font-size: 20px;
+    height: 40px;
+    width: 40px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice > span {
+    grid-column: 1 / -1;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-choice.is-single {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-input-row > button {
+    width: 100%;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form-actions,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-form-actions button,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-cloud-bound-actions button {
+    width: 100%;
   }
 
   .feature-panel.profile-dossier-panel .player-profile-page .player-profile-actions button {

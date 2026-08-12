@@ -10,10 +10,11 @@
     var assetsConfig = options.assetsConfig || {};
     var levels = options.levels || [];
     var audioSystem = options.audioSystem || null;
+    var visualQualitySystem = options.visualQualitySystem || null;
+    var framePacingMonitor = options.framePacingMonitor || null;
     var modeClasses = options.modeClasses || [];
     var profile;
     var featurePanels;
-    var persistProfileMetadata = options.persistProfileMetadata;
     var saveProfile = options.saveProfile;
     var gatewayActionLock = options.gatewayActionLock || { busy: false };
     var ensureGameGateway = options.ensureGameGateway;
@@ -26,6 +27,11 @@
     var calculateTotalPower = options.calculateTotalPower;
     var activePanelKey = "";
     var resourcePanels = { profile: true, shop: true, task: true, achievement: true, redeem: true, signin: true };
+    var modalPanelClasses = {
+      ranking: " modal-feature-panel ranking-feature-panel",
+      task: " modal-feature-panel task-feature-panel",
+      achievement: " modal-feature-panel achievement-feature-panel"
+    };
 
     // Social click delegation
     var socialClickState = { options: null };
@@ -100,19 +106,6 @@
       renderProfilePanel();
       return;
     }
-    if (key === "enemyCodex") {
-      if (shared.codexView && typeof shared.codexView.renderCodex === "function") {
-        shared.codexView.renderCodex(dom, profile, { persistProfileMetadata: persistProfileMetadata });
-      } else {
-        dom.featurePanelKicker.textContent = "COMBAT CODEX";
-        dom.featurePanelTitle.textContent = "星舰图鉴";
-        dom.featurePanelBody.textContent = "图鉴模块未就绪，请刷新页面后重试。";
-        dom.featurePanelSlots.className = "feature-slots";
-        dom.featurePanelSlots.innerHTML = "";
-      }
-      openFeaturePanelShell("codex-panel");
-      return;
-    }
     if (key === "redeem") {
       syncProfile();
       dom.featurePanelKicker.textContent = "REDEEM CODE";
@@ -136,6 +129,8 @@
         levels: levels,
         combatPower: calculateTotalPower(),
         audioSettings: audioSystem && audioSystem.getSettings ? audioSystem.getSettings() : null,
+        visualSettings: visualQualitySystem && visualQualitySystem.getSettings ? visualQualitySystem.getSettings() : null,
+        framePacing: framePacingMonitor && framePacingMonitor.getSnapshot ? framePacingMonitor.getSnapshot() : null,
         getGameGateway: getGameGateway,
         startEndlessMode: options.startEndlessMode,
         dom: dom
@@ -149,7 +144,7 @@
           : usesFeaturePanelLayout
             ? "main-feature-panel feature-panel-standard" +
               (key === "shop" ? " shop-feature-panel" : "") +
-              (key === "task" ? " task-feature-panel" : "")
+              (modalPanelClasses[key] || "")
             : "main-feature-panel");
         return;
       }
@@ -197,6 +192,7 @@
     }
     socialClickState.options = null;
     activePanelKey = "";
+    setFeaturePanelMode("");
     if (dom.featurePanel) dom.featurePanel.classList.add("hidden");
     if (dom.lobbyScreen) dom.lobbyScreen.classList.remove("panel-open", "shop-panel-open");
   }

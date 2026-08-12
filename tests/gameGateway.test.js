@@ -16,6 +16,11 @@ function createAdapter(label, calls) {
     bootstrap: record("bootstrap", { profile: { player: { name: label } } }),
     syncProfile: record("syncProfile", { profile: { player: { name: label } } }),
     identity: record("identity"),
+    getAccountState: record("getAccountState", { available: true, status: "guest", maskedIdentifier: "游客云档" }),
+    sendEmailCode: record("sendEmailCode"),
+    verifyEmailCode: record("verifyEmailCode", { profile: { player: { name: label } } }),
+    sendPhoneCode: record("sendPhoneCode"),
+    verifyPhoneCode: record("verifyPhoneCode", { profile: { player: { name: label } } }),
     startBattle: record("startBattle", { ticket: label + "-ticket" }),
     finishBattle: record("finishBattle"),
     abandonBattle: record("abandonBattle"),
@@ -27,9 +32,14 @@ function createAdapter(label, calls) {
     promoteUnit: record("promoteUnit"),
     starUpPilot: record("starUpPilot"),
     starUpFighter: record("starUpFighter"),
+    activateCodexEntry: record("activateCodexEntry"),
     saveFighterSkillLoadout: record("saveFighterSkillLoadout"),
     upgradeAutoWeapon: record("upgradeAutoWeapon"),
     buyShopItem: record("buyShopItem"),
+    getPaymentCatalog: record("getPaymentCatalog"),
+    createPaymentOrder: record("createPaymentOrder"),
+    capturePaypalPayment: record("capturePaypalPayment"),
+    getPaymentOrder: record("getPaymentOrder"),
     redeem: record("redeem"),
     saveCosmetics: record("saveCosmetics")
   };
@@ -98,6 +108,20 @@ test("云端业务报错原样抛出，不调用本地兜底", async () => {
   assert.deepEqual(calls.map((item) => item.label), ["cloud"]);
 });
 
+test("队列型经济适配器在当前点击栈内同步执行本地投影", async () => {
+  let projected = false;
+  const local = createAdapter("local", []);
+  local.upgradeFighter = () => {
+    projected = true;
+    return { profile: { fighterUpgrades: { attack: 2 } }, pending: true };
+  };
+  const gateway = gatewayModule.create({ mode: "local", local });
+
+  const operation = gateway.upgradeFighter("attack");
+  assert.equal(projected, true);
+  assert.equal((await operation).pending, true);
+});
+
 test("结算、升级和外观接口完整透传参数", async () => {
   const calls = [];
   const gateway = gatewayModule.create({
@@ -119,6 +143,7 @@ test("结算、升级和外观接口完整透传参数", async () => {
   await gateway.promoteUnit("pilot", "pilot-b-bailing", "pilot_rank_a_token");
   await gateway.starUpPilot("pilot-ss-heiyue");
   await gateway.starUpFighter("ship-ss-lingguang");
+  await gateway.activateCodexEntry("unit", "pilot-b-bailing", "operation-codex");
   await gateway.saveFighterSkillLoadout("ship-b-01", loadout);
   await gateway.upgradeAutoWeapon("weapon_module_04", "operation-1");
   await gateway.buyShopItem("gold_small", 5);
@@ -136,6 +161,7 @@ test("结算、升级和外观接口完整透传参数", async () => {
     ["promoteUnit", ["pilot", "pilot-b-bailing", "pilot_rank_a_token"]],
     ["starUpPilot", ["pilot-ss-heiyue"]],
     ["starUpFighter", ["ship-ss-lingguang"]],
+    ["activateCodexEntry", ["unit", "pilot-b-bailing", "operation-codex"]],
     ["saveFighterSkillLoadout", ["ship-b-01", loadout]],
     ["upgradeAutoWeapon", ["weapon_module_04", "operation-1"]],
     ["buyShopItem", ["gold_small", 5]],
@@ -149,4 +175,62 @@ test("storage 查询参数可显式切换开发模式", () => {
   assert.equal(gatewayModule.shouldUseCloud({ hostname: "localhost", search: "?storage=local" }), false);
   assert.equal(gatewayModule.shouldUseCloud({ hostname: "rexuezhanji.top", search: "?storage=local" }), true);
   assert.equal(gatewayModule.shouldUseCloud({ hostname: "www.rexuezhanji.top", search: "", }, "local"), true);
+});
+
+test("云存档账号状态和邮箱、手机验证参数通过网关透传", async () => {
+  const calls = [];
+  const gateway = gatewayModule.create({
+    mode: "cloud",
+    location: { hostname: "localhost", search: "" },
+    cloud: createAdapter("cloud", calls)
+  });
+
+  assert.deepEqual(gateway.getAccountState(), { available: true, status: "guest", maskedIdentifier: "游客云档" });
+  await gateway.sendEmailCode("pilot@example.com", { createUser: false });
+  await gateway.verifyEmailCode("pilot@example.com", "123456");
+  await gateway.sendPhoneCode("+8613800138000", { createUser: true });
+  await gateway.verifyPhoneCode("+8613800138000", "654321");
+  assert.deepEqual(calls.slice(-5).map((item) => [item.method, item.args]), [
+    ["getAccountState", []],
+    ["sendEmailCode", ["pilot@example.com", { createUser: false }]],
+    ["verifyEmailCode", ["pilot@example.com", "123456"]],
+    ["sendPhoneCode", ["+8613800138000", { createUser: true }]],
+    ["verifyPhoneCode", ["+8613800138000", "654321"]]
+  ]);
+});
+
+test("本地网关不暴露可操作的云存档状态", () => {
+  const gateway = gatewayModule.create({
+    mode: "local",
+    location: { hostname: "localhost", search: "" },
+    local: createAdapter("local", [])
+  });
+  assert.deepEqual(gateway.getAccountState(), {
+    available: false,
+    status: "unavailable",
+    provider: null,
+    maskedIdentifier: "",
+    reason: "local"
+  });
+});
+
+test("充值目录、幂等下单、PayPal 捕获和查单参数完整透传", async () => {
+  const calls = [];
+  const gateway = gatewayModule.create({
+    mode: "cloud",
+    location: { hostname: "localhost", search: "" },
+    cloud: createAdapter("cloud", calls)
+  });
+
+  await gateway.getPaymentCatalog("GLOBAL");
+  await gateway.createPaymentOrder("diamond_60", "GLOBAL", "paypal", "11111111-1111-4111-8111-111111111111");
+  await gateway.capturePaypalPayment("22222222-2222-4222-8222-222222222222", "PAYPAL-ORDER");
+  await gateway.getPaymentOrder("22222222-2222-4222-8222-222222222222");
+
+  assert.deepEqual(calls.slice(-4).map((item) => [item.method, item.args]), [
+    ["getPaymentCatalog", ["GLOBAL"]],
+    ["createPaymentOrder", ["diamond_60", "GLOBAL", "paypal", "11111111-1111-4111-8111-111111111111"]],
+    ["capturePaypalPayment", ["22222222-2222-4222-8222-222222222222", "PAYPAL-ORDER"]],
+    ["getPaymentOrder", ["22222222-2222-4222-8222-222222222222"]]
+  ]);
 });

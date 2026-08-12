@@ -5,11 +5,13 @@
   var content = scope.featurePanelContent || {};
   var panelState = {
     achievement: "航线开拓",
-    shop: "金币"
+    shop: "金币",
+    setting: "audio"
   };
   var panelTabs = {
     achievement: ["航线开拓", "王牌技巧", "整备精进", "星舰收集", "极限挑战", "星港功勋"],
-    shop: ["金币", "钻石", "兑换"]
+    shop: ["金币", "钻石", "兑换"],
+    setting: ["audio", "visual", "performance"]
   };
 
   function escapeHtml(value) {
@@ -38,6 +40,7 @@
   }
 
   function localDateKey(date) {
+    if (scope.worldTimeSystem && typeof scope.worldTimeSystem.dateKey === "function") return scope.worldTimeSystem.dateKey(date);
     date = date || new Date();
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
   }
@@ -279,9 +282,9 @@
     var hasDailySupply = ((scope.shopConfig && scope.shopConfig.SHOP_CONTENT) || []).some(function (item) { return item.id === "daily_free_supply"; });
     var shopReady = hasDailySupply && (dailyShop.date !== localDateKey() || !Array.isArray(dailyShop.ids) || dailyShop.ids.indexOf("daily_free_supply") < 0);
 
-    var codexBonds = scope.codexSystem && scope.codexSystem.getBondsState
-      ? scope.codexSystem.getBondsState(profile)
-      : { anyLightable: false };
+    var codexReady = scope.codexSystem && scope.codexSystem.hasActivatableEntries
+      ? scope.codexSystem.hasActivatableEntries(profile)
+      : false;
 
     var taskStates = scope.taskSystem && scope.taskSystem.getTaskStates ? scope.taskSystem.getTaskStates(profile) : [];
     var activityStates = scope.taskSystem && scope.taskSystem.getActivityRewardStates ? scope.taskSystem.getActivityRewardStates(profile) : [];
@@ -295,7 +298,7 @@
       shop: shopReady,
       ranking: false,
       inventory: false,
-      codex: !!codexBonds.anyLightable,
+      codex: Boolean(codexReady),
       activity: activityReady
     };
   }
@@ -436,6 +439,7 @@
   }
 
   function shanghaiDateKey() {
+    if (scope.worldTimeSystem && typeof scope.worldTimeSystem.dateKey === "function") return scope.worldTimeSystem.dateKey();
     try {
       var parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
       var values = {};
@@ -493,46 +497,86 @@
     '</section>';
   }
 
-  function renderSettingPanel(audioSettings) {
+  function renderSettingPanel(audioSettings, visualSettings, framePacing, activeSection) {
     audioSettings = audioSettings || {};
+    visualSettings = visualSettings || {};
+    framePacing = framePacing || {};
+    activeSection = /^(audio|visual|performance)$/.test(activeSection) ? activeSection : "audio";
     var musicVolume = Math.round(Number(audioSettings.musicVolume == null ? 0.32 : audioSettings.musicVolume) * 100);
     var sfxVolume = Math.round(Number(audioSettings.sfxVolume == null ? 0.42 : audioSettings.sfxVolume) * 100);
     var musicOn = !audioSettings.musicMuted;
     var sfxOn = !audioSettings.sfxMuted;
-    var controls =
+    var visualMode = /^(smooth|auto|quality)$/.test(visualSettings.mode) ? visualSettings.mode : "auto";
+    var effectiveLabels = { smooth: "流畅", auto: "自动", quality: "精致" };
+    var effectiveLabel = effectiveLabels[visualSettings.effectiveMode] || effectiveLabels[visualMode];
+    var visualSummary = visualMode === "auto"
+      ? "当前自动判定为" + effectiveLabel + "，实际 " + (visualSettings.renderScale || 1.25) + "× 画布缓冲。"
+      : "当前使用" + effectiveLabel + "档，实际 " + (visualSettings.renderScale || 1) + "× 画布缓冲。";
+    var visualControls = '<div class="settings-quality-options" role="group" aria-label="画面表现">' +
+      '<button type="button" data-visual-quality="smooth" class="' + (visualMode === "smooth" ? "active" : "") + '">流畅</button>' +
+      '<button type="button" data-visual-quality="auto" class="' + (visualMode === "auto" ? "active" : "") + '">自动</button>' +
+      '<button type="button" data-visual-quality="quality" class="' + (visualMode === "quality" ? "active" : "") + '">精致</button>' +
+      '</div>';
+    var audioControls =
       '<section class="settings-row"><div class="settings-label"><strong>音乐开关</strong><p>大厅音乐 BGM 播放。</p></div><button type="button" class="' + (musicOn ? "active" : "") + '" data-audio-toggle="music">' + (musicOn ? "音乐开" : "音乐关") + '</button></section>' +
       '<section class="settings-row"><div class="settings-label"><strong>音乐音量</strong><p>当前 ' + musicVolume + '%，拖动后即时生效。</p></div><input type="range" min="0" max="100" value="' + musicVolume + '" data-audio-volume="music" class="settings-slider" /></section>' +
       '<section class="settings-row"><div class="settings-label"><strong>战斗音效</strong><p>控制按钮、射击、拾取、技能和结算音效。</p></div><button type="button" class="' + (sfxOn ? "active" : "") + '" data-audio-toggle="sfx">' + (sfxOn ? "音效开" : "音效关") + '</button></section>' +
       '<section class="settings-row"><div class="settings-label"><strong>音效音量</strong><p>当前 ' + sfxVolume + '%，影响所有 SFX。</p></div><input type="range" min="0" max="100" value="' + sfxVolume + '" data-audio-volume="sfx" class="settings-slider" /></section>' +
       '<section class="settings-row"><div class="settings-label"><strong>BGM 试听</strong><p>重启大厅音乐，用于确认音量和循环。</p></div><button type="button" data-setting-action="restart-bgm" class="settings-action-btn">试听 / 重启</button></section>' +
-      '<section class="settings-row settings-redeem-row"><div class="settings-label"><strong>兑换码</strong><p>兑换奖励会保存到当前玩家的云存档，每个兑换码只能使用一次。</p></div><form class="settings-redeem-form" data-redeem-form><input type="text" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="请输入兑换码" aria-label="兑换码" data-redeem-code /><button type="submit">兑换</button><output data-redeem-status aria-live="polite"></output></form></section>' +
-      '<section class="settings-row muted-row"><div class="settings-label"><strong>画面表现</strong><p>星港玻璃 UI、扫描线、能量边框已启用；性能档位未开放。</p></div><button type="button" disabled class="settings-action-btn">展示态</button></section>';
+      '<section class="settings-row settings-redeem-row"><div class="settings-label"><strong>兑换码</strong><p>兑换奖励会保存到当前玩家的云存档，每个兑换码只能使用一次。</p></div><form class="settings-redeem-form" data-redeem-form><input type="text" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="请输入兑换码" aria-label="兑换码" data-redeem-code /><button type="submit">兑换</button><output data-redeem-status aria-live="polite"></output></form></section>';
+    var visualControlsPanel =
+      '<section class="settings-row settings-quality-row"><div class="settings-label"><strong>画面表现</strong><p>' + visualSummary + ' 战斗中修改将在下一场生效。</p></div>' + visualControls + '</section>' +
+      '<section class="settings-row"><div class="settings-label"><strong>弹幕特效预算</strong><p>光晕降级 ' + (visualSettings.glowBulletBudget || 140) + ' 发，高密度降级 ' + (visualSettings.highDensityBulletBudget || 320) + ' 发。</p></div><strong class="settings-inline-value">' + (visualSettings.particleStride || 1) + '步粒子采样</strong></section>' +
+      '<section class="settings-row"><div class="settings-label"><strong>硬性保护</strong><p>所有画质档在 ' + (visualSettings.hardBulletBudget || 700) + ' 发以上均启用 ' + (visualSettings.hardFxStride || 3) + ' 步采样，碰撞判定不变。</p></div><strong class="settings-inline-value">始终开启</strong></section>';
+    var performanceReady = Boolean(framePacing.sampleReady);
+    var performanceControls =
+      '<section class="settings-row"><div class="settings-label"><strong>最近一场帧节奏</strong><p>' + (performanceReady ? '已采集 ' + framePacing.frames + ' 帧有效前台样本。' : '完成一场战斗后显示；暂停和后台时间不计入。') + '</p></div><strong class="settings-inline-value">' + (performanceReady ? framePacing.fps + ' FPS' : '待采样') + '</strong></section>' +
+      '<section class="settings-row"><div class="settings-label"><strong>P95 帧间隔</strong><p>目标：桌面≤20ms，流畅档或低配设备≤34ms。</p></div><strong class="settings-inline-value">' + (performanceReady ? framePacing.p95FrameMs + ' ms' : '--') + '</strong></section>' +
+      '<section class="settings-row"><div class="settings-label"><strong>弹幕压力</strong><p>记录样本期间最大弹体数，用于确认降级阈值是否真正触发。</p></div><strong class="settings-inline-value">' + (framePacing.frames ? (framePacing.maxBullets || 0) + ' 发' : '--') + '</strong></section>' +
+      '<section class="settings-row"><div class="settings-label"><strong>700 发保护</strong><p>本场触发 ' + (framePacing.hardProtectionFrames || 0) + ' 帧；仅降低特效采样，不跳过碰撞。</p></div><strong class="settings-inline-value">' + ((framePacing.hardProtectionFrames || 0) > 0 ? '已触发' : '未触发') + '</strong></section>';
+    var controls = activeSection === "visual" ? visualControlsPanel : (activeSection === "performance" ? performanceControls : audioControls);
+    var sectionMeta = activeSection === "visual"
+      ? { kicker: "VISUAL CONFIG", description: "切换渲染倍率与特效预算，大厅即时生效。", dock: "VISUAL", state: effectiveLabel.toUpperCase() }
+      : activeSection === "performance"
+        ? { kicker: "PERFORMANCE", description: "展示最近战斗的真实帧节奏和弹幕压力。", dock: "FRAME PACING", state: performanceReady ? framePacing.fps + " FPS" : "NO SAMPLE" }
+        : { kicker: "AUDIO CONFIG", description: "音频和画面偏好独立保存在本机，不改动云存档。", dock: "AUDIO", state: musicOn ? "MUSIC ON" : "MUSIC OFF" };
+    var statusBar = activeSection === "visual"
+      ? [["选择", effectiveLabels[visualMode]], ["实际", effectiveLabel], ["倍率", (visualSettings.renderScale || 1) + "×"]]
+      : activeSection === "performance"
+        ? [["FPS", performanceReady ? framePacing.fps : "--"], ["P95", performanceReady ? framePacing.p95FrameMs + "ms" : "--"], ["弹体", framePacing.frames ? framePacing.maxBullets || 0 : "--"]]
+        : [["音乐", musicOn ? "开启" : "关闭"], ["音效", sfxOn ? "开启" : "关闭"], ["保存", "本地"]];
+    var statusHtml = statusBar.map(function (item) { return '<article><em>' + item[0] + '</em><strong>' + item[1] + '</strong></article>'; }).join("");
+    var dockSummary = activeSection === "performance"
+      ? 'P95 ' + (performanceReady ? framePacing.p95FrameMs + 'ms' : '--') + ' / MAX ' + (framePacing.maxBullets || 0)
+      : activeSection === "visual"
+        ? (visualSettings.renderScale || 1) + '× / 高密度 ' + (visualSettings.highDensityBulletBudget || 320) + '发'
+        : 'BGM ' + musicVolume + '% / SFX ' + sfxVolume + '%';
+    var overviewItems = activeSection === "performance"
+      ? [["FPS", performanceReady ? framePacing.fps : "--"], ["P95", performanceReady ? framePacing.p95FrameMs + "MS" : "--"], ["BULLETS", framePacing.frames ? framePacing.maxBullets || 0 : "--"]]
+      : activeSection === "visual"
+        ? [["MODE", effectiveLabels[visualMode]], ["EFFECT", effectiveLabel], ["SCALE", (visualSettings.renderScale || 1) + "×"]]
+        : [["MUSIC", musicOn ? "ON" : "OFF"], ["SFX", sfxOn ? "ON" : "OFF"], ["SAVE", "LOCAL"]];
+    var overviewHtml = overviewItems.map(function (item) { return '<article><em>' + item[0] + '</em><strong>' + item[1] + '</strong></article>'; }).join("");
     return '<section class="settings-panel">' +
       '<header class="settings-header">' +
-        '<div><span>AUDIO CONFIG</span><strong>系统设置</strong></div>' +
-        '<p>音乐和音效设置会立即生效，并保存到 localStorage。</p>' +
+        '<div><span>' + sectionMeta.kicker + '</span><strong>系统设置</strong></div>' +
+        '<p>' + sectionMeta.description + '</p>' +
       '</header>' +
       '<div class="settings-body">' +
         '<aside class="settings-rail">' +
-          '<button type="button" class="active" disabled>音频</button>' +
-          '<button type="button" disabled>画面</button>' +
-          '<button type="button" disabled>性能</button>' +
-          '<p>音乐 / 音效为真实可操作。</p>' +
+          '<button type="button" data-feature-tab data-feature-panel="setting" data-feature-tab-index="0" class="' + (activeSection === "audio" ? "active" : "") + '">音频</button>' +
+          '<button type="button" data-feature-tab data-feature-panel="setting" data-feature-tab-index="1" class="' + (activeSection === "visual" ? "active" : "") + '">画面</button>' +
+          '<button type="button" data-feature-tab data-feature-panel="setting" data-feature-tab-index="2" class="' + (activeSection === "performance" ? "active" : "") + '">性能</button>' +
+          '<p>切换分类不会重置当前设置。</p>' +
         '</aside>' +
         '<main class="settings-main">' +
-          '<section class="settings-status-bar">' +
-            '<article><em>音乐</em><strong>' + (musicOn ? "开启" : "关闭") + '</strong></article>' +
-            '<article><em>音效</em><strong>' + (sfxOn ? "开启" : "关闭") + '</strong></article>' +
-            '<article><em>保存</em><strong>本地</strong></article>' +
-          '</section>' +
+          '<section class="settings-status-bar">' + statusHtml + '</section>' +
           '<div class="settings-controls">' + controls + '</div>' +
         '</main>' +
         '<aside class="settings-dock">' +
-          '<section class="settings-dock-reward"><span>AUDIO</span><strong>' + (musicOn ? "MUSIC ON" : "MUSIC OFF") + '</strong><p>BGM ' + musicVolume + '% / SFX ' + sfxVolume + '%</p><button type="button" disabled' + (musicOn || sfxOn ? ' class="is-ready"' : '') + '>SAVED</button></section>' +
+          '<section class="settings-dock-reward"><span>' + sectionMeta.dock + '</span><strong>' + sectionMeta.state + '</strong><p>' + dockSummary + '</p><button type="button" disabled class="is-ready">' + (activeSection === "performance" ? 'LAST BATTLE' : 'SAVED') + '</button></section>' +
           '<section class="settings-dock-overview"><span>SYSTEM</span>' +
-            '<article><em>MUSIC</em><strong>' + (musicOn ? "ON" : "OFF") + '</strong></article>' +
-            '<article><em>SFX</em><strong>' + (sfxOn ? "ON" : "OFF") + '</strong></article>' +
-            '<article><em>SAVE</em><strong>LOCAL</strong></article>' +
+            overviewHtml +
           '</section>' +
         '</aside>' +
       '</div>' +
@@ -559,9 +603,11 @@
     var levels = options.levels || [];
     var combatPower = clampNumber(options.combatPower, 0, 9999999);
     var audioSettings = options.audioSettings || {};
+    var visualSettings = options.visualSettings || {};
+    var framePacing = options.framePacing || {};
     if (key === "mail") return setAndReport(dom, "MAIL", "邮件", "星港邮件中继，展示公告、补给、活动和维护信息。", "terminal-panel-content", renderMailPanel());
     if (key === "signin") return setAndReport(dom, "SIGN IN", "签到", "每日奖励由云端校验并写入存档。", "terminal-panel-content", renderSigninPanel(profile));
-    if (key === "setting") return setAndReport(dom, "SETTING", "设置", "音乐和音效设置会立即生效并保存到本地。", "terminal-panel-content", renderSettingPanel(audioSettings));
+    if (key === "setting") return setAndReport(dom, "SETTING", "设置", "音频、画面与性能状态。", "terminal-panel-content", renderSettingPanel(audioSettings, visualSettings, framePacing, panelState.setting));
     if (key === "event" && scope.eventModeHubView) return scope.eventModeHubView.renderPanel(dom, Object.assign({}, options, { profile: profile }));
     if (key === "achievement") return setAndReport(dom, "", "成就", countReady((getConfig().ACHIEVEMENT_CONTENT || []).map(function (item) { var current = getAchievementMetric(item, profile, levels); return { progress: { done: current >= item.target }, claimed: (profile.claimedAchievements || []).indexOf(item.id) >= 0 }; })) + " 项成就奖励可领取", "terminal-panel-content feature-panel-room-content", renderAchievementPanel(profile, levels));
     if (key === "task" && scope.taskView && scope.taskView.renderPanel) return scope.taskView.renderPanel(dom, options);
@@ -570,12 +616,13 @@
       return setAndReport(dom, "", "商店", "购买战备物资或进行稀有物资兑换", "terminal-panel-content feature-panel-room-content", scope.shopView ? scope.shopView.renderShopPanel(profile, scope.assets) : "");
     }
     if (key === "friend" && scope.socialFeaturePanelsView) return setAndReport(dom, "", "好友", "连接星港好友网络...", "terminal-panel-content feature-panel-room-content", scope.socialFeaturePanelsView.renderPanel(key, options));
-    if (key === "ranking" && scope.socialFeaturePanelsView) return setAndReport(dom, "", "排行榜", "星港先锋赛季 · 实时榜单", "terminal-panel-content feature-panel-room-content", scope.socialFeaturePanelsView.renderPanel(key, options));
+    if (key === "ranking" && scope.leaderboardView) return setAndReport(dom, "RANKING", "全服排行榜", "总战力与无尽挑战 · 云端权威数据", "terminal-panel-content feature-panel-room-content", scope.leaderboardView.renderPanel(options));
     if (key === "chat" && scope.socialFeaturePanelsView) return setAndReport(dom, "CHAT", "世界频道", "星港通讯已上线，与指挥官们实时交流。", "terminal-panel-content", scope.socialFeaturePanelsView.renderPanel(key, options));
     return false;
   }
 
   function handleEvent(event, dom, options) {
+    if (scope.leaderboardView && scope.leaderboardView.handleEvent && scope.leaderboardView.handleEvent(event, dom, options || {})) return true;
     if (scope.taskView && scope.taskView.handleEvent && scope.taskView.handleEvent(event, dom, options || {})) return true;
     if (scope.eventModeHubView && scope.eventModeHubView.handleEvent && scope.eventModeHubView.handleEvent(event, dom, options || {})) return true;
     if (scope.socialFeaturePanelsView && scope.socialFeaturePanelsView.handleEvent(event, dom, options || {})) return true;

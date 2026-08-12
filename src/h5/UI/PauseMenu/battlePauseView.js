@@ -19,6 +19,7 @@
         '<h2 id="battlePauseTitle">作战暂停</h2>' +
         '<p>战斗已暂停</p>' +
       '</div>' +
+      '<section class="battle-pause-help" aria-label="操作说明"><strong>操作说明</strong><span>键盘：WASD / 方向键移动 · 1–4 技能 · SPACE 决胜 · P 暂停</span><span>触屏：拖动战机移动 · 点击技能与决胜指令</span></section>' +
       '<nav class="battle-pause-actions" aria-label="暂停操作">' +
         '<button type="button" data-battle-action="pause-resume">继续战斗</button>' +
         '<button type="button" data-battle-action="pause-chapter">返回关卡</button>' +

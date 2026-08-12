@@ -49,6 +49,10 @@
     player.exp = player.level >= maxLevel ? 0 : Math.max(0, player.totalExp - (totals[player.level] || 0));
     player.honorLevel = getHonorLevelByCommanderLevel(player.level);
     player.badge = honorLevelToText(player.honorLevel);
+    var equippedHonorLevel = Math.floor(Number(player.equippedHonorLevel) || 0);
+    player.equippedHonorLevel = equippedHonorLevel >= 1
+      ? Math.min(equippedHonorLevel, player.honorLevel)
+      : player.honorLevel;
     return { gained, leveled: player.level - oldLevel, before, after: createLevelProgressSnapshot(player) };
   }
 

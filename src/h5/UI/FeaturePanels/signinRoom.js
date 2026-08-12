@@ -8,6 +8,7 @@
     var busy = false;
 
     function shanghaiDateKey() {
+      if (shared.worldTimeSystem && typeof shared.worldTimeSystem.dateKey === "function") return shared.worldTimeSystem.dateKey();
       try {
         var parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
         var values = {};

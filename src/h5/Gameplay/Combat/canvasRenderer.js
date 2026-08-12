@@ -22,6 +22,9 @@
     var bulletFxStride = 1;
     var GLOW_BULLET_BUDGET = 140;
     var HIGH_DENSITY_BULLET_BUDGET = 320;
+    var HARD_BULLET_BUDGET = 700;
+    var HARD_FX_STRIDE = 3;
+    var PARTICLE_STRIDE = 1;
     var PREMIUM_CAST_BURST_SECONDS = 0.32;
     var PREMIUM_FOCUS_SECONDS = 0.18;
     var backgroundGradient = null;
@@ -35,9 +38,9 @@
     state = nextState;
     var playerBulletCount = state && state.bullets ? state.bullets.length : 0;
     var totalBulletCount = playerBulletCount + (state && state.enemyBullets ? state.enemyBullets.length : 0);
-    glowEnabled = playerBulletCount <= GLOW_BULLET_BUDGET;
-    highDensityMode = totalBulletCount > HIGH_DENSITY_BULLET_BUDGET;
-    bulletFxStride = totalBulletCount > 700 ? 3 : (highDensityMode ? 2 : 1);
+    glowEnabled = totalBulletCount < GLOW_BULLET_BUDGET;
+    highDensityMode = totalBulletCount >= HIGH_DENSITY_BULLET_BUDGET;
+    bulletFxStride = totalBulletCount >= HARD_BULLET_BUDGET ? HARD_FX_STRIDE : (highDensityMode ? 2 : 1);
     if (state && state.level && assetsConfig.getBossVisual) {
       var bossVisual = assetsConfig.getBossVisual(state.level.chapterIndex, state.level.stageInChapter);
       if (bossVisual && bossVisual.src) getImage(bossVisual.src);
@@ -1070,16 +1073,17 @@
       var label = (config[item.type] && config[item.type].name) || item.type;
       var pulse = 1 + Math.sin((state.elapsed || 0) * 8 + i) * 0.08;
       ctx.save();
+      ctx.globalAlpha = highDensityMode ? 0.64 : 0.84;
       ctx.shadowColor = color;
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = highDensityMode ? 3 : 10;
       ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
+      ctx.lineWidth = highDensityMode ? 1.5 : 2;
       ctx.beginPath();
-      ctx.arc(item.x, item.y, item.radius * 1.65 * pulse, 0, Math.PI * 2);
+      ctx.arc(item.x, item.y, item.radius * 1.36 * pulse, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(item.x, item.y, item.radius * 1.08, 0, Math.PI * 2);
+      ctx.arc(item.x, item.y, item.radius * 0.96, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#06111c";
       ctx.font = "bold 14px Arial";
@@ -1092,7 +1096,7 @@
 
   function drawParticles() {
     var particles = state && state.particles ? state.particles : [];
-    var stride = highDensityMode && particles.length > 240 ? 2 : 1;
+    var stride = Math.max(PARTICLE_STRIDE, highDensityMode && particles.length > 240 ? 2 : 1);
     for (var i = 0; i < particles.length; i += stride) {
       var particle = particles[i];
       ctx.globalAlpha = Math.max(0, Math.min(1, particle.life * 2));
@@ -1293,14 +1297,23 @@
 
   function drawNotices() {
     var notices = state && state.notices ? state.notices : [];
+    var centralTotal = 0;
+    for (var countIndex = 0; countIndex < notices.length; countIndex += 1) {
+      if (Math.abs((Number(notices[countIndex].x) || 0) - WIDTH / 2) < 2) centralTotal += 1;
+    }
+    var centralSkip = Math.max(0, centralTotal - 3);
+    var centralSeen = 0;
+    var centralDrawn = 0;
     ctx.save();
     ctx.textAlign = "center";
     ctx.font = "bold 18px Microsoft YaHei, Arial";
     for (var i = 0; i < notices.length; i += 1) {
       var notice = notices[i];
+      var isCentral = Math.abs((Number(notice.x) || 0) - WIDTH / 2) < 2;
+      if (isCentral && centralSeen++ < centralSkip) continue;
       ctx.globalAlpha = Math.min(1, notice.life);
       ctx.fillStyle = notice.color || "#ffffff";
-      ctx.fillText(notice.text, notice.x, notice.y);
+      ctx.fillText(notice.text, notice.x, isCentral ? notice.y - centralDrawn++ * 24 : notice.y);
     }
     ctx.restore();
   }
@@ -1355,11 +1368,28 @@
     return Promise.resolve([wingmanSpriteSrc]);
   }
 
+  function setQualityProfile(profile) {
+    profile = profile || {};
+    GLOW_BULLET_BUDGET = Math.max(1, Math.floor(Number(profile.glowBulletBudget) || 140));
+    HIGH_DENSITY_BULLET_BUDGET = Math.max(GLOW_BULLET_BUDGET, Math.floor(Number(profile.highDensityBulletBudget) || 320));
+    HARD_BULLET_BUDGET = Math.max(HIGH_DENSITY_BULLET_BUDGET, Math.floor(Number(profile.hardBulletBudget) || 700));
+    HARD_FX_STRIDE = Math.max(3, Math.floor(Number(profile.hardFxStride) || 3));
+    PARTICLE_STRIDE = Math.max(1, Math.floor(Number(profile.particleStride) || 1));
+    return {
+      glowBulletBudget: GLOW_BULLET_BUDGET,
+      highDensityBulletBudget: HIGH_DENSITY_BULLET_BUDGET,
+      hardBulletBudget: HARD_BULLET_BUDGET,
+      hardFxStride: HARD_FX_STRIDE,
+      particleStride: PARTICLE_STRIDE
+    };
+  }
+
 
     return {
       drawScene: drawScene,
       getImage: getImage,
-      preloadSkillAssets: preloadSkillAssets
+      preloadSkillAssets: preloadSkillAssets,
+      setQualityProfile: setQualityProfile
     };
   }
 

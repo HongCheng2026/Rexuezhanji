@@ -15,6 +15,7 @@ const deps = {
   ledger: async () => {},
   publicProfile: (p) => p,
   refreshLeaderboard: async () => {},
+  runBackground: (_label, task) => { void Promise.resolve(task); },
   getGold: (p) => Number(p.resources?.gold ?? p.coins ?? 0),
   setGold: (p, v) => { p.resources = p.resources || {}; p.resources.gold = Math.max(0, Math.floor(v || 0)); p.coins = p.resources.gold; },
   getStageAliases: () => [],

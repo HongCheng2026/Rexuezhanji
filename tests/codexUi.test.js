@@ -9,13 +9,17 @@ const root = path.resolve(__dirname, "..");
 const view = fs.readFileSync(path.join(root, "src/h5/UI/Codex/codexView.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "src/h5/UI/Codex/codexView.css"), "utf8");
 const controller = fs.readFileSync(path.join(root, "src/h5/UI/FeaturePanels/featurePanelController.js"), "utf8");
+const codexController = fs.readFileSync(path.join(root, "src/h5/UI/Codex/codexController.js"), "utf8");
+const room = fs.readFileSync(path.join(root, "src/h5/UI/Codex/codexRoom.js"), "utf8");
 const runtime = fs.readFileSync(path.join(root, "src/h5/Game/Core/applicationRuntime.js"), "utf8");
 const assets = fs.readFileSync(path.join(root, "src/h5/Presentation/Assets/assets.js"), "utf8");
 const balance = fs.readFileSync(path.join(root, "src/h5/Gameplay/Collection/codexBalance.js"), "utf8");
 const system = fs.readFileSync(path.join(root, "src/h5/Gameplay/Collection/codexSystem.js"), "utf8");
 
 test("图鉴使用机库同尺度的独立档案舱外壳", () => {
-  assert.match(controller, /openFeaturePanelShell\("codex-panel"\)/);
+  assert.match(codexController, /openShell\("codex-panel"\)/);
+  assert.doesNotMatch(controller, /enemyCodex|codexView/);
+  assert.match(room, /context\.codex/);
   assert.match(runtime, /"codex-panel"/);
   assert.match(css, /\.feature-panel\.codex-panel \.feature-panel-box\s*\{[^}]*max-width:\s*1180px;/s);
   assert.match(css, /\.feature-panel\.codex-panel \.feature-panel-box::before\s*\{[^}]*var\(--rx-hangar-bg\)/s);
@@ -42,10 +46,10 @@ test("未解锁条目仍可查看完整战术资料", () => {
   assert.match(view, /aria-pressed/);
 });
 
-test("战姬与战机详情调用链显式传入玩家档案", () => {
-  assert.match(view, /renderUnitDetail\(item, detail, "pilot", unlocked, profile\)/);
-  assert.match(view, /renderUnitDetail\(item, detail, "ship", unlocked, profile\)/);
-  assert.match(view, /function renderUnitDetail\(item, detail, type, unlocked, profile\)/);
+test("战姬与战机详情调用链显式传入玩家档案和图鉴控制器回调", () => {
+  assert.match(view, /renderUnitDetail\(item, detail, "pilot", unlocked, profile, opts\)/);
+  assert.match(view, /renderUnitDetail\(item, detail, "ship", unlocked, profile, opts\)/);
+  assert.match(view, /function renderUnitDetail\(item, detail, type, unlocked, profile, opts\)/);
 });
 
 test("五类普通图鉴使用头像加名称的单列目录", () => {
@@ -80,12 +84,24 @@ test("单位详情严格分为上半作战区与下半档案区，并共享同�
   assert.match(css, /\.feature-panel\.codex-panel \.codex-image-card-ship\s*\{[^}]*aspect-ratio:\s*9 \/ 16/s);
 });
 
-test("获得后加成与羁绊左右合并，并由玩家手动点亮", () => {
+test("获得后加成与羁绊左右合并，并由图鉴控制器手动激活", () => {
   assert.match(view, /class="codex-unit-synergy"/);
-  assert.match(view, /data-codex-light-unit/);
-  assert.match(view, /return "unit:" \+ id/);
-  assert.match(view, /profile\.codexBonds\.push\(lightId\)/);
+  assert.match(view, /data-codex-activate-unit/);
+  assert.match(view, /opts\.onActivate\("unit", item\._id\)/);
+  assert.doesNotMatch(view, /profile\.codex|persistProfileMetadata/);
+  assert.match(codexController, /system\.activateEntry\(profile, kind, id\)/);
   assert.match(css, /\.feature-panel\.codex-panel \.codex-unit-synergy\s*\{[^}]*grid-template-columns:/s);
+});
+
+test("图鉴索引固定展示整体激活属性汇总并反馈云端保存结果", () => {
+  assert.match(view, /className = "codex-bonus-summary"/);
+  assert.match(view, /图鉴总加成/);
+  assert.match(view, /scope\.codexSystem\.getActivationSummary\(profile\)/);
+  assert.match(view, /formatBonusPercent\(bonus\.armorPenetrationFlat\)/);
+  assert.match(view, /formatBonusPercent\(bonus\.coinBonusMultiplier\)/);
+  assert.match(codexController, /激活未保存，已按云端状态恢复，请重试/);
+  assert.match(css, /\.feature-panel\.codex-panel \.codex-bonus-summary\s*\{/);
+  assert.match(css, /\.feature-panel\.codex-panel \.codex-bonus-summary-grid\s*\{/);
 });
 
 test("羁绊详情以上半图像信息区和下半协同档案区展示", () => {
@@ -149,14 +165,24 @@ test("图鉴提供扩充后的十一套羁绊方案", () => {
   }
 });
 
-test("点亮奖励按原生品质计算并让SS单位及其羁绊提供破甲", () => {
+test("激活奖励按原生品质计算并让SS单位及其羁绊提供破甲", () => {
   assert.match(balance, /B:\s*Object\.freeze\(\{ attackFlat: 1 \}\)/);
   assert.match(balance, /A:\s*Object\.freeze\(\{ attackFlat: 2 \}\)/);
   assert.match(balance, /S:\s*Object\.freeze\(\{ attackFlat: 2 \}\)/);
   assert.match(balance, /SS:\s*Object\.freeze\(\{ attackFlat: 2, armorPenetrationFlat: 0\.02 \}\)/);
   assert.match(balance, /bond_ultimate_starlink[\s\S]*?armorPenetrationFlat: 0\.01/);
-  assert.match(system, /nativeRank = String\(asset && asset\.rank/);
+  assert.match(system, /String\(asset\.rank \|\| "B"\)\.toUpperCase\(\)/);
   assert.doesNotMatch(system, /pilotRanks|shipRanks/);
+});
+
+test("黄点只表示可激活，激活完成后不保留黄点", () => {
+  assert.match(view, /activated \? " is-activated" : activatable \? " is-activatable"/);
+  assert.match(css, /\.codex-card\.is-activatable::after\s*\{[^}]*background:\s*#ffd166;/s);
+  assert.match(css, /\.codex-bond\.activatable::after\s*\{[^}]*background:\s*#ffd166;/s);
+  assert.doesNotMatch(css, /\.codex-card\.is-activated::after/);
+  assert.match(view, /激活属性/);
+  assert.match(view, /已激活/);
+  assert.doesNotMatch(view, /点亮属性|点亮羁绊|已点亮|可点亮/);
 });
 
 test("BOSS详情使用满高目标影像、未解锁剪影和纵向技能列表", () => {

@@ -43,10 +43,18 @@
         cssAsset("resource-tray", assets.resourceTray);
       var page = data.page === "active" || data.page === "auto" ? data.page : "base";
       return '<div class="fu-dock fu-dock--' + page + '" data-fighter-upgrade-root data-dock-current-page="' + page + '" style="' + style + '">' +
-        renderNavigation(page) + renderHeader(data, page) +
+        renderNavigation(page) + renderHeader(data, page) + renderNotice(data) +
         '<main class="fu-page-stage">' + (page === "base" ? renderBasePage(data) : page === "active" ? renderActivePage(data) : renderAutoPage(data)) + '</main>' +
         renderFooter(data) +
       '</div>';
+    }
+
+    function renderNotice(data) {
+      var notice = String(data && data.notice || "").trim();
+      if (!notice) return "";
+      var pending = Boolean(data && data.pendingAction);
+      return '<div class="fu-action-notice' + (pending ? ' is-pending' : ' is-complete') + '" role="status" aria-live="polite">' +
+        '<span aria-hidden="true">' + (pending ? '…' : '✓') + '</span><strong>' + escapeHtml(notice) + '</strong></div>';
     }
 
     function renderNavigation(page) {
@@ -72,12 +80,14 @@
     }
 
     function renderBasePage(data) {
+      var commanderLockTarget = getCommanderLockTarget(data);
       return '<section class="fu-page fu-page--base">' +
         '<section class="fu-surface fu-base-workbench">' +
           '<div class="fu-fighter-hero"><div class="fu-fighter-visual"><img src="' + escapeAttr(data.ship.src || "") + '" alt="' + escapeAttr(data.ship.name || "当前战机") + '"></div>' +
             '<div class="fu-combat-index"><small>COMBAT INDEX</small><strong>' + formatNumber(data.combatPower) + '</strong><em>' + escapeHtml(data.ship.name || "-") + ' · ' + escapeHtml(data.shipRank || data.ship.rank || "B") + '</em></div>' +
             '<div class="fu-stat-capsules">' + statCapsule("attack", "攻击", formatNumber(data.breakdown.attack)) + statCapsule("hp", "生命", formatNumber(data.breakdown.hp)) + statCapsule("armorPenetration", "破甲", formatPercent(data.breakdown.armorPenetration) + "%") + '</div>' +
           '</div>' +
+          (commanderLockTarget ? '<section class="fu-commander-lock" role="status"><div><small>COMMANDER LEVEL REQUIRED</small><strong>指挥官 Lv.' + commanderLockTarget + ' 解锁下一次强化</strong><p>继续完成关卡提升指挥官等级，金币会保留，不会提前消耗。</p></div><button type="button" data-upgrade-go-battle>前往战斗</button></section>' : '') +
           '<div class="fu-upgrade-stack">' + ["attack", "armorPenetration", "hp"].map(function (key) { return renderUpgradeRow(data, key); }).join("") + '</div>' +
         '</section>' + renderBaseDetail(data) +
       '</section>';
@@ -93,10 +103,10 @@
       var disabled = Boolean(data.pendingAction || !result || result.canUpgrade === false);
       var meta = STAT_META[key];
       return '<article class="fu-upgrade-row' + (data.selectedUpgradeStat === key ? ' is-selected' : '') + (disabled ? ' is-disabled' : '') + '" data-dock-select-stat="' + key + '">' +
-        '<span class="fu-upgrade-art">' + renderArt(meta.art) + '</span><div class="fu-upgrade-name"><strong>' + meta.name + '</strong><small>Lv.' + level + '/' + data.levelCap + '</small></div>' +
+        '<span class="fu-upgrade-art">' + renderArt(meta.art) + '</span><div class="fu-upgrade-name"><strong>' + meta.name + '</strong><small>Lv.' + level + '/' + data.maxLevel + (result && result.reason === "COMMANDER_LEVEL_NOT_ENOUGH" ? ' · 指挥官上限 Lv.' + data.levelCap : '') + '</small></div>' +
         '<div class="fu-upgrade-metric"><small>当前</small><strong>+' + formatStat(key, currentBonus) + '</strong></div>' +
         '<span class="fu-upgrade-arrow">››</span><div class="fu-upgrade-metric is-next"><small>下一级</small><strong>+' + formatStat(key, nextBonus) + '</strong></div>' +
-        '<button type="button" data-fighter-upgrade="' + key + '"' + (disabled ? ' disabled' : '') + '><b>' + upgradeButtonLabel(result) + '</b><span>' + (result && result.cost ? renderGold(result.cost) : '-') + '</span></button>' +
+        '<button type="button" data-fighter-upgrade="' + key + '"' + (disabled ? ' disabled' : '') + '><b>' + upgradeButtonLabel(result) + '</b><span>' + renderUpgradeCost(result) + '</span></button>' +
       '</article>';
     }
 
@@ -110,18 +120,19 @@
       var currentBonus = getStatBonus(key, level);
       var nextBonus = getStatBonus(key, Math.min(target, data.maxLevel));
       var disabled = Boolean(data.pendingAction || !result || result.canUpgrade === false);
-      var maxed = level >= data.levelCap || (result && result.reason === "MAX_LEVEL");
+      var maxed = level >= data.maxLevel || (result && result.reason === "MAX_LEVEL");
+      var commanderLocked = result && result.reason === "COMMANDER_LEVEL_NOT_ENOUGH";
       var compareBlock = maxed
-        ? '<div class="fu-level-compare"><div class="is-next"><small>当前等级</small><strong>Lv.' + data.levelCap + '</strong><em>+' + formatStat(key, getStatBonus(key, data.levelCap)) + '</em></div></div>'
+        ? '<div class="fu-level-compare"><div class="is-next"><small>当前等级</small><strong>Lv.' + level + '</strong><em>+' + formatStat(key, getStatBonus(key, level)) + '</em></div></div>'
         : '<div class="fu-level-compare"><div><small>当前等级</small><strong>Lv.' + level + '</strong><em>+' + formatStat(key, currentBonus) + '</em></div><b>››</b><div class="is-next"><small>下一级</small><strong>Lv.' + target + '</strong><em>+' + formatStat(key, nextBonus) + '</em></div></div>';
       var linesBlock = maxed
-        ? '<div class="fu-detail-lines"><span><b>满级效果</b><em>+' + formatStat(key, getStatBonus(key, data.levelCap)) + '</em></span></div>'
-        : '<div class="fu-detail-lines"><span><b>本次提升</b><em>+' + formatStat(key, Math.max(0, nextBonus - currentBonus)) + '</em></span><span><b>强化消耗</b><em>' + (result && result.cost ? formatCompact(result.cost) + ' 金币' : '-') + '</em></span></div>';
+        ? '<div class="fu-detail-lines"><span><b>满级效果</b><em>+' + formatStat(key, getStatBonus(key, level)) + '</em></span></div>'
+        : '<div class="fu-detail-lines"><span><b>' + (commanderLocked ? '解锁条件' : '本次提升') + '</b><em>' + (commanderLocked ? '指挥官 Lv.' + target : '+' + formatStat(key, Math.max(0, nextBonus - currentBonus))) + '</em></span><span><b>' + (commanderLocked ? '解锁后消耗' : '强化消耗') + '</b><em>' + (result && result.cost ? formatCompact(result.cost) + ' 金币' : '-') + '</em></span></div>';
       return '<aside id="fu-detail-panel" class="fu-surface fu-detail fu-base-detail"><header><small>ATTRIBUTE DETAIL</small><strong>属性强化详情</strong></header>' +
         '<div class="fu-detail-identity"><span>' + renderArt(meta.art) + '</span><div><strong>' + meta.name + '</strong><p>' + meta.description + '</p></div></div>' +
         compareBlock +
         linesBlock +
-        '<footer><button type="button" data-fighter-upgrade="' + key + '"' + (disabled ? ' disabled' : '') + '>' + upgradeButtonLabel(result) + (result && result.cost ? ' · ' + formatCompact(result.cost) : '') + '</button></footer></aside>';
+        '<footer><button type="button" data-fighter-upgrade="' + key + '"' + (disabled ? ' disabled' : '') + '>' + upgradeButtonLabel(result) + (result && result.cost ? ' · ' + (commanderLocked ? '解锁后 ' : '') + formatCompact(result.cost) : '') + '</button></footer></aside>';
     }
 
     function renderActivePage(data) {
@@ -485,9 +496,22 @@
     function upgradeButtonLabel(result) {
       if (!result) return "强化";
       if (result.reason === "MAX_LEVEL") return "MAX";
-      if (result.reason === "COMMANDER_LEVEL_NOT_ENOUGH") return "等级限制";
+      if (result.reason === "COMMANDER_LEVEL_NOT_ENOUGH") return "指挥官 Lv." + Math.max(1, Number(result.targetLevel) || 1) + " 解锁";
       if (result.reason === "GOLD_NOT_ENOUGH") return "金币不足";
       return "强化";
+    }
+    function renderUpgradeCost(result) {
+      if (!result || !result.cost) return "-";
+      return (result.reason === "COMMANDER_LEVEL_NOT_ENOUGH" ? "解锁后 " : "") + renderGold(result.cost);
+    }
+    function getCommanderLockTarget(data) {
+      var targets = ["attack", "armorPenetration", "hp"].map(function (key) {
+        var fighter = data.profile.fighterUpgrades || {};
+        var level = Math.max(1, Math.floor(Number(fighter[key]) || 1));
+        var result = getUpgradeResult(data, key, level);
+        return result && result.reason === "COMMANDER_LEVEL_NOT_ENOUGH" ? Math.max(1, Number(result.targetLevel) || level + 1) : 0;
+      });
+      return targets.every(Boolean) ? Math.min.apply(Math, targets) : 0;
     }
     function effectiveActiveGrade(data, id) {
       var grade = String(data.activeSkillGrades && data.activeSkillGrades[id] || "D").toUpperCase();

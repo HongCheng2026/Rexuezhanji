@@ -14,6 +14,7 @@
       signin: "signin.render",
       starWingsGacha: "gacha.open",
       inventory: "inventory.open",
+      recharge: "recharge.open",
       contact: "contact.open",
       setting: "setting.open",
       shipGallery: "fighter.open",
@@ -28,6 +29,9 @@
         levels: context.levels,
         combatPower: context.calculateTotalPower(),
         audioSettings: context.audioSystem && context.audioSystem.getSettings ? context.audioSystem.getSettings() : null,
+        visualSettings: context.visualQualitySystem && context.visualQualitySystem.getSettings ? context.visualQualitySystem.getSettings() : null,
+        framePacing: context.framePacingMonitor && context.framePacingMonitor.getSnapshot ? context.framePacingMonitor.getSnapshot() : null,
+        getGameGateway: context.getGameGateway,
         startEndlessMode: function startEndlessMode() { return registry.dispatch("endless.start"); }
       }));
     }

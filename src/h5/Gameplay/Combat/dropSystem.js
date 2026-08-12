@@ -400,18 +400,29 @@
     addNotice(state,
       "武器升级 · " + ((POWERUPS[type] || {}).name || type) + " Lv." + state.player.weapons[type] + (before < MAX_WEAPON_LEVEL && state.player.weapons[type] >= MAX_WEAPON_LEVEL ? " MAX" : ""),
       (POWERUPS[type] || {}).color || "#ffffff",
-      2.2
+      2.2,
+      "weapon-upgrade:" + type
     );
   }
 
   /**
    * 屏幕上浮动文字
    */
-  function addNotice(state, text, color, life) {
+  function addNotice(state, text, color, life, key) {
     var field = getField(state);
+    if (key) {
+      for (var i = state.notices.length - 1; i >= 0; i -= 1) {
+        if (state.notices[i] && state.notices[i].key === key) {
+          state.notices[i].text = text;
+          state.notices[i].color = color;
+          state.notices[i].life = life || 1.5;
+          return state.notices[i];
+        }
+      }
+    }
     state.notices.push({
       text: text, color: color,
-      x: field.width / 2, y: field.noticeY, life: life || 1.5
+      x: field.width / 2, y: field.noticeY, life: life || 1.5, key: key || ""
     });
   }
 

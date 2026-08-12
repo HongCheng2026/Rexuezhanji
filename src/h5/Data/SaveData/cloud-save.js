@@ -55,7 +55,13 @@
       clearTimeout(timer);
     }
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || payload.message || "云端请求失败。");
+    if (!response.ok) {
+      const cloudError = new Error(payload.error || payload.message || "云端请求失败。");
+      cloudError.code = payload.code || "CLOUD_REQUEST_FAILED";
+      cloudError.status = response.status;
+      cloudError.payload = payload;
+      throw cloudError;
+    }
     return payload;
   }
 
@@ -87,12 +93,15 @@
   }
 
   async function api(action, payload = {}, options = {}) {
-    await ensureSession();
+    if (!Object.prototype.hasOwnProperty.call(options, "token")) await ensureSession();
     const result = await request(`/functions/v1/game-api?action=${encodeURIComponent(action)}`, {
       method: "POST",
       body: payload,
       ...options
     });
+    if (result?.worldTime && root.RXGame?.worldTimeSystem?.sync) {
+      root.RXGame.worldTimeSystem.sync(result.worldTime, { source: "server" });
+    }
     if (result?.profile) {
       profileSnapshot = result;
       profileSnapshotAt = Date.now();
@@ -129,31 +138,121 @@
     return api("identity");
   }
 
-  async function sendEmailCode(email) {
+  function normalizeEmail(email) {
     const normalized = String(email || "").trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalized)) throw new Error("请输入有效的邮箱地址。");
-    return request("/auth/v1/otp", { method: "POST", body: { email: normalized, create_user: true }, token: null });
+    return normalized;
   }
 
-  async function verifyEmailCode(email, token) {
+  function maskEmail(email) {
+    const normalized = String(email || "").trim().toLowerCase();
+    const parts = normalized.split("@");
+    if (parts.length !== 2) return "";
+    const local = parts[0];
+    const visible = local.length <= 1 ? local : local.slice(0, Math.min(2, local.length));
+    return `${visible}${"*".repeat(Math.max(3, local.length - visible.length))}@${parts[1]}`;
+  }
+
+  function normalizePhone(phone) {
+    let normalized = String(phone || "").trim().replace(/[\s()-]/g, "");
+    if (/^1[3-9]\d{9}$/.test(normalized)) normalized = `+86${normalized}`;
+    else if (/^861[3-9]\d{9}$/.test(normalized)) normalized = `+${normalized}`;
+    else if (/^00\d+$/.test(normalized)) normalized = `+${normalized.slice(2)}`;
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
+      throw new Error("请输入有效的手机号，国际号码需包含国家区号。");
+    }
+    return normalized;
+  }
+
+  function maskPhone(phone) {
+    const normalized = String(phone || "").trim();
+    if (/^\+861[3-9]\d{9}$/.test(normalized)) {
+      return `+86 ${normalized.slice(3, 6)}****${normalized.slice(-4)}`;
+    }
+    const visiblePrefix = normalized.slice(0, Math.min(4, Math.max(2, normalized.length - 4)));
+    return `${visiblePrefix}${"*".repeat(Math.max(4, normalized.length - visiblePrefix.length - 4))}${normalized.slice(-4)}`;
+  }
+
+  function isGuestSession(value) {
+    const user = value?.user;
+    if (!user) return false;
+    return user.is_anonymous === true || (!user.email && !user.phone);
+  }
+
+  function getAccountState() {
+    if (!configured()) {
+      return { available: false, status: "unavailable", provider: null, maskedIdentifier: "", reason: "unconfigured" };
+    }
+    const user = session?.user;
+    if (user?.email) {
+      return { available: true, status: "email", provider: "email", maskedIdentifier: maskEmail(user.email), reason: "" };
+    }
+    if (user?.phone) {
+      return { available: true, status: "phone", provider: "phone", maskedIdentifier: maskPhone(user.phone), reason: "" };
+    }
+    return { available: true, status: "guest", provider: null, maskedIdentifier: "游客云档", reason: "" };
+  }
+
+  async function sendEmailCode(email, options = {}) {
+    const normalized = normalizeEmail(email);
+    return request("/auth/v1/otp", {
+      method: "POST",
+      body: { email: normalized, create_user: options.createUser !== false },
+      token: null
+    });
+  }
+
+  async function sendPhoneCode(phone, options = {}) {
+    const normalized = normalizePhone(phone);
+    return request("/auth/v1/otp", {
+      method: "POST",
+      body: { phone: normalized, create_user: options.createUser !== false, channel: "sms" },
+      token: null
+    });
+  }
+
+  async function verifyAccountCode(provider, identifier, token) {
+    const isPhone = provider === "phone";
+    const normalized = isPhone ? normalizePhone(identifier) : normalizeEmail(identifier);
+    const normalizedToken = String(token || "").trim();
+    if (!/^\d{6}$/.test(normalizedToken)) throw new Error("请输入 6 位数字验证码。");
     const previousSession = session;
     const verified = await request("/auth/v1/verify", {
       method: "POST",
-      body: { email: String(email || "").trim().toLowerCase(), token: String(token || "").trim(), type: "email" },
+      body: isPhone
+        ? { phone: normalized, token: normalizedToken, type: "sms" }
+        : { email: normalized, token: normalizedToken, type: "email" },
       token: null
     });
-    saveSession(verified);
-    if (previousSession?.access_token && previousSession.user?.id !== verified.user?.id) {
-      await api("migrate-anonymous", {}, {
+    if (!verified?.access_token || !verified?.user?.id) {
+      throw new Error(`${isPhone ? "手机" : "邮箱"}身份验证失败。`);
+    }
+
+    let result;
+    const isDifferentUser = previousSession?.user?.id && previousSession.user.id !== verified.user.id;
+    if (isDifferentUser && previousSession?.access_token && isGuestSession(previousSession)) {
+      result = await api("migrate-anonymous", {}, {
+        token: verified.access_token,
         extraHeaders: { "x-rexuezhanji-source-token": previousSession.access_token }
       });
+    } else {
+      result = await api("bootstrap", {}, { token: verified.access_token });
     }
-    return bootstrap();
+    saveSession(verified);
+    return result;
+  }
+
+  function verifyEmailCode(email, token) {
+    return verifyAccountCode("email", email, token);
+  }
+
+  function verifyPhoneCode(phone, token) {
+    return verifyAccountCode("phone", phone, token);
   }
 
   function accountLabel() {
-    if (!session?.user) return "未连接";
-    return session.user.email || "游客账号";
+    const state = getAccountState();
+    return state.maskedIdentifier || (state.status === "guest" ? "游客云档" : "未连接");
   }
 
   root.RXCloud = {
@@ -161,19 +260,21 @@
     bootstrap,
     syncProfile,
     identity,
+    getAccountState,
     startBattle: (levelId) => api("start-battle", { levelId }),
     finishBattle: (ticket, levelId, rating) => api("finish-battle", { ticket, levelId, rating }),
     abandonBattle: (ticket) => api("abandon-battle", { ticket }),
     sweep: (levelId, count) => api("sweep", { levelId, count }),
-    upgrade: (key) => api("upgrade", { key }),
+    upgrade: (key, operationId = createOperationId()) => api("upgrade", { key, operationId }),
     upgradeFighter: (statType, operationId = createOperationId()) => api("upgrade-fighter", { statType, operationId }, { timeoutMs: 8000 }),
-    buyPilot: (pilotId) => api("buy-pilot", { pilotId }),
-    buyShip: (shipId) => api("buy-ship", { shipId }),
-    saveFighterSkillLoadout: (shipId, loadout) => api("save-fighter-skill-loadout", {
+    buyPilot: (pilotId, operationId = createOperationId()) => api("buy-pilot", { pilotId, operationId }),
+    buyShip: (shipId, operationId = createOperationId()) => api("buy-ship", { shipId, operationId }),
+    saveFighterSkillLoadout: (shipId, loadout, operationId = createOperationId()) => api("save-fighter-skill-loadout", {
       shipId,
       activeSlots: loadout && loadout.activeSlots,
       fixedWeaponOverrides: loadout && loadout.fixedWeaponOverrides,
-      autoWeaponIds: loadout && loadout.autoWeaponIds
+      autoWeaponIds: loadout && loadout.autoWeaponIds,
+      operationId
     }),
     upgradeAutoWeapon: (moduleId, operationId = createOperationId()) => api("upgrade-auto-weapon", { moduleId, operationId }, { timeoutMs: 8000 }),
     upgradeAutoWeaponWithComponents: (moduleId, operationId = createOperationId()) => api("upgrade-auto-weapon-components", { moduleId, operationId }, { timeoutMs: 8000 }),
@@ -196,6 +297,7 @@
       buyMissingTickets: Boolean(buyMissingTickets),
       operationId
     }),
+    commitEconomyBatch: (batch) => api("economy-batch", batch || {}, { timeoutMs: 20000 }),
     claimSignIn: (operationId = createOperationId()) => api("daily-signin", { operationId }),
     useInventoryItem: (itemId, operationId = createOperationId()) => api("inventory-use", { itemId, operationId }),
     sellInventoryItem: (itemId, operationId = createOperationId()) => api("inventory-sell", { itemId, operationId }),
@@ -206,9 +308,32 @@
     promoteUnit: (kind, itemId, tokenId, operationId = createOperationId()) => api("promote-unit", { kind, itemId, tokenId, operationId }),
     starUpPilot: (pilotId, operationId = createOperationId()) => api("pilot-star-up", { pilotId, operationId }),
     starUpFighter: (shipId, operationId = createOperationId()) => api("fighter-star-up", { shipId, operationId }),
-    saveCosmetics: (profile) => api("save-cosmetics", { profile }),
+    activateCodexEntry: (kind, entryId, operationId = createOperationId()) => api("codex-activate", {
+      kind: String(kind || ""),
+      entryId: String(entryId || ""),
+      operationId
+    }),
+    saveCosmetics: (profile, operationId = createOperationId()) => api("save-cosmetics", { profile, operationId }),
+    getPaymentCatalog: (market) => api("payment-catalog", {
+      market: String(market || "")
+    }, { timeoutMs: 20000 }),
+    createPaymentOrder: (offerId, market, paymentScene, idempotencyKey = createOperationId()) => api("payment-order-create", {
+      offerId: String(offerId || ""),
+      market: String(market || ""),
+      paymentScene: String(paymentScene || ""),
+      idempotencyKey: String(idempotencyKey || "")
+    }, { timeoutMs: 20000 }),
+    capturePaypalPayment: (orderId, providerOrderId) => api("payment-paypal-capture", {
+      orderId: String(orderId || ""),
+      providerOrderId: String(providerOrderId || "")
+    }, { timeoutMs: 30000 }),
+    getPaymentOrder: (orderId) => api("payment-order-status", {
+      orderId: String(orderId || "")
+    }, { timeoutMs: 20000 }),
     sendEmailCode,
     verifyEmailCode,
+    sendPhoneCode,
+    verifyPhoneCode,
     accountLabel,
     // Social features
     leaderboardRefresh: () => api("leaderboard-submit", { category: "power" }),

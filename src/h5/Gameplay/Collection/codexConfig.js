@@ -2,7 +2,7 @@
  * 图鉴模块判定配置 (codexConfig.js) — v3.0
  *
  * 仅封装全收集的判定逻辑（v3.0 起里程碑/套装/联动已全部移除，
- * 属性只来自「点亮」+「羁绊」两层）。
+ * 属性只来自「单位激活」+「羁绊激活」两层）。
  * 依赖 scope.codexBalance 和 scope.assets。
  *
  * @module codexConfig
@@ -47,7 +47,7 @@
 
   /**
    * 返回图鉴组合羁绊的逐条状态。
-   * @returns {{ bonds: Array<{def, ownedAll, lit, lightable}>, anyLightable: boolean }}
+   * @returns {{ bonds: Array<{def, ownedAll, activated, activatable}>, anyActivatable: boolean }}
    */
   function getBondsState(profile) {
     var balance = getBalance();
@@ -56,22 +56,26 @@
     var ownedPilots = Array.isArray(owned.pilots) ? owned.pilots : [];
     var ownedShips = Array.isArray(owned.ships) ? owned.ships : [];
     var allIds = ownedPilots.concat(ownedShips);
-    var lit = Array.isArray(profile && profile.codexBonds) ? profile.codexBonds : [];
+    var activated = Array.isArray(profile && profile.codex && profile.codex.activatedBonds)
+      ? profile.codex.activatedBonds
+      : (Array.isArray(profile && profile.codexBonds)
+        ? profile.codexBonds.filter(function keepLegacyBond(id) { return String(id).indexOf("unit:") !== 0; })
+        : []);
 
     var bondsState = bonds.map(function (b) {
       var reqPilots = (b.requires && b.requires.pilots) || [];
       var reqShips = (b.requires && b.requires.ships) || [];
       var ownedAll = hasAllUnits(reqPilots, allIds) && hasAllUnits(reqShips, allIds);
-      var isLit = lit.indexOf(b.id) >= 0;
+      var isActivated = activated.indexOf(b.id) >= 0;
       return {
         def: b,
         ownedAll: ownedAll,
-        lit: isLit,
-        lightable: ownedAll && !isLit
+        activated: isActivated,
+        activatable: ownedAll && !isActivated
       };
     });
-    var anyLightable = bondsState.some(function (s) { return s.lightable; });
-    return { bonds: bondsState, anyLightable: anyLightable };
+    var anyActivatable = bondsState.some(function (s) { return s.activatable; });
+    return { bonds: bondsState, anyActivatable: anyActivatable };
   }
 
   var api = {

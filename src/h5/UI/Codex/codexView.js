@@ -8,7 +8,7 @@
  *
  * 详情区采用「3 张等大卡 + 同一底色」结构：
  *   - 卡 1：图像（机库底色，未解锁剪影受图卡边界裁切）
- *   - 卡 2：信息（出战属性 / 点亮属性 / 参与羁绊 或 核心机制 / 签名技能）
+ *   - 卡 2：信息（出战属性 / 激活属性 / 参与羁绊 或 核心机制 / 签名技能）
  *   - 卡 3：小传 / 战机档案 / 首领战绩
  * BOSS 详情额外要求：上下两区固定 1fr，签名技能溢出走图卡内部滑块。
  *
@@ -224,7 +224,15 @@
     module.appendChild(content);
     dom.featurePanelSlots.appendChild(module);
 
-    renderCategory("pilot", content, profile, opts);
+    renderCategory(lastCategory || "pilot", content, profile, opts);
+    return {
+      refresh: function refresh(nextProfile, statusText, isError) {
+        lastProfile = nextProfile || {};
+        lastStatusText = statusText || "";
+        lastStatusError = Boolean(isError);
+        if (content.isConnected) renderCategory(lastCategory || "pilot", content, lastProfile, lastOpts);
+      }
+    };
   }
 
   function buildNav() {
@@ -250,10 +258,48 @@
 
   var lastProfile = null;
   var lastOpts = {};
+  var lastCategory = "pilot";
+  var lastStatusText = "";
+  var lastStatusError = false;
+
+  function formatBonusPercent(value) {
+    var percent = Math.round((Number(value) || 0) * 10000) / 100;
+    return (Number.isInteger(percent) ? String(percent) : percent.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")) + "%";
+  }
+
+  function updateBonusSummary(container, profile, statusText, isError) {
+    if (!container || !container.querySelector) return;
+    var summary = container.classList && container.classList.contains("codex-bonus-summary")
+      ? container : container.querySelector(".codex-bonus-summary");
+    if (!summary) return;
+    var activation = scope.codexSystem && scope.codexSystem.getActivationSummary
+      ? scope.codexSystem.getActivationSummary(profile)
+      : { activatedUnitCount: 0, activatedBondCount: 0, bonus: {} };
+    var bonus = activation.bonus || {};
+    summary.innerHTML =
+      '<div class="codex-bonus-summary-head"><span>COLLECTION BONUS</span><strong>图鉴总加成</strong></div>' +
+      '<div class="codex-bonus-summary-grid">' +
+        '<div><span>攻击</span><strong>+' + escapeHtml(Number(bonus.attackFlat) || 0) + '</strong></div>' +
+        '<div><span>破甲</span><strong>+' + escapeHtml(formatBonusPercent(bonus.armorPenetrationFlat)) + '</strong></div>' +
+        '<div><span>金币</span><strong>+' + escapeHtml(formatBonusPercent(bonus.coinBonusMultiplier)) + '</strong></div>' +
+      '</div>' +
+      '<small class="codex-bonus-summary-progress' + (isError ? ' is-error' : '') + '" data-codex-sync-status>' +
+        escapeHtml(statusText || ("已激活 " + activation.activatedUnitCount + " 个单位 · " + activation.activatedBondCount + " 组羁绊")) +
+      '</small>';
+  }
+
+  function createBonusSummary(profile) {
+    var summary = document.createElement("section");
+    summary.className = "codex-bonus-summary";
+    summary.setAttribute("aria-label", "图鉴整体属性汇总");
+    updateBonusSummary(summary, profile, lastStatusText, lastStatusError);
+    return summary;
+  }
 
   function renderCategory(category, content, profile, opts) {
     lastProfile = profile;
     lastOpts = opts || {};
+    lastCategory = category;
     // 更新左栏高亮
     var navBtns = content.parentNode.querySelectorAll(".codex-nav-btn");
     for (var i = 0; i < navBtns.length; i++) {
@@ -268,6 +314,7 @@
     indexPane.className = "codex-index-pane";
     var indexHeader = document.createElement("header");
     indexHeader.className = "codex-index-header";
+    var bonusSummary = createBonusSummary(profile);
     var gridWrap = document.createElement("div");
     gridWrap.className = "codex-grid-wrap";
     var grid = document.createElement("div");
@@ -280,6 +327,7 @@
     detail.innerHTML = '<p class="codex-detail-hint">选择档案条目查看完整资料。</p>';
 
     indexPane.appendChild(indexHeader);
+    indexPane.appendChild(bonusSummary);
     indexPane.appendChild(gridWrap);
     content.appendChild(indexPane);
     content.appendChild(detail);
@@ -302,7 +350,7 @@
     var unlockedCount = 0;
     items.forEach(function (item) {
       if (isUnlocked(profile, category, item)) unlockedCount += 1;
-      grid.appendChild(buildCard(category, item, profile, detail));
+      grid.appendChild(buildCard(category, item, profile, detail, lastOpts));
     });
     indexHeader.innerHTML = '<span>' + escapeHtml(cat.code) + ' INDEX</span><strong>' +
       escapeHtml(cat.label) + '</strong><em>' + unlockedCount + ' / ' + items.length + ' 已收录</em>';
@@ -312,12 +360,14 @@
     if (firstCard) firstCard.click();
   }
 
-  function buildCard(category, item, profile, detail) {
+  function buildCard(category, item, profile, detail, opts) {
     var unlocked = isUnlocked(profile, category, item);
-    var lit = (category === "pilot" || category === "ship") && isUnitLit(profile, item._id);
+    var activated = (category === "pilot" || category === "ship") && isUnitActivated(profile, item._id);
+    var activatable = (category === "pilot" || category === "ship") && unlocked && !activated;
     var card = document.createElement("button");
     card.type = "button";
-    card.className = "codex-card codex-card-" + item._kind + (unlocked ? " is-unlocked" : " is-locked") + (lit ? " is-lit" : "");
+    card.className = "codex-card codex-card-" + item._kind + (unlocked ? " is-unlocked" : " is-locked") +
+      (activated ? " is-activated" : activatable ? " is-activatable" : "");
     card.setAttribute("data-codex-id", item._id);
     card.setAttribute("aria-pressed", "false");
 
@@ -364,7 +414,7 @@
       }
       card.classList.add("is-selected");
       card.setAttribute("aria-pressed", "true");
-      renderDetail(category, item, profile, detail, unlocked);
+      renderDetail(category, item, profile, detail, unlocked, opts);
     });
     return card;
   }
@@ -378,9 +428,9 @@
   }
 
   // ── 详情渲染 ────────────────────────────────────────────────
-  function renderDetail(category, item, profile, detail, unlocked) {
-    if (category === "pilot") return renderUnitDetail(item, detail, "pilot", unlocked, profile);
-    if (category === "ship") return renderUnitDetail(item, detail, "ship", unlocked, profile);
+  function renderDetail(category, item, profile, detail, unlocked, opts) {
+    if (category === "pilot") return renderUnitDetail(item, detail, "pilot", unlocked, profile, opts);
+    if (category === "ship") return renderUnitDetail(item, detail, "ship", unlocked, profile, opts);
     if (category === "boss") return renderBossDetail(item, detail, unlocked);
     if (category === "enemy") {
       if (item._kind === "bullet") return renderBulletDetail(item, detail, unlocked);
@@ -388,11 +438,8 @@
     }
   }
 
-  function unitLightKey(id) { return "unit:" + id; }
-
-  function isUnitLit(profile, id) {
-    var litIds = Array.isArray(profile && profile.codexBonds) ? profile.codexBonds : [];
-    return litIds.indexOf(unitLightKey(id)) >= 0;
+  function isUnitActivated(profile, id) {
+    return Boolean(scope.codexSystem && scope.codexSystem.isUnitActivated && scope.codexSystem.isUnitActivated(profile, id));
   }
 
   function unitTypeLabel(type) { return type === "pilot" ? "人物小传" : "战机档案"; }
@@ -408,8 +455,8 @@
     return "该人物档案仍在补录中。";
   }
 
-  function getUnitLightBonus(rank) {
-    var table = getCodexBalance().UNIT_LIGHT_BONUS_BY_RANK || {};
+  function getUnitActivationBonus(rank) {
+    var table = getCodexBalance().UNIT_ACTIVATION_BONUS_BY_RANK || {};
     return table[String(rank || "B").toUpperCase()] || { attackFlat: 0, armorPenetrationFlat: 0 };
   }
 
@@ -443,12 +490,12 @@
   }
 
   // ── 单位详情（战姬 / 战机） ────────────────────────────────
-  function renderUnitDetail(item, detail, type, unlocked, profile) {
+  function renderUnitDetail(item, detail, type, unlocked, profile, opts) {
     var armorPen = getArmorPenetration(type, item._rank);
-    var lightBonus = getUnitLightBonus(item._rank);
-    var bonusAttack = lightBonus.attackFlat || 0;
-    var bonusPenetration = lightBonus.armorPenetrationFlat || 0;
-    var lit = isUnitLit(profile, item._id);
+    var activationBonus = getUnitActivationBonus(item._rank);
+    var bonusAttack = activationBonus.attackFlat || 0;
+    var bonusPenetration = activationBonus.armorPenetrationFlat || 0;
+    var activated = isUnitActivated(profile, item._id);
     var unitBonds = getUnitBonds(profile, item._id);
     var attackVal = Number(item.damage) || 0;
     var hpVal = type === "ship" ? (Number(item.hp) || 0) : 0;
@@ -468,7 +515,7 @@
     if (item.codeName) html += '<span class="codex-detail-code">代号 / ' + escapeHtml(item.codeName) + '</span>';
     html += '</div></div>';
     html += '<span class="codex-detail-status ' + (unlocked ? "is-unlocked" : "is-locked") + '">' +
-      (unlocked ? (lit ? "已点亮" : "已收录") : "待解锁") + '</span>';
+      (unlocked ? (activated ? "已激活" : "已收录") : "待解锁") + '</span>';
     html += '</header>';
 
     html += '<div class="codex-info-body">';
@@ -482,10 +529,10 @@
     html += statRowTile("出战破甲", penVal + "%", penVal);
     html += '</div></section>';
 
-    // ② 点亮属性（与参与羁绊平级，被 .codex-unit-synergy 包裹以保持可点亮的触发位）
+    // ② 激活属性（与参与羁绊平级，由图鉴控制器处理激活）
     html += '<section class="codex-unit-synergy">';
     html += '<div class="codex-unit-reward">';
-    html += '<div class="codex-info-section-head"><span>ARCHIVE REWARD</span><h4>点亮属性</h4></div>';
+    html += '<div class="codex-info-section-head"><span>ARCHIVE REWARD</span><h4>激活属性</h4></div>';
     html += '<div class="codex-reward-row">';
     html += '<div class="codex-reward-tile"><span>攻击</span><strong>+' + bonusAttack + '</strong></div>';
     if (bonusPenetration) {
@@ -493,10 +540,10 @@
     }
     if (!unlocked) {
       html += '<span class="codex-reward-state">待解锁</span>';
-    } else if (!lit) {
-      html += '<button type="button" class="codex-unit-light-btn" data-codex-light-unit="' + escapeAttr(item._id) + '">点亮属性</button>';
+    } else if (!activated) {
+      html += '<button type="button" class="codex-unit-activate-btn" data-codex-activate-unit="' + escapeAttr(item._id) + '">激活属性</button>';
     } else {
-      html += '<span class="codex-reward-state is-on">已点亮</span>';
+      html += '<span class="codex-reward-state is-on">已激活</span>';
     }
     html += '</div></div>';
 
@@ -505,8 +552,8 @@
     if (unitBonds.length) {
       html += '<div class="codex-unit-bond-chips">';
       unitBonds.forEach(function (ub) {
-        html += '<span class="codex-unit-bond-chip ' + (ub.lit ? "is-lit" : ub.lightable ? "is-lightable" : "is-locked") + '">' +
-          escapeHtml(ub.def.name) + (ub.lit ? " · 已点亮" : ub.lightable ? " · 可点亮" : " · 未集齐") + '</span>';
+        html += '<span class="codex-unit-bond-chip ' + (ub.activated ? "is-activated" : ub.activatable ? "is-activatable" : "is-locked") + '">' +
+          escapeHtml(ub.def.name) + (ub.activated ? " · 已激活" : ub.activatable ? " · 可激活" : " · 未集齐") + '</span>';
       });
       html += '</div>';
     } else {
@@ -527,18 +574,10 @@
     html += '</div>';
     detail.innerHTML = html;
 
-    var lightBtn = detail.querySelector("[data-codex-light-unit]");
-    if (lightBtn) {
-      lightBtn.addEventListener("click", function () {
-        profile.codexBonds = Array.isArray(profile.codexBonds) ? profile.codexBonds : [];
-        var lightId = unitLightKey(item._id);
-        if (profile.codexBonds.indexOf(lightId) < 0) profile.codexBonds.push(lightId);
-        if (lastOpts && typeof lastOpts.persistProfileMetadata === "function") {
-          try { lastOpts.persistProfileMetadata(); } catch (e) {}
-        }
-        var selectedCard = detail.parentNode && detail.parentNode.querySelector('.codex-card[data-codex-id="' + item._id + '"]');
-        if (selectedCard) selectedCard.classList.add("is-lit");
-        renderUnitDetail(item, detail, type, unlocked, profile);
+    var activateBtn = detail.querySelector("[data-codex-activate-unit]");
+    if (activateBtn) {
+      activateBtn.addEventListener("click", function () {
+        if (opts && typeof opts.onActivate === "function") opts.onActivate("unit", item._id);
       });
     }
   }
@@ -703,7 +742,7 @@
     var def = bs.def;
     var card = document.createElement("button");
     card.type = "button";
-    card.className = "codex-bond codex-bond-" + (bs.lit ? "lit" : bs.lightable ? "lightable" : "locked");
+    card.className = "codex-bond " + (bs.activated ? "activated" : bs.activatable ? "activatable" : "locked");
     card.setAttribute("data-bond-id", def.id);
     card.setAttribute("aria-pressed", "false");
 
@@ -713,7 +752,7 @@
 
     var state = document.createElement("span");
     state.className = "codex-bond-state";
-    state.textContent = bs.lit ? "已点亮" : bs.lightable ? "可点亮" : "未集齐";
+    state.textContent = bs.activated ? "已激活" : bs.activatable ? "可激活" : "未集齐";
 
     card.appendChild(name);
     card.appendChild(state);
@@ -784,8 +823,8 @@
     html += '<section class="codex-bond-lower">';
     html += '<div class="codex-bond-head">';
     html += '<div><h3>' + escapeHtml(def.name) + '</h3></div>';
-    html += '<span class="codex-bond-badge ' + (bs.lit ? "is-lit" : bs.lightable ? "is-lightable" : "is-locked") + '">' +
-      (bs.lit ? "已点亮" : bs.lightable ? "可点亮" : "未集齐") + '</span>';
+    html += '<span class="codex-bond-badge ' + (bs.activated ? "is-activated" : bs.activatable ? "is-activatable" : "is-locked") + '">' +
+      (bs.activated ? "已激活" : bs.activatable ? "可激活" : "未集齐") + '</span>';
     html += '</div>';
 
     html += '<div class="codex-bond-dashboard">';
@@ -796,14 +835,14 @@
     html += '</section>';
 
     html += '<section class="codex-bond-bonus">';
-    html += '<h4>点亮后加成</h4><div class="codex-bond-bonus-grid">';
+    html += '<h4>激活后加成</h4><div class="codex-bond-bonus-grid">';
     if (bonus.attackFlat) html += '<span>攻击 +' + bonus.attackFlat + '</span>';
     if (bonus.armorPenetrationFlat) html += '<span>破甲 +' + Math.round(bonus.armorPenetrationFlat * 100) + '%</span>';
     if (bonus.coinBonusMultiplier) html += '<span>金币 +' + Math.round(bonus.coinBonusMultiplier * 100) + '%</span>';
     if (!bonus.attackFlat && !bonus.armorPenetrationFlat && !bonus.coinBonusMultiplier) html += '<span>—</span>';
     html += '</div>';
-    if (bs.lightable) {
-      html += '<button type="button" class="codex-bond-light-btn" data-bond-light="' + escapeAttr(def.id) + '">点亮羁绊</button>';
+    if (bs.activatable) {
+      html += '<button type="button" class="codex-bond-activate-btn" data-bond-activate="' + escapeAttr(def.id) + '">激活羁绊</button>';
     }
     html += '</section>';
     html += '</div>';
@@ -813,18 +852,10 @@
     html += '</section></section></div>';
     detail.innerHTML = html;
 
-    var lightBtn = detail.querySelector("[data-bond-light]");
-    if (lightBtn) {
-      lightBtn.addEventListener("click", function () {
-        if (!profile.codexBonds) profile.codexBonds = [];
-        if (profile.codexBonds.indexOf(def.id) >= 0) return;
-        profile.codexBonds.push(def.id);
-        if (opts && typeof opts.persistProfileMetadata === "function") {
-          try { opts.persistProfileMetadata(); } catch (e) {}
-        }
-        renderCategory("bond", detail.parentNode, profile, opts);
-        var justLit = detail.parentNode && detail.parentNode.querySelector('.codex-bond[data-bond-id="' + def.id + '"]');
-        if (justLit) justLit.classList.add("codex-bond-justlit");
+    var activateBtn = detail.querySelector("[data-bond-activate]");
+    if (activateBtn) {
+      activateBtn.addEventListener("click", function () {
+        if (opts && typeof opts.onActivate === "function") opts.onActivate("bond", def.id);
       });
     }
   }

@@ -245,6 +245,13 @@
       return performDraw(lastDrawCount, false);
     }
 
+    function skipReveal() {
+      var layer = mount && mount.querySelector ? mount.querySelector(".gacha-result-layer") : null;
+      if (!layer) return false;
+      layer.classList.add("is-skipped");
+      return true;
+    }
+
     return {
       actions: {
         "gacha.open": open,
@@ -254,7 +261,8 @@
         "gacha.confirmTopUp": confirmTopUp,
         "gacha.cancelTopUp": cancelTopUp,
         "gacha.back": backToGacha,
-        "gacha.redraw": redraw
+        "gacha.redraw": redraw,
+        "gacha.skipReveal": skipReveal
       },
       dispose: function dispose() { close(); if (view && view.clear) view.clear(); }
     };

@@ -4,6 +4,7 @@
   if (!registry) return;
   registry.defineRoom("setting", function createSettingsRoom(context) {
     var audio = context.audioSystem;
+    var visualQuality = context.visualQualitySystem;
 
     function unlock(mode) {
       if (!audio || !audio.unlock) return false;
@@ -20,8 +21,16 @@
     }
 
     function handleClick(event) {
-      if (!audio) return false;
       var target = event && event.target;
+      var qualityButton = target && target.closest ? target.closest("[data-visual-quality]") : null;
+      if (qualityButton && visualQuality && visualQuality.setMode) {
+        var mode = qualityButton.dataset.visualQuality;
+        if (context.applyVisualQuality) context.applyVisualQuality(mode, false);
+        else visualQuality.setMode(mode);
+        render();
+        return true;
+      }
+      if (!audio) return false;
       var toggle = target && target.closest ? target.closest("[data-audio-toggle]") : null;
       if (toggle) {
         unlock(context.getState() && context.getState().mode);
@@ -50,7 +59,7 @@
       unlock(context.getState() && context.getState().mode);
       if (input.dataset.audioVolume === "music" && audio.setMusicVolume) audio.setMusicVolume(value);
       if (input.dataset.audioVolume === "sfx" && audio.setSfxVolume) audio.setSfxVolume(value);
-      var row = input.closest(".settings-control-row");
+      var row = input.closest(".settings-row");
       var text = row && row.querySelector("p");
       if (text) text.textContent = "当前 " + Math.round(value * 100) + "%，拖动后即时生效。";
       return true;

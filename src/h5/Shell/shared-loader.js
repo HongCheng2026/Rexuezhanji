@@ -11,7 +11,7 @@
   // ── Domain architecture: single source of truth for load order ──
   // Foundation/Data live under src/h5/{Game,Gameplay,World,UI,Data,Presentation}/.
   const sharedFiles = [
-    "Game/Core/runtimeCore.js","Presentation/Assets/assets.js","Game/EventBus/eventBus.js","Game/EventBus/events.js",
+    "Game/Core/runtimeCore.js","Presentation/Assets/assets.js","Game/EventBus/eventBus.js","Game/EventBus/events.js","World/Time/worldTimeSystem.js",
     "Game/SceneManager/roomRegistry.js",
     "Data/Balance/balance.js","World/Level/levels.js","Gameplay/Fighter/tacticalLoadoutConfig.js",
     "World/Level/stageHonorSystem.js","Gameplay/Player/commanderLevel.js","Gameplay/Player/profile.js",
@@ -37,25 +37,25 @@
   // Load H5-only modules from both source preview and release packages.
   const h5Files = [
     "Gameplay/Fighter/combatStats.js","Gameplay/Combat/powerCalculator.js","Gameplay/Combat/derivedStatsCache.js","Game/Gateway/gameGateway.js","Game/Gateway/gatewayCoordinator.js","Game/Storage/profileRuntime.js","Game/Storage/profileSession.js",
-    "Presentation/Audio/audioSystem.js",
+    "Presentation/Audio/audioSystem.js","Presentation/Graphics/visualQualitySystem.js","Presentation/Graphics/framePacingMonitor.js",
     "UI/Lobby/ResourceExchange/resourceExchangeModel.js","UI/Lobby/ResourceExchange/resourceExchangeView.js",
     "UI/Gacha/gachaConfig.js","UI/Gacha/gachaModel.js","UI/Gacha/gachaStateStore.js","UI/Gacha/gachaView.js",
     "UI/Inventory/inventoryCatalog.js","UI/Inventory/inventoryModel.js","UI/Inventory/inventoryView.js",
-    "UI/Lobby/lobbyController.js","Gameplay/Player/profileController.js","UI/Pilot/pilotView.js","UI/Fighter/fighterView.js","Gameplay/Fighter/fighterUpgradeApi.js","Gameplay/Player/profileStore.js",
+    "UI/Honor/playerHonorView.js","UI/Lobby/lobbyController.js","Gameplay/Player/profileController.js","UI/Pilot/pilotView.js","UI/Fighter/fighterView.js","Gameplay/Fighter/fighterUpgradeApi.js","Gameplay/Player/profileStore.js",
     "UI/AutoSkill/autoSkillModule.js","UI/Fighter/Upgrade/fighterUpgradeAssets.js","UI/Fighter/Upgrade/fighterUpgradeModel.js","UI/Fighter/Upgrade/fighterUpgradeView.js",
-    "UI/FeaturePanels/contactView.js","UI/FeaturePanels/featurePanelController.js",
-    "UI/Codex/codexBossMechanics.js","UI/Codex/codexView.js",
+    "UI/FeaturePanels/contactView.js","UI/Payment/vendor/qrcode-generator.js","UI/Payment/rechargeView.js","UI/FeaturePanels/featurePanelController.js",
+    "UI/Codex/codexBossMechanics.js","UI/Codex/codexView.js","UI/Codex/codexController.js",
     "UI/FeaturePanels/economyFeatureController.js","UI/HUD/battleUiController.js",
     "Game/Core/battleFlowController.js","Gameplay/Combat/Endless/endlessModeRoomController.js",
     "Gameplay/Collection/codexSystem.js",
     "World/Story/storyRoom.js","Gameplay/Combat/battleRoom.js","UI/Lobby/lobbyRoom.js","UI/Lobby/ResourceExchange/resourceExchangeRoom.js","UI/Gacha/gachaRoom.js","UI/Inventory/inventoryRoom.js",
-    "World/Result/settlementRoom.js","UI/Pilot/pilotRoom.js","UI/Fighter/fighterRoom.js","UI/FeaturePanels/featurePanelRoom.js",
+    "World/Result/settlementRoom.js","UI/Pilot/pilotRoom.js","UI/Fighter/fighterRoom.js","UI/Payment/rechargeRoom.js","UI/FeaturePanels/featurePanelRoom.js",
     "UI/Fighter/Upgrade/fighterUpgradeRoom.js","Gameplay/Player/profileRoom.js",
     "UI/FeaturePanels/contactRoom.js","UI/FeaturePanels/redeemRoom.js","UI/Settings/settingsRoom.js",
     "Gameplay/Combat/Endless/endlessRoom.js",
     "World/Mission/taskView.js","World/Mission/achievementRoom.js","World/Mission/taskRoom.js","World/Mission/activityRoom.js","UI/Codex/codexRoom.js","UI/Shop/ShopRoom.js",
     "UI/FeaturePanels/mailRoom.js","UI/FeaturePanels/signinRoom.js",
-    "Game/SceneManager/gameEventRouter.js","Game/Core/demoMode.js","Presentation/Assets/runtimeTheme.js","Game/Core/applicationRuntime.js","Game/Core/gameApp.js","Game/Gateway/localGateway.js",
+    "Game/SceneManager/gameEventRouter.js","Game/Core/demoMode.js","Presentation/Assets/runtimeTheme.js","Game/Core/applicationRuntime.js","Game/Core/gameApp.js","Game/Gateway/localGateway.js","Game/Gateway/economySession.js",
     "Gameplay/Fighter/tacticalLoadoutSystem.js","Gameplay/Combat/battleGeometry.js","Gameplay/Combat/skillVisualTheme.js",
     "Gameplay/Combat/battleState.js","Gameplay/Combat/battleInput.js",
     "Gameplay/Combat/weaponSystem.js","Gameplay/Combat/extensionWeaponSystem.js",
@@ -72,6 +72,7 @@
     "UI/ChapterSelect/chapterSelectView.js","UI/Sweep/sweepDialogView.js",
     "World/Story/campaignStoryPlayerView.js","UI/PauseMenu/battlePauseView.js",
     "UI/HUD/battleUiView.js",
+    "UI/Leaderboard/leaderboardView.js",
     "UI/FeaturePanels/mainFeaturePanelsView.js",
     "UI/FeaturePanels/socialFeaturePanelsView.js","UI/FeaturePanels/eventModeHubView.js",
     "Presentation/Endless/endlessModeEntryView.js",
@@ -96,9 +97,9 @@
     }
     // critical modules that MUST be present for the game to boot
     var critical = [
-      "runtimeCore", "assets", "bus", "profile", "battleRules",
+      "runtimeCore", "assets", "bus", "worldTimeSystem", "profile", "battleRules",
       "balance", "levels", "combatCodexConfig", "enemyStageBalance",
-      "gameApp", "localGateway", "roomRegistry", "gameEventRouter", "gameGateway", "profileRuntime", "audioSystem",
+      "gameApp", "localGateway", "economySession", "roomRegistry", "gameEventRouter", "gameGateway", "profileRuntime", "audioSystem", "visualQualitySystem", "framePacingMonitor", "playerHonorView",
       "battleState", "weaponSystem", "skillVisualTheme", "enemySystem", "enemyAI", "bossSystem", "fxSystem", "collisionSystem",
       "canvasRenderer", "fighterUpgradeAssets", "fighterUpgradeModel", "fighterUpgradeView",
       "resourceExchangeModel", "resourceExchangeView"

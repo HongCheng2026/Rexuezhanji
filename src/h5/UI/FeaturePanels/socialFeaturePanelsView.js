@@ -2,11 +2,6 @@
   "use strict";
 
   var scope = root.RXGame || (root.RXGame = {});
-  var panelState = { ranking: "战力榜" };
-  var panelTabs = {
-    ranking: ["战力榜", "通关榜", "荣誉榜"]
-  };
-
   /* ── 社交枢纽状态 ── */
   var socialTab = "friend";
   var socialSelected = null;
@@ -21,29 +16,6 @@
 
   function escapeAttr(value) {
     return escapeHtml(value);
-  }
-
-  function formatNumber(value) {
-    return String(Math.max(0, Math.floor(Number(value) || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  }
-
-  function renderResources(profile) {
-    var resources = profile && profile.resources || {};
-    var gold = resources.gold != null ? resources.gold : profile && profile.coins || 0;
-    return '<div class="feature-panel-resources">' +
-      '<span><i class="gold"></i>金币 <b>' + formatNumber(gold) + '</b></span>' +
-      '<span><i class="diamond"></i>钻石 <b>' + formatNumber(resources.diamonds || 0) + '</b></span>' +
-      '<span><i class="energy"></i>体力 <b>' + formatNumber(resources.energy || 0) + (resources.maxEnergy ? '/' + formatNumber(resources.maxEnergy) : '') + '</b></span>' +
-      '</div>';
-  }
-
-  function renderTabs(panel, tabs) {
-    var active = panelState[panel] || tabs[0];
-    var html = '<nav class="feature-tabs">';
-    for (var i = 0; i < tabs.length; i++) {
-      html += '<button type="button" class="' + (tabs[i] === active ? 'is-active' : '') + '" data-feature-panel="' + panel + '" data-feature-tab-index="' + i + '">' + escapeHtml(tabs[i]) + '</button>';
-    }
-    return html + '</nav>';
   }
 
   /* ═══════════════════════════════════════════
@@ -304,86 +276,6 @@
     if (el) el.textContent = msg || "";
   }
 
-  function getProgress(profile) {
-    return profile && profile.progress || {};
-  }
-
-  function getBestHonor(profile) {
-    var honors = getProgress(profile).stageHonors || {};
-    var best = 0;
-    Object.keys(honors).forEach(function (key) {
-      best = Math.max(best, Number(honors[key]) || 0);
-    });
-    return best;
-  }
-
-  function renderRankingPanel(profile, combatPower, options) {
-    options = options || {};
-    profile = profile || {};
-    var gateway = options.getGameGateway && options.getGameGateway();
-    var dom = options.dom;
-    var isCloud = Boolean(gateway && gateway.isCloud);
-    var active = panelState.ranking;
-    var category = active === "通关榜" ? "clear" : active === "荣誉榜" ? "honor" : "power";
-    var formatter = category === "clear" ? function (value) { return formatNumber(value) + " 关"; } : category === "honor" ? function (value) { return value ? "Tier " + value : "未记录"; } : formatNumber;
-    var fallback = scope.featurePanelContent && scope.featurePanelContent.RANKING_CONTENT || {};
-    var rows = isCloud ? [] : (fallback[category] || []).slice();
-    if (!isCloud) rows.push({ name: profile.player && profile.player.name || "本地指挥官", title: "星港新锐", score: category === "clear" ? Number(getProgress(profile).clearCount) || 0 : category === "honor" ? getBestHonor(profile) : Number(combatPower) || 0, tag: "我的" });
-    rows.sort(function (a, b) { return Number(b.score) - Number(a.score); });
-    var list = '<section class="ranking-board board-page feature-board" data-ranking-board>' + renderResources(profile) + renderTabs("ranking", panelTabs.ranking) +
-      '<section class="ranking-layout"><article class="ranking-podium"><div class="season-copy"><span>SEASON 01</span><strong>星港先锋赛季</strong><p>实时云端记录</p></div><div class="podium-grid" data-ranking-podium>' + renderPodium(rows.slice(0, 3), formatter) + '</div></article>' +
-      '<section class="ranking-table"><section class="board-section-head"><div><strong>' + escapeHtml(active) + '</strong><span data-ranking-source>' + (isCloud ? '正在连接云端榜单' : '本地模拟榜单') + '</span></div><p>切换标签刷新</p></section>' +
-      '<header><span>排名</span><span>玩家</span><span>称号</span><span>成绩</span></header><div class="ranking-rows" data-ranking-rows>' + renderRankingRows(rows.slice(3), formatter, 4) + '</div>' +
-      '<footer><span>赛季奖励</span><strong>首版仅展示成绩，不从客户端提交分数</strong><button type="button" disabled>规则</button></footer></section></section></section>';
-
-    if (isCloud && gateway.leaderboardFetch) {
-      setTimeout(function loadLeaderboard() {
-        gateway.leaderboardFetch(category).then(function (data) {
-          updateRankingBoard(dom, data.rows || [], formatter, data.self);
-        }).catch(function () {
-          var board = dom && dom.featurePanelSlots && dom.featurePanelSlots.querySelector("[data-ranking-board]");
-          var source = board && board.querySelector("[data-ranking-source]");
-          var rowRoot = board && board.querySelector("[data-ranking-rows]");
-          if (source) source.textContent = "连接失败，请切换标签重试";
-          if (rowRoot) rowRoot.innerHTML = '<p class="ranking-empty-hint">云端排行榜暂时不可用。</p>';
-        });
-      }, 0);
-    }
-    return list;
-  }
-
-  function renderPodium(rows, formatter) {
-    var padded = rows.slice(0, 3);
-    while (padded.length < 3) padded.push({ name: "-", title: "暂无记录", score: 0 });
-    return [1, 0, 2].map(function (index) {
-      var row = padded[index];
-      return '<article class="podium-rank rank-' + (index + 1) + '"><span>' + (index + 1) + '</span>' + (index === 0 ? '<b class="podium-crown">♛</b>' : '') + '<i>' + escapeHtml((row.name || "-").slice(0, 2)) + '</i><strong>' + escapeHtml(row.name) + '</strong><p>' + escapeHtml(row.title || "") + '</p><em>' + escapeHtml(formatter(row.score)) + '</em></article>';
-    }).join("");
-  }
-
-  function renderRankingRows(rows, formatter, offset, self) {
-    return rows.map(function (row, index) {
-      var rank = offset + index;
-      var isSelf = Boolean(self && self.rank === rank);
-      return '<article class="' + (isSelf ? 'is-self' : '') + '"><b>' + String(rank).padStart(2, "0") + '</b><i>' + escapeHtml((row.name || "-").slice(0, 1)) + '</i><strong>' + escapeHtml(row.name) + '</strong><span>' + escapeHtml(row.title || "") + '</span><em>' + escapeHtml(formatter(row.score)) + '</em>' + (isSelf ? '<u>你的位置</u>' : '') + '</article>';
-    }).join("") || '<p class="ranking-empty-hint">暂无更多排名</p>';
-  }
-
-  function updateRankingBoard(dom, rows, formatter, self) {
-    var board = dom && dom.featurePanelSlots && dom.featurePanelSlots.querySelector("[data-ranking-board]");
-    if (!board) return;
-    var source = board.querySelector("[data-ranking-source]");
-    if (source) source.textContent = "云端实时榜单";
-    var podium = board.querySelector("[data-ranking-podium]");
-    var rowRoot = board.querySelector("[data-ranking-rows]");
-    if (podium) podium.innerHTML = renderPodium(rows.slice(0, 3), formatter);
-    if (rowRoot) {
-      var html = renderRankingRows(rows.slice(3), formatter, 4, self);
-      if (self && self.rank > rows.length) html += '<article class="is-self"><b>' + String(self.rank).padStart(2, "0") + '</b><strong>你的排名</strong><span></span><em>' + escapeHtml(formatter(self.score)) + '</em><u>你的位置</u></article>';
-      rowRoot.innerHTML = html;
-    }
-  }
-
   function renderChatPanel(options) {
     options = options || {};
     var gateway = options.getGameGateway && options.getGameGateway();
@@ -458,21 +350,11 @@
 
   function renderPanel(key, options) {
     if (key === "friend") { if (options && options.dom) options.dom._socialOpts = { getGate: function () { var g = options.getGameGateway; return g ? g() : null; }, isCloud: function () { var g = options.getGameGateway && options.getGameGateway(); return Boolean(g && g.isCloud); } }; return renderSocialHub(options); }
-    if (key === "ranking") return renderRankingPanel(options.profile, options.combatPower, options);
     if (key === "chat") return renderChatPanel(options);
     return "";
   }
 
-  function handleEvent(event, dom, options) {
-    var tab = event.target && event.target.closest ? event.target.closest("[data-feature-tab]") : null;
-    var panel = tab && tab.dataset && tab.dataset.featurePanel;
-    if (!panelTabs[panel]) return false;
-    var index = Math.floor(Number(tab.dataset.featureTabIndex));
-    var next = panelTabs[panel][index];
-    if (!next) return false;
-    panelState[panel] = next;
-    return scope.mainFeaturePanelsView.renderPanel(panel, dom, options || {});
-  }
+  function handleEvent() { return false; }
 
   function handleClick(event, dom, options) {
     options = options || {};

@@ -342,35 +342,6 @@
   white-space: nowrap;
 }
 
-.lobby-screen .pilot-honor {
-  align-items: center;
-  display: grid;
-  grid-template-rows: 58px 22px 12px;
-  justify-items: center;
-}
-
-.lobby-screen .pilot-honor-icon {
-  background: var(--rx-a-pilot-honor-icon) center / contain no-repeat;
-  display: block;
-  height: 56px;
-  width: 64px;
-}
-
-.lobby-screen .pilot-badge {
-  color: #ffe18b;
-  font-size: 21px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.lobby-screen .pilot-honor-label {
-  color: #ffe5a0;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1;
-}
-
 .lobby-screen .resource-strip {
   inset: 0;
   pointer-events: none;
@@ -495,28 +466,94 @@
   width: 200px;
 }
 
-.lobby-screen .starport-log {
-  color: rgba(141, 231, 255, 0.82);
-  display: grid;
-  font-size: 8px;
-  gap: 2px;
-  left: 1092px;
-  line-height: 1.05;
+.lobby-screen .world-time-panel {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  height: 42px;
+  isolation: isolate;
+  justify-content: center;
+  left: 1458px;
+  padding: 0 8px 0 16px;
+  pointer-events: auto;
+  position: absolute;
+  top: 21px;
+  transition: filter 0.16s ease;
+  width: 86px;
+  z-index: 2;
+}
+
+.lobby-screen .world-time-panel::before {
+  background: linear-gradient(112deg,
+    transparent 0 24%,
+    rgba(112, 225, 255, 0.28) 25% 32%,
+    transparent 33% 48%,
+    rgba(112, 225, 255, 0.72) 49% 57%,
+    transparent 58% 100%);
+  content: "";
+  height: 24px;
+  left: 1px;
+  opacity: 0.86;
+  position: absolute;
+  top: 9px;
+  width: 15px;
+  z-index: 1;
+}
+
+.lobby-screen .world-time-panel:hover,
+.lobby-screen .world-time-panel:focus-within {
+  filter: brightness(1.13) drop-shadow(0 0 7px rgba(74, 208, 255, 0.22));
+}
+
+.lobby-screen .world-time-panel::after {
+  background: linear-gradient(90deg, rgba(3, 20, 34, 0.94), rgba(5, 31, 49, 0.8));
+  clip-path: polygon(7px 0, 100% 0, 100% 100%, 0 100%, 0 7px);
+  color: rgba(197, 240, 255, 0.9);
+  content: attr(data-date);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  padding: 4px 8px 4px 10px;
   pointer-events: none;
   position: absolute;
-  text-align: left;
-  top: 94px;
-  width: 160px;
-}
-
-.lobby-screen .starport-log strong {
-  color: #91ebff;
-  font-size: 9px;
-  letter-spacing: 0.04em;
-}
-
-.lobby-screen .starport-log span {
+  right: 4px;
+  text-shadow: 0 1px 4px #020914;
+  top: 44px;
+  transform: translateY(-3px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
   white-space: nowrap;
+  z-index: 3;
+}
+
+.lobby-screen .world-time-panel:hover::after,
+.lobby-screen .world-time-panel:focus-within::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.lobby-screen .world-time-clock {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #d8f7ff 42%, #74d7f7 100%);
+  background-clip: text;
+  color: #d8f8ff;
+  cursor: help;
+  filter: drop-shadow(0 0 5px rgba(74, 208, 255, 0.38));
+  font-family: Bahnschrift, "Arial Narrow", sans-serif;
+  font-feature-settings: "tnum" 1, "zero" 1;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.lobby-screen .world-time-clock:focus-visible {
+  outline: 0;
+  filter: drop-shadow(0 0 8px rgba(116, 225, 255, 0.82));
 }
 
 .lobby-screen .quick-nav {
@@ -525,12 +562,18 @@
   gap: 4px;
   grid-template-columns: repeat(4, 1fr);
   height: 68px;
-  left: 1252px;
+  left: 1216px;
   padding: 8px 12px;
   pointer-events: auto;
   position: absolute;
   top: 8px;
-  width: 280px;
+  width: 242px;
+}
+
+.lobby-screen .quick-nav > .hud-skin-wide {
+  inset: 0 -86px 0 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 .lobby-screen .quick-icon {

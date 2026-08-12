@@ -1,0 +1,154 @@
+.feature-panel.recharge-feature-panel .feature-panel-card {
+  width: min(1180px, calc(100vw - 64px));
+}
+.feature-panel.recharge-feature-panel .feature-panel-copy { display: none; }
+.feature-panel.recharge-feature-panel .feature-panel-slots { padding: 0; }
+.recharge-center, .recharge-center * { box-sizing: border-box; }
+.recharge-center {
+  --pay-cyan: #78e7ff;
+  --pay-blue: #3478ff;
+  --pay-gold: #f7c867;
+  --pay-ink: #071525;
+  color: #eaf8ff;
+  width: 100%;
+}
+.recharge-center__shell {
+  background:
+    linear-gradient(135deg, rgba(30, 101, 160, .18), transparent 38%),
+    linear-gradient(180deg, rgba(7, 24, 42, .97), rgba(3, 12, 24, .98));
+  border: 1px solid rgba(120, 231, 255, .3);
+  border-radius: 18px;
+  min-height: 560px;
+  overflow: hidden;
+  padding: 26px;
+  position: relative;
+}
+.recharge-center__shell::before {
+  background: linear-gradient(90deg, transparent, var(--pay-cyan), transparent);
+  content: "";
+  height: 1px;
+  left: 5%;
+  opacity: .7;
+  position: absolute;
+  right: 5%;
+  top: 0;
+}
+.recharge-center__hero { align-items: center; display: flex; gap: 24px; justify-content: space-between; }
+.recharge-center__hero span { color: var(--pay-cyan); font-size: 11px; font-weight: 800; letter-spacing: .22em; }
+.recharge-center__hero h2 { font-size: clamp(24px, 3vw, 38px); margin: 3px 0; }
+.recharge-center__hero p { color: #9ab4c8; margin: 0; }
+.recharge-center__wallet {
+  background: rgba(50, 118, 186, .14);
+  border: 1px solid rgba(120, 231, 255, .26);
+  border-radius: 13px;
+  min-width: 132px;
+  padding: 12px 18px;
+  text-align: right;
+}
+.recharge-center__wallet small { color: #8aa7bd; display: block; }
+.recharge-center__wallet strong { color: var(--pay-cyan); font-size: 25px; }
+.recharge-center__markets { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; margin: 22px 0 14px; }
+.recharge-center__markets button {
+  background: rgba(7, 28, 49, .82);
+  border: 1px solid rgba(116, 155, 188, .28);
+  border-radius: 12px;
+  color: #a9bfd0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  text-align: left;
+}
+.recharge-center__markets button.is-active { background: linear-gradient(135deg, rgba(52, 120, 255, .3), rgba(31, 211, 234, .12)); border-color: var(--pay-cyan); color: #fff; }
+.recharge-center__markets b { font-size: 16px; }
+.recharge-center__markets small { margin-top: 3px; opacity: .74; }
+.recharge-center__toolbar { align-items: center; display: flex; justify-content: space-between; margin-bottom: 12px; }
+.recharge-center__toolbar > div { background: rgba(2, 10, 19, .7); border-radius: 10px; display: flex; padding: 3px; }
+.recharge-center__toolbar button { background: transparent; border: 0; border-radius: 8px; color: #8da6ba; cursor: pointer; padding: 8px 15px; }
+.recharge-center__toolbar button.is-active { background: rgba(52, 120, 255, .34); color: #fff; }
+.recharge-center__toolbar .recharge-center__refresh { border: 1px solid rgba(120, 231, 255, .22); }
+.recharge-center__eligibility {
+  align-items: center;
+  background: rgba(56, 178, 155, .1);
+  border: 1px solid rgba(91, 227, 194, .25);
+  border-radius: 9px;
+  color: #a9dbc9;
+  display: flex;
+  gap: 9px;
+  margin: 0 0 15px;
+  padding: 9px 12px;
+}
+.recharge-center__eligibility.is-blocked { background: rgba(212, 121, 45, .1); border-color: rgba(247, 200, 103, .3); color: #f2c989; }
+.recharge-center__eligibility i { background: currentColor; border-radius: 50%; height: 7px; width: 7px; }
+.recharge-center__eligibility span { flex: 1; }
+.recharge-center__eligibility button { background: transparent; border: 1px solid currentColor; border-radius: 7px; color: inherit; cursor: pointer; padding: 5px 9px; }
+.recharge-center__offers { display: grid; gap: 13px; grid-template-columns: repeat(3, minmax(0, 1fr)); min-height: 216px; }
+.recharge-center__offer {
+  background: linear-gradient(160deg, rgba(20, 50, 79, .88), rgba(4, 17, 31, .96));
+  border: 1px solid rgba(96, 157, 206, .3);
+  border-radius: 13px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  min-height: 190px;
+  overflow: hidden;
+  padding: 15px;
+  position: relative;
+}
+.recharge-center__offer:hover { border-color: rgba(120, 231, 255, .62); transform: translateY(-1px); }
+.recharge-center__offer header span { color: #6fa5cd; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.recharge-center__offer h3 { font-size: 18px; margin: 3px 0; }
+.recharge-center__offer p { color: #a8bdcd; font-size: 12px; grid-column: 1 / -1; margin: 10px 0; }
+.recharge-center__crystal { align-items: center; display: flex; justify-content: center; min-width: 64px; position: relative; }
+.recharge-center__crystal i { background: linear-gradient(135deg, #d6fbff, #3985ff 48%, #213b9d); box-shadow: 0 0 22px rgba(71, 162, 255, .6); clip-path: polygon(50% 0, 88% 26%, 75% 82%, 50% 100%, 25% 82%, 12% 26%); height: 48px; width: 38px; }
+.recharge-center__crystal b { color: #fff; font-size: 12px; position: absolute; text-shadow: 0 1px 4px #001; }
+.recharge-center__offer > button {
+  background: linear-gradient(135deg, #2a78ff, #24c5e8);
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  grid-column: 1 / -1;
+  min-height: 37px;
+}
+.recharge-center__offer > button:disabled { background: #293c4b; color: #758999; cursor: not-allowed; }
+.recharge-center__bonus { background: #d08b26; border-radius: 0 0 0 8px; color: #fff; font-size: 10px; padding: 5px 8px; position: absolute; right: 0; top: 0; }
+.recharge-center__notice { align-items: flex-start; border-top: 1px solid rgba(122, 160, 190, .16); display: flex; gap: 12px; margin-top: 18px; padding-top: 13px; }
+.recharge-center__notice span { color: var(--pay-gold); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.recharge-center__notice p { color: #718ca1; font-size: 11px; line-height: 1.55; margin: 0; }
+.recharge-center__status { color: #b4d8ef; margin: 9px 0 0; min-height: 20px; text-align: center; }
+.recharge-center__status.is-error { color: #ff987f; }
+.recharge-center__status.is-success { color: #75edbd; }
+.recharge-center__empty { align-self: center; color: #8199ab; grid-column: 1 / -1; text-align: center; }
+.recharge-center__modal { align-items: center; display: flex; inset: 0; justify-content: center; position: fixed; z-index: 100; }
+.recharge-center__backdrop { background: rgba(0, 7, 15, .84); inset: 0; position: absolute; }
+.recharge-center__modal article { background: #f8fbff; border-radius: 16px; color: var(--pay-ink); padding: 24px; position: relative; text-align: center; width: min(360px, calc(100vw - 40px)); }
+.recharge-center__modal small { color: #4086b6; font-weight: 800; letter-spacing: .18em; }
+.recharge-center__modal h3 { margin: 4px 0 12px; }
+.recharge-center__qr { margin: auto; max-width: 250px; }
+.recharge-center__qr svg { display: block; height: auto; width: 100%; }
+.recharge-center__modal p { color: #5e7080; font-size: 13px; }
+.recharge-center__modal button { background: #e7eef5; border: 0; border-radius: 8px; color: #28435a; cursor: pointer; padding: 9px 18px; }
+.recharge-center button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.paycore-host-panel .paycore-host__content { height: 100%; overflow: hidden; padding: 0; }
+.paycore-host__frame { background: transparent; border: 0; display: block; height: 100%; width: 100%; }
+.paycore-host__unavailable { align-items: center; color: #aac7da; display: flex; flex-direction: column; height: 100%; justify-content: center; text-align: center; }
+.paycore-host__unavailable strong { color: #fff; font-size: 22px; }
+.paycore-host__unavailable p { max-width: 520px; }
+@media (max-width: 820px) {
+  .feature-panel.recharge-feature-panel .feature-panel-card { width: calc(100vw - 20px); }
+  .recharge-center__shell { padding: 17px; }
+  .recharge-center__offers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .recharge-center__hero { align-items: flex-start; }
+  .recharge-center__hero p { display: none; }
+  .recharge-center__wallet { min-width: 104px; padding: 9px 12px; }
+  .recharge-center__markets { gap: 7px; margin-top: 14px; }
+  .recharge-center__markets button { padding: 10px; }
+  .recharge-center__offers { grid-template-columns: 1fr; }
+  .recharge-center__offer { min-height: 160px; }
+}

@@ -591,12 +591,22 @@
     if (scope.battleState && scope.battleState.refreshFixedWeaponSkill) {
       scope.battleState.refreshFixedWeaponSkill(state.player, type);
     }
-    if (pw && pw[type]) addNotice(state, pw[type].name + " Lv." + state.player.weapons[type], pw[type].color, 1.5);
+    if (pw && pw[type]) addNotice(state, pw[type].name + " Lv." + state.player.weapons[type], pw[type].color, 1.5, "weapon-upgrade:" + type);
   }
 
-  function addNotice(state, text, color, life) {
+  function addNotice(state, text, color, life, key) {
     var field = scope.battleGeometry.getField(state);
-    state.notices.push({ text: text, color: color, x: field.width / 2, y: field.noticeY, life: life });
+    if (key) {
+      for (var i = state.notices.length - 1; i >= 0; i -= 1) {
+        if (state.notices[i] && state.notices[i].key === key) {
+          state.notices[i].text = text;
+          state.notices[i].color = color;
+          state.notices[i].life = life;
+          return state.notices[i];
+        }
+      }
+    }
+    state.notices.push({ text: text, color: color, x: field.width / 2, y: field.noticeY, life: life, key: key || "" });
   }
 
   /**

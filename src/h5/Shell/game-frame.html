@@ -4,25 +4,38 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=1600, initial-scale=1" />
     <link rel="icon" href="data:," />
+    <script>
+      // game-frame is the fixed 1600x900 canvas. Direct navigation must return
+      // to the responsive viewport shell that owns centering and scaling.
+      if (window.self === window.top) {
+        var shellUrl = new URL("index.html", window.location.href);
+        shellUrl.search = window.location.search;
+        shellUrl.hash = window.location.hash;
+        window.location.replace(shellUrl.href);
+      }
+    </script>
     <script src="../Presentation/Audio/testAudioGuard.js?rev=20260726a"></script>
     <title>热血战姬</title>
     <link rel="stylesheet" href="style.css?v=20260719" />
-    <link rel="stylesheet" href="../UI/Lobby/lobby.css?rev=20260721" />
+    <link rel="stylesheet" href="../UI/Lobby/lobby.css?rev=20260806-smoothness-v2" />
+    <link rel="stylesheet" href="../UI/Honor/playerHonorView.css?v=20260810-honor-art-v1" />
     <link rel="stylesheet" href="../UI/Lobby/ResourceExchange/resourceExchangeView.css?rev=20260720" />
     <link rel="stylesheet" href="../UI/FeaturePanels/featurePanelShell.css?v=20260719" />
     <link rel="stylesheet" href="../Gameplay/Player/profileView.css?v=20260719" />
     <link rel="stylesheet" href="../UI/Pilot/pilotView.css?v=20260722" />
     <link rel="stylesheet" href="../UI/Fighter/fighterView.css?v=20260722" />
-    <link rel="stylesheet" href="../UI/Fighter/Upgrade/fighterUpgradeView.css?rev=20260724d" />
-    <link rel="stylesheet" href="../UI/FeaturePanels/mainFeaturePanelsView.css?v=20260716-shop-claim-v1" />
+    <link rel="stylesheet" href="../UI/Fighter/Upgrade/fighterUpgradeView.css?rev=20260806-smoothness-v1" />
+    <link rel="stylesheet" href="../UI/FeaturePanels/mainFeaturePanelsView.css?v=20260806-smoothness-v1" />
+    <link rel="stylesheet" href="../UI/Leaderboard/leaderboardView.css?v=20260805-leaderboard-v1" />
     <link rel="stylesheet" href="../World/Mission/taskRoom.css?v=20260726-command-center-v1" />
-    <link rel="stylesheet" href="../UI/Codex/codexView.css?rev=20260722b" />
+    <link rel="stylesheet" href="../UI/Codex/codexView.css?rev=20260805a" />
     <link rel="stylesheet" href="../UI/FeaturePanels/eventModeHubView.css?v=20260726-event-hub-back-right-v2" />
     <link rel="stylesheet" href="../Presentation/Endless/endlessMode.css?v=20260716-event-hub-v3" />
-    <link rel="stylesheet" href="../UI/Gacha/gachaView.css?v=20260719" />
+    <link rel="stylesheet" href="../UI/Gacha/gachaView.css?v=20260806-smoothness-v1" />
     <link rel="stylesheet" href="../UI/Inventory/inventoryView.css?v=20260719" />
+    <link rel="stylesheet" href="../UI/Payment/rechargeView.css?rev=20260805-payment-v1" />
     <link rel="stylesheet" href="../World/Story/campaignStoryPlayerView.css?v=20260719" />
-    <link rel="stylesheet" href="../UI/HUD/battleUiView.css?v=20260718-bus-broadcast-v1" />
+    <link rel="stylesheet" href="../UI/HUD/battleUiView.css?v=20260806-smoothness-v1" />
     <link rel="stylesheet" href="../UI/HUD/battleSettlementView.css?v=20260719" />
     <link rel="stylesheet" href="../UI/ChapterSelect/chapterSelectLayout.generated.css?v=20260719" />
     <link rel="stylesheet" href="../UI/ChapterSelect/chapterSelectView.css?v=20260716-sweep-dialog-v2" />
@@ -58,10 +71,10 @@
                   <strong id="energyValue">0/0</strong>
                 </span>
               </span>
-              <span class="pilot-honor" aria-label="飞行员荣誉等级">
+              <span id="pilotHonor" class="pilot-honor player-honor player-honor--tier-1" aria-label="荣誉等级 H-I">
                 <span class="pilot-honor-icon" aria-hidden="true"></span>
                 <span id="pilotBadge" class="pilot-badge">I</span>
-                <span class="pilot-honor-label">PILOT</span>
+                <span class="pilot-honor-label">HONOR</span>
               </span>
             </span>
             <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
@@ -74,7 +87,7 @@
                 <span class="resource-copy"><small>钻石</small><strong id="diamondValue">0</strong></span>
               </span>
               <span class="hud-skin hud-skin-wide" aria-hidden="true"></span>
-              <button class="resource-add lobby-action" type="button" data-panel="contact" aria-label="打开联系我们">+</button>
+              <button class="resource-add lobby-action" type="button" data-panel="recharge" aria-label="打开充值中心">+</button>
             </div>
             <div class="top-command-crest" aria-hidden="true"></div>
             <div class="resource-unit gold-resource">
@@ -87,11 +100,8 @@
             </div>
           </section>
 
-          <div class="starport-log" aria-hidden="true">
-            <strong>STARPORT LOG</strong>
-            <span>07.10 Mission Briefing Updated</span>
-            <span>07.10 Daily Supply Ready</span>
-            <span>07.09 Star Wings Preview</span>
+          <div class="world-time-panel">
+            <time id="worldClockTime" class="world-time-clock" datetime="" title="日期同步中" aria-label="世界时间" tabindex="0">--:--</time>
           </div>
 
           <nav class="quick-nav" aria-label="快捷入口">

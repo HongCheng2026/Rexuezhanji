@@ -71,7 +71,7 @@ test("抽卡房间拥有独立动作契约", () => {
   const harness = createHarness();
   assert.deepEqual(
     Object.keys(harness.room.actions).sort(),
-    ["gacha.back", "gacha.cancelTopUp", "gacha.close", "gacha.confirmTopUp", "gacha.draw", "gacha.open", "gacha.redraw", "gacha.selectTarget"].sort()
+    ["gacha.back", "gacha.cancelTopUp", "gacha.close", "gacha.confirmTopUp", "gacha.draw", "gacha.open", "gacha.redraw", "gacha.selectTarget", "gacha.skipReveal"].sort()
   );
 });
 

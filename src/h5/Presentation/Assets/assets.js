@@ -38,6 +38,7 @@
   "ui/a-hud": "Shared/hud/",
   "ui/a-hud-v5": "Shared/hud/",
   "ui/lobby-icons": "Shared/lobby-icons/",
+  "ui/honor": "Shared/honor/",
   "gacha/ui": "gacha/ui/",
   "inventory/ui": "inventory/ui/",
   "inventory/items": "inventory/items/",
@@ -60,6 +61,7 @@
   const uiHudAsset = (file) => runtimeAsset("ui/a-hud", file);
   const uiHudV5Asset = (file) => runtimeAsset("ui/a-hud-v5", file);
   const uiLobbyIconAsset = (file) => runtimeAsset("ui/lobby-icons", file);
+  const uiHonorAsset = (file) => runtimeAsset("ui/honor", file);
   const uiTacticalDockAsset = (file) => runtimeAsset("ui/tactical-dock", file);
   const uiTacticalDockV8Asset = (file) => runtimeAsset("ui/tactical-dock-v8", file);
   const combatSkillVfxV8Asset = (file) => runtimeAsset("combat/skill-vfx-v8", file);
@@ -229,6 +231,10 @@
     resourceGoldIcon: uiLobbyIconAsset("gold-coin.png"),
     resourceDiamondIcon: uiLobbyIconAsset("diamond-gem.png")
   };
+
+  const HONOR_BADGE_ASSETS = Object.freeze(Array.from({ length: 10 }, (_, index) =>
+    uiHonorAsset("honor-tier-" + String(index + 1).padStart(2, "0") + ".png")
+  ));
 
   const TACTICAL_DOCK_ASSETS = Object.freeze({
     dockBackground: uiTacticalDockV8Asset("dock-background-clean-v9.png"),
@@ -609,6 +615,7 @@
     ENEMY_CODEX,
     ENEMY_BULLET_CODEX,
     UI_A_HUD_ASSETS,
+    HONOR_BADGE_ASSETS,
     TACTICAL_DOCK_ASSETS,
     COMBAT_SKILL_VFX_ASSETS,
     SHOP_ITEM_ASSETS,

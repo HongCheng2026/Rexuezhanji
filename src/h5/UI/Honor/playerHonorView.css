@@ -1,0 +1,633 @@
+/* Player honor module. Every selector is isolated to the lobby or profile page root. */
+.lobby-screen .player-honor {
+  --honor-primary: #73d8f5;
+  --honor-secondary: #2e7897;
+  --honor-highlight: #effcff;
+  --honor-deep: #062a3e;
+  --honor-rgb: 115, 216, 245;
+  align-items: center;
+  color: var(--honor-primary);
+  display: grid;
+  grid-template-rows: 64px 17px 11px;
+  justify-items: center;
+  min-width: 78px;
+  position: relative;
+}
+
+.lobby-screen .player-honor--tier-1,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-1 { --honor-primary: #78cbe8; --honor-secondary: #2f718c; --honor-highlight: #eaffff; --honor-deep: #06283c; --honor-rgb: 120, 203, 232; }
+.lobby-screen .player-honor--tier-2,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-2 { --honor-primary: #b8eaff; --honor-secondary: #5daac9; --honor-highlight: #ffffff; --honor-deep: #0d344b; --honor-rgb: 184, 234, 255; }
+.lobby-screen .player-honor--tier-3,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-3 { --honor-primary: #4af1df; --honor-secondary: #159a9a; --honor-highlight: #e4fffb; --honor-deep: #06494f; --honor-rgb: 74, 241, 223; }
+.lobby-screen .player-honor--tier-4,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-4 { --honor-primary: #5da8ff; --honor-secondary: #355bc9; --honor-highlight: #edf5ff; --honor-deep: #102f68; --honor-rgb: 93, 168, 255; }
+.lobby-screen .player-honor--tier-5,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-5 { --honor-primary: #8588ff; --honor-secondary: #5353d4; --honor-highlight: #f4f1ff; --honor-deep: #252666; --honor-rgb: 133, 136, 255; }
+.lobby-screen .player-honor--tier-6,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-6 { --honor-primary: #c17dff; --honor-secondary: #8938cd; --honor-highlight: #faedff; --honor-deep: #54206f; --honor-rgb: 193, 125, 255; }
+.lobby-screen .player-honor--tier-7,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-7 { --honor-primary: #ef70ff; --honor-secondary: #ba2cbf; --honor-highlight: #ffefff; --honor-deep: #711d74; --honor-rgb: 239, 112, 255; }
+.lobby-screen .player-honor--tier-8,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-8 { --honor-primary: #ff727b; --honor-secondary: #ef963e; --honor-highlight: #fff2e7; --honor-deep: #721d2a; --honor-rgb: 255, 114, 123; }
+.lobby-screen .player-honor--tier-9,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-9 { --honor-primary: #ffc85c; --honor-secondary: #eb7e28; --honor-highlight: #fff8d7; --honor-deep: #714200; --honor-rgb: 255, 200, 92; }
+.lobby-screen .player-honor--tier-10,
+.feature-panel.profile-dossier-panel .player-honor-card.player-honor-card--tier-10 { --honor-primary: #ffe18a; --honor-secondary: #ff8735; --honor-highlight: #ffffff; --honor-deep: #7b4500; --honor-rgb: 255, 225, 138; }
+
+.lobby-screen .player-honor .player-honor-icon {
+  align-items: center;
+  display: flex;
+  height: 64px;
+  justify-content: center;
+  width: 78px;
+}
+
+.lobby-screen .player-honor .player-honor-art {
+  height: 68px;
+  object-fit: contain;
+  width: 78px;
+}
+
+.lobby-screen .player-honor .player-honor-rank {
+  align-items: baseline;
+  color: var(--honor-highlight);
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  line-height: 1;
+  text-shadow: 0 0 8px rgba(var(--honor-rgb), 0.9);
+}
+
+.lobby-screen .player-honor .player-honor-rank-prefix {
+  color: var(--honor-primary);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.lobby-screen .player-honor .player-honor-rank strong {
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: -0.03em;
+}
+
+.lobby-screen .player-honor .player-honor-label {
+  color: var(--honor-highlight);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  max-width: 78px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 6px var(--honor-deep);
+  white-space: nowrap;
+}
+
+.lobby-screen .player-honor .player-honor-art,
+.feature-panel.profile-dossier-panel .player-honor-art {
+  display: block;
+  filter: drop-shadow(0 0 5px rgba(var(--honor-rgb), 0.5));
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.lobby-screen .player-honor--tier-8 .player-honor-art,
+.lobby-screen .player-honor--tier-9 .player-honor-art,
+.lobby-screen .player-honor--tier-10 .player-honor-art,
+.feature-panel.profile-dossier-panel .player-honor-card--tier-8 .player-honor-art,
+.feature-panel.profile-dossier-panel .player-honor-card--tier-9 .player-honor-art,
+.feature-panel.profile-dossier-panel .player-honor-card--tier-10 .player-honor-art {
+  filter: drop-shadow(0 0 7px rgba(var(--honor-rgb), 0.72));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-record {
+  display: grid;
+  gap: 12px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-record-stats {
+  gap: 8px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-record-stats .player-profile-detail {
+  gap: 4px;
+  min-height: 54px;
+  padding: 8px 10px;
+}
+
+.feature-panel.profile-dossier-panel .player-profile-page .player-profile-record-stats .player-profile-detail strong {
+  font-size: 16px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog {
+  background:
+    radial-gradient(circle at 82% 0, rgba(111, 97, 255, 0.18), transparent 35%),
+    radial-gradient(circle at 12% 100%, rgba(42, 204, 239, 0.09), transparent 38%),
+    linear-gradient(145deg, rgba(5, 25, 43, 0.98), rgba(1, 9, 17, 0.99));
+  border: 1px solid rgba(95, 211, 250, 0.48);
+  box-shadow:
+    inset 0 0 42px rgba(40, 167, 216, 0.07),
+    0 14px 38px rgba(0, 0, 0, 0.24);
+  clip-path: polygon(12px 0, calc(100% - 28px) 0, 100% 28px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 28px 100%, 0 calc(100% - 28px), 0 12px);
+  isolation: isolate;
+  overflow: hidden;
+  padding: 14px;
+  position: relative;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog::before {
+  background-image:
+    linear-gradient(rgba(88, 205, 242, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88, 205, 242, 0.045) 1px, transparent 1px),
+    linear-gradient(120deg, transparent 48%, rgba(104, 221, 255, 0.07) 49%, transparent 50%);
+  background-size: 22px 22px, 22px 22px, 180px 180px;
+  content: "";
+  inset: 0;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.86), transparent 92%);
+  opacity: 0.8;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog::after {
+  background: linear-gradient(90deg, #5edfff, rgba(94, 223, 255, 0.08) 34%, transparent 72%);
+  box-shadow: 0 0 12px rgba(90, 218, 255, 0.7);
+  content: "";
+  height: 2px;
+  left: 12px;
+  position: absolute;
+  right: 28%;
+  top: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-scan {
+  background: linear-gradient(180deg, transparent, rgba(107, 220, 255, 0.09), transparent);
+  height: 58px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: -70px;
+  z-index: 3;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-header {
+  align-items: center;
+  display: flex;
+  gap: 22px;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  min-height: 70px;
+  position: relative;
+  z-index: 2;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-heading small {
+  color: #64dafa;
+  font-size: 8px;
+  font-weight: 1000;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 8px rgba(74, 209, 246, 0.45);
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-heading h3 {
+  color: #eefaff;
+  font-size: 22px;
+  font-weight: 1000;
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-heading h3 span {
+  color: #70e4ff;
+  margin-right: 5px;
+  text-shadow: 0 0 12px rgba(79, 215, 251, 0.46);
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-heading p {
+  color: #789daf;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  margin: 0;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-current {
+  --honor-primary: #78cbe8;
+  --honor-secondary: #2f718c;
+  --honor-highlight: #eaffff;
+  --honor-deep: #06283c;
+  --honor-rgb: 120, 203, 232;
+  align-items: center;
+  background:
+    radial-gradient(circle at 26% 50%, rgba(var(--honor-rgb), 0.22), transparent 46%),
+    linear-gradient(110deg, rgba(var(--honor-rgb), 0.1), rgba(1, 9, 17, 0.92));
+  border: 1px solid rgba(var(--honor-rgb), 0.5);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  display: grid;
+  grid-template-columns: 82px minmax(104px, auto);
+  min-height: 68px;
+  min-width: 238px;
+  padding: 3px 14px 3px 4px;
+  position: relative;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-1 { --honor-primary: #78cbe8; --honor-secondary: #2f718c; --honor-highlight: #eaffff; --honor-deep: #06283c; --honor-rgb: 120, 203, 232; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-2 { --honor-primary: #b8eaff; --honor-secondary: #5daac9; --honor-highlight: #ffffff; --honor-deep: #0d344b; --honor-rgb: 184, 234, 255; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-3 { --honor-primary: #4af1df; --honor-secondary: #159a9a; --honor-highlight: #e4fffb; --honor-deep: #06494f; --honor-rgb: 74, 241, 223; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-4 { --honor-primary: #5da8ff; --honor-secondary: #355bc9; --honor-highlight: #edf5ff; --honor-deep: #102f68; --honor-rgb: 93, 168, 255; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-5 { --honor-primary: #8588ff; --honor-secondary: #5353d4; --honor-highlight: #f4f1ff; --honor-deep: #252666; --honor-rgb: 133, 136, 255; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-6 { --honor-primary: #c17dff; --honor-secondary: #8938cd; --honor-highlight: #faedff; --honor-deep: #54206f; --honor-rgb: 193, 125, 255; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-7 { --honor-primary: #ef70ff; --honor-secondary: #ba2cbf; --honor-highlight: #ffefff; --honor-deep: #711d74; --honor-rgb: 239, 112, 255; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-8 { --honor-primary: #ff727b; --honor-secondary: #ef963e; --honor-highlight: #fff2e7; --honor-deep: #721d2a; --honor-rgb: 255, 114, 123; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-9 { --honor-primary: #ffc85c; --honor-secondary: #eb7e28; --honor-highlight: #fff8d7; --honor-deep: #714200; --honor-rgb: 255, 200, 92; }
+.feature-panel.profile-dossier-panel .player-honor-catalog-current.player-honor-card--tier-10 { --honor-primary: #ffe18a; --honor-secondary: #ff8735; --honor-highlight: #ffffff; --honor-deep: #7b4500; --honor-rgb: 255, 225, 138; }
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-current::after {
+  background: linear-gradient(180deg, transparent, var(--honor-primary), transparent);
+  content: "";
+  opacity: 0.65;
+  position: absolute;
+  right: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-current-emblem {
+  align-items: center;
+  display: flex;
+  height: 68px;
+  justify-content: center;
+  width: 78px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-current-emblem .player-honor-art {
+  height: 72px;
+  width: 82px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-current-copy {
+  display: grid;
+  gap: 1px 7px;
+  grid-template-columns: auto 1fr;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-current-copy small {
+  color: color-mix(in srgb, var(--honor-primary) 75%, #829eaa);
+  font-size: 7px;
+  font-weight: 1000;
+  grid-column: 1 / -1;
+  letter-spacing: 0.15em;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-current-copy strong {
+  color: var(--honor-highlight);
+  font-size: 22px;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(var(--honor-rgb), 0.72);
+}
+
+.feature-panel.profile-dossier-panel .player-honor-current-copy em {
+  align-self: end;
+  color: #ffe29a;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 1000;
+  padding-bottom: 2px;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-rail {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr 5px 1.5fr 5px 1fr;
+  height: 7px;
+  margin: 0 2px 8px;
+  opacity: 0.7;
+  position: relative;
+  z-index: 2;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-rail span {
+  background: linear-gradient(90deg, transparent, rgba(93, 216, 250, 0.48), transparent);
+  height: 1px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-rail i {
+  background: #bff5ff;
+  box-shadow: 0 0 7px #51d8fa;
+  height: 4px;
+  transform: rotate(45deg);
+  width: 4px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-catalog-grid {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  position: relative;
+  z-index: 2;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card {
+  --honor-primary: #78cbe8;
+  --honor-secondary: #2f718c;
+  --honor-highlight: #eaffff;
+  --honor-deep: #06283c;
+  --honor-rgb: 120, 203, 232;
+  background:
+    radial-gradient(circle at 27% 43%, rgba(var(--honor-rgb), 0.2), transparent 34%),
+    linear-gradient(128deg, color-mix(in srgb, var(--honor-deep) 72%, #020913), rgba(1, 7, 14, 0.97) 68%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 4px);
+  border: 1px solid rgba(var(--honor-rgb), 0.38);
+  appearance: none;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  color: var(--honor-primary);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 1px 7px;
+  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  isolation: isolate;
+  min-height: 120px;
+  overflow: hidden;
+  padding: 9px 9px 8px 7px;
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card::before {
+  background:
+    linear-gradient(90deg, var(--honor-primary), rgba(var(--honor-rgb), 0.18) 58%, transparent) left top / calc(100% - 13px) 2px no-repeat,
+    linear-gradient(45deg, transparent 45%, rgba(var(--honor-rgb), 0.86) 47% 53%, transparent 55%) right top / 15px 15px no-repeat;
+  content: "";
+  height: 15px;
+  left: 0;
+  opacity: 0.88;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 4;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card::after {
+  background:
+    linear-gradient(120deg, transparent 73%, rgba(var(--honor-rgb), 0.08) 74% 75%, transparent 76%),
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(var(--honor-rgb), 0.025) 7px 8px);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-earned {
+  opacity: 0.9;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-earned:hover {
+  border-color: rgba(var(--honor-rgb), 0.72);
+  box-shadow: inset 0 0 20px rgba(var(--honor-rgb), 0.1), 0 0 12px rgba(var(--honor-rgb), 0.18);
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card:focus-visible {
+  border-color: var(--honor-highlight);
+  box-shadow: inset 0 0 22px rgba(var(--honor-rgb), 0.12), 0 0 0 2px rgba(var(--honor-rgb), 0.48);
+  outline: none;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-future {
+  cursor: not-allowed;
+  filter: saturate(0.74);
+  opacity: 0.72;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-current {
+  background:
+    radial-gradient(circle at 28% 42%, rgba(var(--honor-rgb), 0.34), transparent 38%),
+    linear-gradient(128deg, color-mix(in srgb, var(--honor-deep) 54%, #07121e), rgba(2, 10, 19, 0.96) 72%);
+  border-color: var(--honor-highlight);
+  box-shadow:
+    inset 0 0 25px rgba(var(--honor-rgb), 0.14),
+    0 0 15px rgba(var(--honor-rgb), 0.28);
+  filter: none;
+  opacity: 1;
+  transform: translateY(-2px);
+  z-index: 3;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-current::before {
+  background:
+    linear-gradient(90deg, #ffe49a, var(--honor-primary) 54%, transparent) left top / calc(100% - 13px) 2px no-repeat,
+    linear-gradient(45deg, transparent 45%, var(--honor-highlight) 47% 53%, transparent 55%) right top / 15px 15px no-repeat;
+  filter: drop-shadow(0 0 4px rgba(var(--honor-rgb), 0.7));
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-index {
+  align-items: end;
+  display: grid;
+  justify-items: end;
+  position: absolute;
+  right: 8px;
+  top: 6px;
+  z-index: 2;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-index small {
+  color: rgba(var(--honor-rgb), 0.48);
+  font-size: 5px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  line-height: 1;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-index b {
+  color: rgba(var(--honor-rgb), 0.75);
+  font-size: 9px;
+  font-weight: 1000;
+  line-height: 1.1;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-emblem {
+  align-items: center;
+  align-self: center;
+  display: flex;
+  grid-row: 1 / 3;
+  height: 96px;
+  justify-content: center;
+  width: 86px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card .player-honor-art {
+  height: 88px;
+  width: 96px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-current .player-honor-art {
+  filter: drop-shadow(0 0 9px rgba(var(--honor-rgb), 0.78));
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-copy {
+  align-content: center;
+  align-self: end;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 15px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-rank {
+  color: var(--honor-primary);
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-shadow: 0 0 7px rgba(var(--honor-rgb), 0.62);
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-copy strong {
+  color: var(--honor-highlight);
+  font-size: 14px;
+  font-weight: 1000;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-copy small {
+  color: color-mix(in srgb, var(--honor-primary) 80%, #839eaa);
+  font-size: 6px;
+  font-weight: 1000;
+  letter-spacing: 0.13em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-copy > i {
+  background: linear-gradient(90deg, var(--honor-primary), transparent);
+  height: 1px;
+  margin-top: 3px;
+  opacity: 0.38;
+  width: 72%;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-state {
+  align-items: center;
+  align-self: end;
+  color: color-mix(in srgb, var(--honor-primary) 78%, #829da9);
+  display: flex;
+  font-size: 7px;
+  font-weight: 1000;
+  gap: 5px;
+  justify-self: start;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  padding-bottom: 3px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card-state > i {
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  height: 4px;
+  transform: rotate(45deg);
+  width: 4px;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card.is-current .player-honor-card-state {
+  color: #ffe49a;
+}
+
+.feature-panel.profile-dossier-panel .player-honor-card--tier-9,
+.feature-panel.profile-dossier-panel .player-honor-card--tier-10 {
+  background:
+    radial-gradient(circle at 28% 42%, rgba(var(--honor-rgb), 0.28), transparent 38%),
+    linear-gradient(128deg, color-mix(in srgb, var(--honor-deep) 68%, #130b02), rgba(8, 6, 4, 0.97) 72%);
+}
+
+@keyframes player-honor-scan {
+  from { transform: translateY(0); }
+  to { transform: translateY(420px); }
+}
+
+@keyframes player-honor-current-pulse {
+  0%, 100% { filter: drop-shadow(0 0 7px rgba(var(--honor-rgb), 0.64)); }
+  50% { filter: drop-shadow(0 0 12px rgba(var(--honor-rgb), 0.92)); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .feature-panel.profile-dossier-panel .player-honor-catalog-scan {
+    animation: player-honor-scan 5.8s linear infinite;
+  }
+
+  .feature-panel.profile-dossier-panel .player-honor-card.is-current .player-honor-art,
+  .feature-panel.profile-dossier-panel .player-honor-current-emblem .player-honor-art {
+    animation: player-honor-current-pulse 3s ease-in-out infinite;
+  }
+}
+
+@supports not (color: color-mix(in srgb, white, black)) {
+  .feature-panel.profile-dossier-panel .player-honor-card {
+    background: linear-gradient(128deg, rgba(8, 31, 51, 0.98), rgba(1, 7, 14, 0.97));
+  }
+}
+
+@media (max-width: 960px) {
+  .feature-panel.profile-dossier-panel .player-honor-catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-record-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .feature-panel.profile-dossier-panel .player-honor-catalog-header {
+    align-items: flex-start;
+  }
+
+  .feature-panel.profile-dossier-panel .player-honor-catalog-current {
+    min-width: 220px;
+  }
+
+  .feature-panel.profile-dossier-panel .player-honor-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .feature-panel.profile-dossier-panel .player-honor-catalog-header {
+    display: grid;
+  }
+
+  .feature-panel.profile-dossier-panel .player-honor-catalog-current {
+    justify-self: stretch;
+    min-width: 0;
+  }
+
+  .feature-panel.profile-dossier-panel .player-honor-catalog-grid,
+  .feature-panel.profile-dossier-panel .player-profile-page .player-profile-record-stats {
+    grid-template-columns: 1fr;
+  }
+}

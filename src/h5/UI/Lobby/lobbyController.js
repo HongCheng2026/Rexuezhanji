@@ -38,6 +38,31 @@
     var formatResource = options.formatResource;
     var getGold = options.getGold;
     var clamp = options.clamp;
+    var lastWorldDateKey = "";
+
+    function renderWorldTime(snapshot) {
+      if (!snapshot) return;
+      if (dom.worldClockTime) {
+        var minuteText = snapshot.timeText.slice(0, 5);
+        var dateTooltip = snapshot.dateText + " · " + snapshot.weekdayText;
+        dom.worldClockTime.textContent = minuteText;
+        dom.worldClockTime.setAttribute("datetime", snapshot.iso);
+        dom.worldClockTime.setAttribute("title", dateTooltip);
+        dom.worldClockTime.setAttribute("aria-label", "世界时间 " + minuteText + "，" + dateTooltip);
+        if (dom.worldClockTime.parentNode) dom.worldClockTime.parentNode.setAttribute("data-date", dateTooltip);
+      }
+      if (dom.worldClockDate) {
+        dom.worldClockDate.textContent = snapshot.dateText + " · " + snapshot.weekdayText;
+        dom.worldClockDate.setAttribute("datetime", snapshot.dateKey);
+      }
+      if (dom.worldClockSource) {
+        var isServer = snapshot.source === "server";
+        dom.worldClockSource.textContent = isServer ? "云端校时" : "设备时间";
+        dom.worldClockSource.classList.toggle("is-server", isServer);
+      }
+      if (lastWorldDateKey && lastWorldDateKey !== snapshot.dateKey && profile) renderMenuAlerts();
+      lastWorldDateKey = snapshot.dateKey;
+    }
 
     function syncContext() {
       profile = options.getProfile();
@@ -339,11 +364,19 @@
     dom.pilotLevel.textContent = "Lv." + progress.level;
     dom.pilotExpText.textContent = progress.isMaxLevel ? "MAX" : progress.exp + "/" + progress.expMax;
     dom.pilotExpBar.style.width = progress.percent + "%";
-    dom.pilotBadge.textContent = getHonorText(player);
+    if (shared.playerHonorView && shared.playerHonorView.render) {
+      shared.playerHonorView.render(dom.pilotHonor, player);
+    } else if (dom.pilotHonor) {
+      dom.pilotHonor.textContent = getHonorText(player);
+    }
     dom.energyValue.textContent = formatResource(resources.energy || 0) + "/" + formatResource(resources.maxEnergy || 0);
     dom.goldValue.textContent = formatResource(getGold());
     dom.diamondValue.textContent = formatResource(resources.diamonds || 0);
     renderMenuAlerts();
+  }
+
+  if (shared.worldTimeSystem && typeof shared.worldTimeSystem.subscribe === "function") {
+    shared.worldTimeSystem.subscribe(renderWorldTime);
   }
 
   function renderMenuAlerts() {

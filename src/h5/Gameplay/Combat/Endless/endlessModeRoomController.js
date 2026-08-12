@@ -110,6 +110,7 @@
 
     function beginRun(response) {
       if (battleContext && battleContext.animationId) cancelAnimationFrame(battleContext.animationId);
+      applyVisualQuality();
       showRoom();
       finished = false;
       resultModel = null;
@@ -155,6 +156,15 @@
       battleContext.animationId = requestAnimationFrame(function run(time) {
         shared.battleRuntime.loop(battleContext, time);
       });
+    }
+
+    function applyVisualQuality() {
+      var quality = options.visualQualitySystem || shared.visualQualitySystem;
+      if (!quality || !quality.getEffectiveProfile) return null;
+      var profile = quality.getEffectiveProfile();
+      if (uiHandle && uiHandle.applyRenderProfile) uiHandle.applyRenderProfile(profile);
+      if (renderer && renderer.setQualityProfile) renderer.setQualityProfile(profile);
+      return profile;
     }
 
     function checkEnd() {
@@ -203,6 +213,7 @@
           cancelAnimationFrame(battleContext.animationId);
           battleContext.animationId = 0;
         }
+        if (shared.framePacingMonitor && shared.framePacingMonitor.stop) shared.framePacingMonitor.stop();
         clearInput();
         resultModel = createResult(reason);
         battleSession.result = resultModel;

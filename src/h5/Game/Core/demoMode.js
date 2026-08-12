@@ -36,7 +36,7 @@
         completed: [1, 2, 3],
         upgrades: { fire: 0, armor: 3, engine: 1, bounty: 0 },
         fighterUpgrades: { attack: 30, armorPenetration: 8, hp: 18 },
-        player: { name: "Demo Pilot", level: demoLevel, totalExp: totalExp, exp: 0, honorLevel: 3, badge: "III" },
+        player: { name: "Demo Pilot", level: demoLevel, totalExp: totalExp, exp: 0, honorLevel: 3, equippedHonorLevel: 3, badge: "III" },
         resources: { energy: 999, maxEnergy: 999, gold: 1800, diamonds: 0, lastEnergyAt: Date.now() }
       });
       profile.__demoInfluencer = true;

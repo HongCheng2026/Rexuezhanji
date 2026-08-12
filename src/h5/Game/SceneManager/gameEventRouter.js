@@ -21,6 +21,7 @@
     var getState = options.getState || function getEmptyState() { return {}; };
     var isExternalBattleActive = options.isExternalBattleActive || function noExternalBattle() { return false; };
     var updatePointer = options.updatePointer;
+    var dismissBattleControlHint = options.dismissBattleControlHint || function noopControlHint() { return false; };
     var bound = false;
 
     function dispatch(name, payload) {
@@ -94,8 +95,10 @@
           else if (action === "draw") dispatch("gacha.draw", { count: Number(target.dataset.gachaCount) || 1 });
           else if (action === "back") dispatch("gacha.back");
           else if (action === "redraw") dispatch("gacha.redraw");
+          else if (action === "skip-reveal") dispatch("gacha.skipReveal");
           else if (action === "confirm-topup") dispatch("gacha.confirmTopUp");
           else if (action === "cancel-topup") dispatch("gacha.cancelTopUp");
+          else if (action === "recharge") { dispatch("gacha.close"); dispatch("featurePanel.open", "recharge"); }
           else if (action === "shop") { dispatch("gacha.close"); dispatch("featurePanel.open", "shop"); }
         });
       }
@@ -149,12 +152,13 @@
           var action = reportAction.dataset ? reportAction.dataset.settlementAction : "";
           if (action === "next") dispatch("battle.nextOrReplay");
           else if (action === "replay") dispatch("battle.startSelectedLevel");
+          else if (action === "story") dispatch("battle.playPostSettlementStory");
           else if (action === "chapter") dispatch("lobby.openBattleSelect");
           return;
         }
         var state = getState() || {};
         var victoryChest = event.target && event.target.closest ? event.target.closest("[data-open-victory-chest]") : null;
-        if (victoryChest && state.lastBattleResult) {
+        if (victoryChest && !victoryChest.disabled && state.lastBattleResult) {
           dispatch("settlement.chest", state.lastBattleResult);
           return;
         }
@@ -167,6 +171,16 @@
 
       dom.closeFeaturePanel.addEventListener("click", function close() { dispatch("featurePanel.close"); });
       dom.featurePanel.addEventListener("click", function onFeaturePanelClick(event) {
+        var paymentAction = event.target && event.target.closest ? event.target.closest("[data-payment-action]") : null;
+        if (paymentAction && !paymentAction.disabled) {
+          var paymentRoute = ["recharge", paymentAction.dataset.paymentAction].join(".");
+          dispatch(paymentRoute, {
+            market: paymentAction.dataset.market,
+            productType: paymentAction.dataset.productType,
+            offerId: paymentAction.dataset.offerId
+          });
+          return;
+        }
         if (dispatch("setting.handleClick", event)) return;
         if (dispatch("featurePanel.handleEvent", event)) return;
         var achievementClaim = event.target && event.target.closest ? event.target.closest("[data-achievement-claim]") : null;
@@ -212,6 +226,12 @@
         dispatch("setting.handleInput", event);
       });
       dom.featurePanel.addEventListener("submit", function onFeaturePanelSubmit(event) {
+        var profileForm = event.target && event.target.closest ? event.target.closest("[data-profile-cloud-form]") : null;
+        if (profileForm) {
+          event.preventDefault();
+          dispatch("profile.submit", event);
+          return;
+        }
         var form = event.target && event.target.closest ? event.target.closest("[data-redeem-form]") : null;
         if (!form) return;
         event.preventDefault();
@@ -238,6 +258,7 @@
         if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
         var eventCode = battleInput.getCode(event);
         var activeSlotIndex = battleInput.getActiveSlotIndex(event);
+        if (eventCode || activeSlotIndex >= 0) dismissBattleControlHint();
         var gameKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space", "KeyP"].indexOf(eventCode) >= 0 || activeSlotIndex >= 0;
         if (gameKey) event.preventDefault();
         if (eventCode) keys.add(eventCode);
@@ -257,6 +278,7 @@
       });
 
       canvas.addEventListener("pointerdown", function onPointerDown(event) {
+        dismissBattleControlHint();
         if (canvas.focus) canvas.focus({ preventScroll: true });
         pointer.active = true;
         updatePointer(event);

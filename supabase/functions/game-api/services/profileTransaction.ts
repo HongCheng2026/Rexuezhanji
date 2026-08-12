@@ -1,5 +1,12 @@
 type Json = Record<string, unknown>;
-type Context = { userId: string; admin: any };
+type EconomyAudit = {
+  sessionId: string;
+  sequence: number;
+  baseRevision: number;
+  rulesVersion: string;
+  commandHash: string;
+};
+type Context = { userId: string; admin: any; economyAudit?: EconomyAudit };
 
 export function createProfileTransactionService(normalizeProfile: (input: any) => any) {
   function operationId(body: Json) {
@@ -29,7 +36,9 @@ export function createProfileTransactionService(normalizeProfile: (input: any) =
       p_action: action,
       p_delta_gold: Math.floor(Number(gold) || 0),
       p_delta_energy: Math.floor(Number(energy) || 0),
-      p_payload: payload
+      p_payload: ctx.economyAudit
+        ? { ...payload, _economy: { ...ctx.economyAudit } }
+        : payload
     });
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
