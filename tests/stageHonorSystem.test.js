@@ -6,8 +6,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const stageHonorSystem = require(path.join(root, "src/shared/stageHonorSystem.js"));
-const chapterViewSource = fs.readFileSync(path.join(root, "src/h5/ui/chapterSelectView.js"), "utf8");
+const stageHonorSystem = require(path.join(root, "src/h5/World/Level/stageHonorSystem.js"));
+const chapterViewSource = fs.readFileSync(path.join(root, "src/h5/UI/ChapterSelect/chapterSelectView.js"), "utf8");
 
 const level = { id: 7, code: "1-4", chapterIndex: 1, stageInChapter: 4 };
 

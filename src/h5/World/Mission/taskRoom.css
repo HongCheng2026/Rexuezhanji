@@ -1,0 +1,738 @@
+.feature-panel.main-feature-panel.task-feature-panel .task-room-host {
+  overflow: hidden;
+}
+
+.task-command-center {
+  --mission-bg: #020b13;
+  --mission-panel: rgba(5, 21, 34, 0.88);
+  --mission-panel-soft: rgba(8, 32, 50, 0.74);
+  --mission-line: rgba(103, 210, 244, 0.22);
+  --mission-line-strong: rgba(111, 221, 255, 0.52);
+  --mission-cyan: #77ddff;
+  --mission-text: #eefaff;
+  --mission-muted: #86a9ba;
+  --mission-gold: #ffc94f;
+  --mission-green: #7af0b1;
+  color: var(--mission-text);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.task-command-center *,
+.task-command-center *::before,
+.task-command-center *::after {
+  box-sizing: border-box;
+}
+
+.task-command-center button {
+  font: inherit;
+}
+
+.task-command-center .mission-toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--mission-line);
+  display: flex;
+  justify-content: space-between;
+  min-height: 34px;
+  padding-bottom: 8px;
+}
+
+.task-command-center .mission-toolbar > span {
+  color: var(--mission-muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.task-command-center .mission-resource-line {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.task-command-center .mission-resource-line > span {
+  align-items: center;
+  color: var(--mission-muted);
+  display: inline-flex;
+  font-size: 11px;
+  gap: 5px;
+}
+
+.task-command-center .mission-resource-line b {
+  color: var(--mission-text);
+  font-size: 12px;
+}
+
+.task-command-center .mission-resource-line i {
+  border-radius: 50%;
+  display: inline-block;
+  height: 7px;
+  width: 7px;
+}
+
+.task-command-center .mission-resource-line .is-gold {
+  background: var(--mission-gold);
+  box-shadow: 0 0 7px rgba(255, 201, 79, 0.7);
+}
+
+.task-command-center .mission-resource-line .is-diamond {
+  background: var(--mission-cyan);
+  box-shadow: 0 0 7px rgba(119, 221, 255, 0.7);
+  transform: rotate(45deg);
+}
+
+.task-command-center .mission-resource-line .is-energy {
+  background: var(--mission-green);
+  box-shadow: 0 0 7px rgba(122, 240, 177, 0.7);
+}
+
+.task-command-center .mission-track-tabs {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.task-command-center .mission-track-tabs button {
+  background: linear-gradient(90deg, rgba(8, 30, 46, 0.84), rgba(4, 16, 27, 0.76));
+  border: 1px solid var(--mission-line);
+  color: var(--mission-muted);
+  cursor: pointer;
+  display: grid;
+  min-height: 48px;
+  padding: 8px 14px;
+  text-align: left;
+}
+
+.task-command-center .mission-track-tabs button:hover,
+.task-command-center .mission-track-tabs button:focus-visible {
+  border-color: var(--mission-line-strong);
+  outline: 0;
+}
+
+.task-command-center .mission-track-tabs button.is-active {
+  background: linear-gradient(90deg, rgba(18, 64, 86, 0.86), rgba(8, 27, 42, 0.78));
+  border-color: var(--mission-cyan);
+  box-shadow: inset 3px 0 0 var(--mission-gold), 0 0 18px rgba(74, 195, 235, 0.08);
+}
+
+.task-command-center .mission-track-tabs span {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.task-command-center .mission-track-tabs strong {
+  color: var(--mission-text);
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.task-command-center .mission-dashboard {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(330px, 0.85fr);
+}
+
+.task-command-center .mission-focus,
+.task-command-center .mission-activity,
+.task-command-center .mission-route-note {
+  background:
+    linear-gradient(115deg, rgba(10, 38, 57, 0.95), rgba(3, 12, 21, 0.95)),
+    var(--mission-bg);
+  border: 1px solid var(--mission-line);
+  min-height: 156px;
+  overflow: hidden;
+  position: relative;
+}
+
+.task-command-center .mission-focus::after,
+.task-command-center .mission-activity::after,
+.task-command-center .mission-route-note::after {
+  background: linear-gradient(90deg, transparent, rgba(119, 221, 255, 0.38), transparent);
+  content: "";
+  height: 1px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.task-command-center .mission-focus {
+  align-items: stretch;
+  display: grid;
+  grid-template-columns: 66px minmax(0, 1fr) 148px;
+}
+
+.task-command-center .mission-focus.is-ready {
+  border-color: rgba(255, 201, 79, 0.56);
+}
+
+.task-command-center .mission-focus-index {
+  align-content: center;
+  background: rgba(2, 11, 19, 0.55);
+  border-right: 1px solid var(--mission-line);
+  display: grid;
+  justify-items: center;
+}
+
+.task-command-center .mission-focus-index span {
+  color: var(--mission-muted);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  writing-mode: vertical-rl;
+}
+
+.task-command-center .mission-focus-index b {
+  color: var(--mission-cyan);
+  font-size: 24px;
+  line-height: 1;
+  margin-top: 7px;
+}
+
+.task-command-center .mission-focus-copy {
+  align-content: center;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px 18px;
+}
+
+.task-command-center .mission-eyebrow {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.task-command-center .mission-eyebrow span,
+.task-command-center .mission-eyebrow em {
+  color: var(--mission-cyan);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.task-command-center .mission-focus.is-ready .mission-eyebrow em {
+  color: var(--mission-gold);
+}
+
+.task-command-center .mission-focus.is-claimed .mission-eyebrow em {
+  color: var(--mission-green);
+}
+
+.task-command-center .mission-focus h3 {
+  color: var(--mission-text);
+  font-size: 21px;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.task-command-center .mission-focus p {
+  color: var(--mission-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.task-command-center .mission-progress {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.task-command-center .mission-progress > div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.task-command-center .mission-progress span,
+.task-command-center .mission-progress b {
+  color: var(--mission-muted);
+  font-size: 9px;
+}
+
+.task-command-center .mission-progress b {
+  color: var(--mission-gold);
+}
+
+.task-command-center .mission-progress > i {
+  background: rgba(1, 7, 13, 0.92);
+  display: block;
+  height: 4px;
+  overflow: hidden;
+}
+
+.task-command-center .mission-progress > i > span {
+  background: linear-gradient(90deg, #28aeda, var(--mission-gold));
+  display: block;
+  height: 100%;
+}
+
+.task-command-center .mission-focus-reward {
+  align-content: center;
+  background: rgba(1, 8, 15, 0.44);
+  border-left: 1px solid var(--mission-line);
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+  padding: 14px;
+}
+
+.task-command-center .mission-focus-reward > span,
+.task-command-center .mission-card-reward > span {
+  color: var(--mission-muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.task-command-center .mission-focus-reward > div,
+.task-command-center .mission-card-reward > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.task-command-center .mission-focus-reward > div span,
+.task-command-center .mission-card-reward > div span {
+  color: var(--mission-gold);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.task-command-center .mission-claim {
+  background: linear-gradient(180deg, #ffe079, #d99916);
+  border: 1px solid #ffecad;
+  color: #241704;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.task-command-center .mission-claim:hover,
+.task-command-center .mission-claim:focus-visible {
+  box-shadow: 0 0 18px rgba(255, 201, 79, 0.28);
+  outline: 0;
+}
+
+.task-command-center .mission-state {
+  align-items: center;
+  border: 1px solid var(--mission-line);
+  color: var(--mission-muted);
+  display: inline-flex;
+  font-size: 10px;
+  font-style: normal;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 10px;
+}
+
+.task-command-center .mission-state.is-claimed {
+  border-color: rgba(122, 240, 177, 0.3);
+  color: var(--mission-green);
+}
+
+.task-command-center .mission-activity {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 80px minmax(0, 1fr);
+  padding: 15px;
+}
+
+.task-command-center .mission-activity header {
+  align-content: center;
+  display: grid;
+}
+
+.task-command-center .mission-activity header span {
+  color: var(--mission-cyan);
+  font-size: 8px;
+  letter-spacing: 0.13em;
+}
+
+.task-command-center .mission-activity header strong {
+  color: var(--mission-gold);
+  display: block;
+  font-size: 27px;
+  line-height: 1;
+  margin-top: 5px;
+}
+
+.task-command-center .mission-activity header small {
+  color: var(--mission-muted);
+  font-size: 11px;
+}
+
+.task-command-center .mission-activity header p {
+  color: var(--mission-muted);
+  font-size: 9px;
+  margin: 6px 0 0;
+}
+
+.task-command-center .mission-activity-route {
+  align-content: center;
+  display: grid;
+  min-width: 0;
+  position: relative;
+}
+
+.task-command-center .mission-activity-route > i {
+  background: rgba(1, 7, 13, 0.92);
+  height: 3px;
+  left: 7%;
+  position: absolute;
+  right: 7%;
+  top: 37px;
+}
+
+.task-command-center .mission-activity-route > i span {
+  background: linear-gradient(90deg, var(--mission-cyan), var(--mission-gold));
+  display: block;
+  height: 100%;
+}
+
+.task-command-center .mission-activity ol {
+  display: grid;
+  gap: 3px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.task-command-center .mission-activity li {
+  align-content: start;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.task-command-center .mission-activity li > b {
+  align-items: center;
+  background: #061622;
+  border: 2px solid #356f88;
+  border-radius: 50%;
+  color: var(--mission-muted);
+  display: flex;
+  font-size: 9px;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.task-command-center .mission-activity li.is-ready > b {
+  border-color: var(--mission-gold);
+  box-shadow: 0 0 12px rgba(255, 201, 79, 0.34);
+  color: var(--mission-gold);
+}
+
+.task-command-center .mission-activity li.is-claimed > b {
+  border-color: var(--mission-green);
+  color: var(--mission-green);
+}
+
+.task-command-center .mission-activity li > span {
+  display: grid;
+  justify-items: center;
+  min-height: 26px;
+}
+
+.task-command-center .mission-activity li > span span {
+  color: var(--mission-muted);
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.task-command-center .mission-activity li button,
+.task-command-center .mission-activity li em {
+  background: transparent;
+  border: 0;
+  color: var(--mission-muted);
+  font-size: 8px;
+  font-style: normal;
+  padding: 0;
+}
+
+.task-command-center .mission-activity li button {
+  color: var(--mission-gold);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.task-command-center .mission-route-note {
+  align-content: center;
+  display: grid;
+  gap: 7px;
+  padding: 22px;
+}
+
+.task-command-center .mission-route-note span {
+  color: var(--mission-cyan);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+}
+
+.task-command-center .mission-route-note strong {
+  color: var(--mission-text);
+  font-size: 15px;
+}
+
+.task-command-center .mission-route-note p {
+  color: var(--mission-muted);
+  font-size: 10px;
+  margin: 0;
+}
+
+.task-command-center .mission-orders {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+}
+
+.task-command-center .mission-orders > header {
+  align-items: end;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.task-command-center .mission-orders > header > div > span {
+  color: var(--mission-cyan);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+}
+
+.task-command-center .mission-orders > header > div > strong {
+  color: var(--mission-text);
+  display: block;
+  font-size: 15px;
+  margin-top: 2px;
+}
+
+.task-command-center .mission-orders > header > div > p {
+  color: var(--mission-muted);
+  font-size: 9px;
+  margin: 2px 0 0;
+}
+
+.task-command-center .mission-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: end;
+}
+
+.task-command-center .mission-filters button {
+  background: rgba(5, 22, 35, 0.72);
+  border: 1px solid var(--mission-line);
+  color: var(--mission-muted);
+  cursor: pointer;
+  font-size: 9px;
+  min-height: 28px;
+  padding: 0 9px;
+}
+
+.task-command-center .mission-filters button b {
+  color: inherit;
+  margin-left: 5px;
+}
+
+.task-command-center .mission-filters button.is-active {
+  border-color: var(--mission-cyan);
+  color: var(--mission-cyan);
+}
+
+.task-command-center .mission-list {
+  display: grid;
+  gap: 6px;
+}
+
+.task-command-center .mission-card {
+  align-items: center;
+  background: linear-gradient(90deg, rgba(5, 22, 35, 0.84), rgba(2, 11, 19, 0.9));
+  border: 1px solid var(--mission-line);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 58px minmax(280px, 1fr) 128px 92px;
+  min-height: 82px;
+  padding: 9px 11px;
+}
+
+.task-command-center .mission-card.is-ready {
+  border-color: rgba(255, 201, 79, 0.5);
+  box-shadow: inset 3px 0 0 var(--mission-gold);
+}
+
+.task-command-center .mission-card.is-claimed {
+  opacity: 0.67;
+}
+
+.task-command-center .mission-card-mark {
+  align-content: center;
+  border-right: 1px solid var(--mission-line);
+  display: grid;
+  min-height: 52px;
+}
+
+.task-command-center .mission-card-mark b {
+  color: var(--mission-cyan);
+  font-size: 17px;
+}
+
+.task-command-center .mission-card-mark span {
+  color: var(--mission-muted);
+  font-size: 8px;
+}
+
+.task-command-center .mission-card-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.task-command-center .mission-card-copy > div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.task-command-center .mission-card-copy strong {
+  color: var(--mission-text);
+  font-size: 13px;
+}
+
+.task-command-center .mission-card-copy em {
+  color: var(--mission-muted);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.task-command-center .mission-card.is-ready .mission-card-copy em {
+  color: var(--mission-gold);
+}
+
+.task-command-center .mission-card.is-claimed .mission-card-copy em {
+  color: var(--mission-green);
+}
+
+.task-command-center .mission-card-copy > p {
+  color: var(--mission-muted);
+  font-size: 9px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.task-command-center .mission-card-reward {
+  display: grid;
+  gap: 5px;
+}
+
+.task-command-center .mission-card-action {
+  display: grid;
+}
+
+.task-command-center .mission-card-action .mission-claim,
+.task-command-center .mission-card-action .mission-state {
+  width: 100%;
+}
+
+.task-command-center .mission-empty {
+  border: 1px dashed var(--mission-line);
+  color: var(--mission-muted);
+  display: grid;
+  justify-items: center;
+  padding: 28px;
+}
+
+.task-command-center .mission-empty strong {
+  color: var(--mission-text);
+  font-size: 13px;
+}
+
+.task-command-center .mission-empty p {
+  font-size: 10px;
+  margin: 5px 0 0;
+}
+
+@media (max-width: 920px) {
+  .task-command-center .mission-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-command-center .mission-card {
+    grid-template-columns: 48px minmax(0, 1fr) 110px;
+  }
+
+  .task-command-center .mission-card-action {
+    grid-column: 2 / -1;
+  }
+
+  .task-command-center .mission-card-action .mission-claim,
+  .task-command-center .mission-card-action .mission-state {
+    justify-self: end;
+    width: 110px;
+  }
+}
+
+@media (max-width: 640px) {
+  .task-command-center .mission-toolbar {
+    align-items: start;
+    gap: 7px;
+  }
+
+  .task-command-center .mission-toolbar > span {
+    display: none;
+  }
+
+  .task-command-center .mission-track-tabs,
+  .task-command-center .mission-dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-command-center .mission-focus {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .task-command-center .mission-focus-reward {
+    border-left: 0;
+    border-top: 1px solid var(--mission-line);
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .task-command-center .mission-focus-reward > span {
+    grid-column: 1 / -1;
+  }
+
+  .task-command-center .mission-activity {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-command-center .mission-activity header {
+    display: flex;
+    gap: 8px;
+  }
+
+  .task-command-center .mission-orders > header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .task-command-center .mission-filters {
+    justify-content: start;
+  }
+
+  .task-command-center .mission-card {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .task-command-center .mission-card-reward,
+  .task-command-center .mission-card-action {
+    grid-column: 2;
+  }
+}

@@ -45,6 +45,11 @@ supabase/.branches/
 supabase/functions/.env
 supabase/functions/**/.env
 supabase/.env
+src/backend/.temp/
+src/backend/.branches/
+src/backend/functions/.env
+src/backend/functions/**/.env
+src/backend/.env
 
 # Logs
 *.log

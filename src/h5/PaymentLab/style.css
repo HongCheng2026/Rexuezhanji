@@ -1,0 +1,35 @@
+:root { color-scheme: dark; font-family: "Microsoft YaHei", system-ui, sans-serif; }
+html, body { background: transparent; margin: 0; min-height: 100%; }
+.paylab-app, .paylab-app * { box-sizing: border-box; }
+.paylab-app button { font: inherit; }
+.paylab-app { color: #eef8ff; min-height: 100vh; padding: 22px; }
+.paylab-app__shell { background: radial-gradient(circle at 80% 0, rgba(32,195,255,.16), transparent 34%), linear-gradient(145deg,#07182a,#05101e 70%); border: 1px solid rgba(95,211,255,.28); border-radius: 18px; box-shadow: 0 24px 70px rgba(0,0,0,.34); min-height: calc(100vh - 44px); padding: 24px; }
+.paylab-app__head { align-items: flex-start; display: flex; gap: 20px; justify-content: space-between; }
+.paylab-app__eyebrow { color: #58dcff; font-size: 11px; font-weight: 800; letter-spacing: .2em; }
+.paylab-app h1 { font-size: clamp(24px,3vw,38px); margin: 4px 0 6px; }
+.paylab-app__head p, .paylab-app__safe p { color: #8ba8bd; font-size: 12px; line-height: 1.6; margin: 0; }
+.paylab-app__badge { background: rgba(29,188,115,.12); border: 1px solid rgba(71,238,156,.35); border-radius: 999px; color: #72efb1; font-size: 12px; padding: 8px 13px; white-space: nowrap; }
+.paylab-app__offers { display: grid; gap: 14px; grid-template-columns: repeat(3,minmax(0,1fr)); margin-top: 22px; }
+.paylab-app__offer { background: linear-gradient(150deg,rgba(18,45,70,.96),rgba(5,17,31,.96)); border: 1px solid rgba(102,177,223,.22); border-radius: 14px; min-height: 154px; padding: 16px; position: relative; }
+.paylab-app__offer:hover { border-color: rgba(83,222,255,.65); }
+.paylab-app__offer h2 { font-size: 20px; margin: 0 0 6px; }
+.paylab-app__offer p { color: #8da9bc; font-size: 12px; min-height: 38px; }
+.paylab-app__offer button { background: linear-gradient(135deg,#167cf1,#20cee3); border: 0; border-radius: 9px; color: white; cursor: pointer; font-weight: 800; padding: 10px 14px; width: 100%; }
+.paylab-app__offer button:disabled { background: #304656; color: #8296a5; cursor: not-allowed; }
+.paylab-app__bonus { background: #c78921; border-radius: 0 13px 0 8px; font-size: 10px; padding: 5px 8px; position: absolute; right: 0; top: 0; }
+.paylab-app__safe { border-top: 1px solid rgba(113,164,199,.18); margin-top: 20px; padding-top: 14px; }
+.paylab-app__status { color: #9fd7f3; margin: 14px 0 0; min-height: 22px; text-align: center; }
+.paylab-app__status.is-error { color: #ff9d86; }
+.paylab-app__status.is-success { color: #72efb1; }
+.paylab-app__modal { align-items: center; background: rgba(0,5,12,.88); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 10; }
+.paylab-app__dialog { background: #f7fbff; border-radius: 18px; color: #11283a; max-width: 390px; padding: 24px; text-align: center; width: 100%; }
+.paylab-app__dialog small { color: #2186bd; font-weight: 800; letter-spacing: .16em; }
+.paylab-app__dialog h2 { margin: 5px 0; }
+.paylab-app__dialog p { color: #5b7080; font-size: 13px; line-height: 1.55; }
+.paylab-app__qr { margin: 14px auto; max-width: 244px; }
+.paylab-app__qr svg { display: block; height: auto; width: 100%; }
+.paylab-app__dialog button { background: #dfeaf2; border: 0; border-radius: 9px; color: #26475d; cursor: pointer; padding: 9px 18px; }
+.paylab-app button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.paylab-app__loading { color: #9fc9df; padding: 40px; text-align: center; }
+@media (max-width: 850px) { .paylab-app { padding: 12px; } .paylab-app__shell { min-height: calc(100vh - 24px); padding: 16px; } .paylab-app__offers { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 520px) { .paylab-app__head { display: block; } .paylab-app__badge { display: inline-block; margin-top: 10px; } .paylab-app__offers { grid-template-columns: 1fr; } }

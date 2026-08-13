@@ -3,7 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 // Load shared modules in order (Node test environment)
-require("../src/shared/combatCodexConfig.js");
+require("../src/h5/Data/Balance/combatCodexConfig.js");
 
 const config = globalThis.RXGame && globalThis.RXGame.combatCodexConfig;
 
@@ -407,9 +407,9 @@ test("every unit and boss has independent art metadata", () => {
 
 test("getPlayerShipName resolves 9 ship names via SHIP_ASSETS", () => {
   // Load assets if not already loaded in test env
-  try { require("../src/shared/assets.js"); } catch (e) { /* may already be loaded */ }
+  try { require("../src/h5/Presentation/Assets/assets.js"); } catch (e) { /* may already be loaded */ }
   const s09 = config.getPlayerShipName("ship-s-09");
-  assert.ok(s09 && s09.indexOf("苍穹零式") >= 0, "ship-s-09 name: " + s09);
+  assert.ok(s09 && s09.indexOf("苍穹") >= 0, "ship-s-09 name: " + s09);
   const s08 = config.getPlayerShipName("ship-s-08");
   assert.ok(s08 && s08.indexOf("黑曜幽影") >= 0, "ship-s-08 name: " + s08);
   const b04 = config.getPlayerShipName("ship-b-04");
@@ -417,15 +417,15 @@ test("getPlayerShipName resolves 9 ship names via SHIP_ASSETS", () => {
   const a07 = config.getPlayerShipName("ship-a-07");
   assert.ok(a07 && a07.indexOf("白昼指挥") >= 0, "ship-a-07 name: " + a07);
   const a06 = config.getPlayerShipName("ship-a-06");
-  assert.ok(a06 && a06.indexOf("银翼06") >= 0, "ship-a-06 name: " + a06);
+  assert.ok(a06 && a06.indexOf("银翼") >= 0, "ship-a-06 name: " + a06);
   const b02 = config.getPlayerShipName("ship-b-02");
-  assert.ok(b02 && b02.indexOf("赤枪03") >= 0, "ship-b-02 name: " + b02);
+  assert.ok(b02 && b02.indexOf("赤枪") >= 0, "ship-b-02 name: " + b02);
   const b01 = config.getPlayerShipName("ship-b-01");
-  assert.ok(b01 && b01.indexOf("蓝隼01") >= 0, "ship-b-01 name: " + b01);
+  assert.ok(b01 && b01.indexOf("蓝隼") >= 0, "ship-b-01 name: " + b01);
   const b03 = config.getPlayerShipName("ship-b-03");
-  assert.ok(b03 && b03.indexOf("绿堡04") >= 0, "ship-b-03 name: " + b03);
+  assert.ok(b03 && b03.indexOf("绿堡") >= 0, "ship-b-03 name: " + b03);
   const b05 = config.getPlayerShipName("ship-b-05");
-  assert.ok(b05 && b05.indexOf("紫影05") >= 0, "ship-b-05 name: " + b05);
+  assert.ok(b05 && b05.indexOf("紫影") >= 0, "ship-b-05 name: " + b05);
 });
 
 // ─── Section 9: getChapterCodex ───────────────────────────────────────

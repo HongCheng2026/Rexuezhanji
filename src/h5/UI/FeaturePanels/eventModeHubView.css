@@ -1,0 +1,193 @@
+/* Activity-hub structure is supplied by a generated raster frame; CSS only places live content. */
+.feature-panel.main-feature-panel.feature-panel-standard.endless-feature-panel #featurePanelKicker,
+.feature-panel.main-feature-panel.feature-panel-standard.endless-feature-panel #featurePanelTitle,
+.feature-panel.main-feature-panel.feature-panel-standard.endless-feature-panel > .feature-panel-box > p,
+.feature-panel.main-feature-panel.feature-panel-standard.endless-feature-panel .panel-close {
+  display: none;
+}
+
+.feature-panel.main-feature-panel.feature-panel-standard.endless-feature-panel .event-mode-content {
+  height: 100%;
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 100%;
+}
+
+.event-hub-page {
+  aspect-ratio: 1672 / 941;
+  color: #edfaff;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.event-hub-frame {
+  height: 100%;
+  inset: 0;
+  object-fit: fill;
+  pointer-events: none;
+  position: absolute;
+  user-select: none;
+  width: 100%;
+}
+
+.event-hub-header {
+  align-items: center;
+  display: flex;
+  height: 5.8%;
+  left: 1.65%;
+  position: absolute;
+  top: 3.45%;
+  width: 95%;
+}
+
+.event-hub-back {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: #f3f8fb;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: clamp(11px, 1.02vw, 17px);
+  font-weight: 850;
+  gap: .4em;
+  height: 100%;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 8.1%;
+}
+
+.event-hub-back span {
+  font-size: 1.35em;
+  font-weight: 450;
+  line-height: 1;
+}
+
+.event-hub-back:hover,
+.event-hub-back:focus-visible {
+  color: #78e6ff;
+  filter: brightness(1.2);
+  outline: 0;
+  text-shadow: 0 0 10px rgba(91, 222, 255, .72);
+}
+
+.event-hub-header h2 {
+  font-size: clamp(17px, 1.75vw, 30px);
+  font-weight: 950;
+  line-height: 1;
+  margin: 0 0 0 1.2%;
+}
+
+.event-hub-header small {
+  color: #8499aa;
+  font-size: clamp(8px, .85vw, 15px);
+  letter-spacing: .08em;
+  margin-left: 1.25%;
+}
+
+.event-hub-rail {
+  display: grid;
+  gap: 2.55%;
+  grid-template-rows: repeat(4, 1fr);
+  height: 79.05%;
+  left: 1.8%;
+  position: absolute;
+  top: 12.95%;
+  width: 22.55%;
+}
+
+.event-hub-mode-card {
+  align-content: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: #e9f5fa;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  justify-items: start;
+  overflow: hidden;
+  padding: 4% 7.2%;
+  position: relative;
+  text-align: left;
+}
+
+.event-hub-mode-card strong {
+  font-size: clamp(15px, 1.65vw, 28px);
+  font-weight: 950;
+  line-height: 1.05;
+  text-shadow: 0 2px 12px #000;
+}
+
+.event-hub-mode-card small {
+  color: #a7bac5;
+  font-size: clamp(8px, .9vw, 15px);
+  margin-top: .75em;
+  text-shadow: 0 2px 8px #000;
+}
+
+.event-hub-mode-card.is-active small {
+  color: #32e0ff;
+  font-weight: 850;
+}
+
+.event-hub-mode-card.is-placeholder {
+  color: #d7e0e4;
+}
+
+.event-hub-mode-card:hover,
+.event-hub-mode-card:focus-visible {
+  filter: brightness(1.24);
+  outline: 2px solid rgba(99, 224, 255, .66);
+  outline-offset: -6px;
+}
+
+.event-hub-notice {
+  color: #84dff4;
+  font-size: clamp(8px, .78vw, 13px);
+  opacity: 0;
+  position: absolute;
+  right: 3.1%;
+  text-shadow: 0 2px 10px #000;
+  top: 6.1%;
+  transform: translateY(-4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  z-index: 3;
+}
+
+.event-hub-notice.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.event-hub-mode-content {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.event-hub-mode-content button,
+.event-hub-mode-content a {
+  pointer-events: auto;
+}
+
+@media (max-width: 820px) {
+  .event-hub-mode-card {
+    padding-inline: 6%;
+  }
+
+  .event-hub-mode-card strong {
+    font-size: clamp(10px, 2.1vw, 17px);
+  }
+
+  .event-hub-header h2 {
+    font-size: clamp(13px, 2.6vw, 19px);
+  }
+}

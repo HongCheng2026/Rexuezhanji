@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>热血战姬 Canvas 弹幕性能验收</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Microsoft YaHei", system-ui, sans-serif; }
+    body { background: #030916; color: #dff7ff; margin: 0; padding: 18px; }
+    main { display: grid; gap: 12px; margin: 0 auto; max-width: 1280px; }
+    h1 { font-size: 20px; margin: 0; }
+    p { color: #9dc7dc; margin: 0; }
+    canvas { background: #07111f; border: 1px solid #285a72; display: block; height: auto; max-width: 100%; width: 1280px; }
+    #result { background: #07182a; border: 1px solid #2b6c89; border-radius: 5px; color: #8ee6ff; padding: 12px; }
+    #result[data-status="complete"] { border-color: #4dbd88; color: #9dffc8; }
+    #result[data-status="error"] { border-color: #d95d75; color: #ff9cad; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Canvas 弹幕帧节奏验收</h1>
+    <p>使用真实 canvasRenderer 绘制。参数：?mode=smooth|auto|quality&amp;bullets=720&amp;frames=240。</p>
+    <output id="result" data-status="running" aria-live="polite">正在预热并采样…</output>
+    <canvas id="battle" width="1280" height="720" aria-label="720发弹幕性能测试画布"></canvas>
+  </main>
+  <script src="../../src/h5/Presentation/Graphics/visualQualitySystem.js"></script>
+  <script src="../../src/h5/Gameplay/Combat/canvasRenderer.js"></script>
+  <script src="./battle-performance-harness.js"></script>
+</body>
+</html>

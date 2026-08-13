@@ -1,0 +1,317 @@
+(function registerShopConfig(root) {
+  "use strict";
+  const scope = root.RXGame || (root.RXGame = {});
+
+  // ── 商店商品清单（独立模块数据源） ──
+  // 金币 / 钻石商品继续按支付币种分组；兑换商品使用另一件背包物资作为价格。
+  // 当日体力求购价格随当日已购次数阶梯上涨（priceTiers）；金币/钻石类目均有周/日限购。
+  // confirm:true 的商品在扣费前需经商店内自定义确认界面二次确认。
+  const SHOP_CATEGORIES = ["金币", "钻石", "兑换"];
+  const SHOP_CONTENT = [
+    // ── 基础金币商品 ──
+    {
+      id: "energy_potion_daily",
+      category: "金币",
+      title: "体力药水（当日）",
+      description: "立即恢复 20 点体力，当日价格逐次提升。",
+      price: "1000 金币",
+      priceCurrency: "gold",
+      priceTiers: [1000, 2000, 3000, 4000, 5000],
+      limit: 5,
+      limitType: "daily",
+      rewards: [{ type: "energy", amount: 20 }],
+      status: "展示",
+      sellable: false,
+      image: "energy_potion_daily"
+    },
+    {
+      id: "auto_weapon_module_purple",
+      category: "金币",
+      title: "自动武器模块",
+      description: "解锁与升级自动技能（1-9级）的必备材料。",
+      price: "10000 金币",
+      priceCurrency: "gold",
+      priceAmount: 10000,
+      limit: 20,
+      limitType: "weekly",
+      rewards: [{ type: "item", itemId: "auto_weapon_module_purple", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "auto_weapon_module_purple"
+    },
+    {
+      id: "pilot_rank_a_token",
+      category: "金币",
+      title: "A级档案令",
+      description: "用于 A 级驾驶员档案晋升。",
+      price: "90000 金币",
+      priceCurrency: "gold",
+      priceAmount: 90000,
+      rewards: [{ type: "item", itemId: "pilot_rank_a_token", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "pilot_rank_a_token"
+    },
+    {
+      id: "fighter_rank_a_token",
+      category: "金币",
+      title: "A级改装令",
+      description: "用于 A 级战机改装晋升。",
+      price: "100000 金币",
+      priceCurrency: "gold",
+      priceAmount: 100000,
+      rewards: [{ type: "item", itemId: "fighter_rank_a_token", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "fighter_rank_a_token"
+    },
+
+    // ── 其余商品：tab 归属由 priceCurrency 决定 ──
+    {
+      id: "energy_potion_inventory",
+      category: "钻石",
+      title: "体力药水",
+      description: "放入背包，使用后恢复 100 点体力。",
+      price: "10 钻石",
+      priceCurrency: "diamonds",
+      priceAmount: 10,
+      limit: 5,
+      limitType: "weekly",
+      rewards: [{ type: "item", itemId: "stamina_potion", amount: 1 }],
+      status: "展示",
+      sellable: false,
+      image: "energy_potion_inventory"
+    },
+    {
+      id: "auto_weapon_module_gold",
+      category: "钻石",
+      title: "自动武器核心",
+      description: "高阶自动技能进阶核心（7-9级需与自动武器模块同时消耗）。",
+      price: "100 钻石",
+      priceCurrency: "diamonds",
+      priceAmount: 100,
+      limit: 6,
+      limitType: "weekly",
+      rewards: [{ type: "item", itemId: "auto_weapon_module_gold", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "auto_weapon_module_gold"
+    },
+    {
+      id: "active_skill_module_c",
+      category: "金币",
+      title: "主动技能模组·C",
+      description: "用于主动技能 C 级强化与突破。",
+      price: "500000 金币",
+      priceCurrency: "gold",
+      priceAmount: 500000,
+      rewards: [{ type: "item", itemId: "active_skill_module_c", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: true,
+      batchable: true,
+      image: "active_skill_module_c"
+    },
+    {
+      id: "active_skill_module_b",
+      category: "金币",
+      title: "主动技能模组·B",
+      description: "用于主动技能 B 级强化与突破。",
+      price: "1000000 金币",
+      priceCurrency: "gold",
+      priceAmount: 1000000,
+      rewards: [{ type: "item", itemId: "active_skill_module_b", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: true,
+      batchable: true,
+      image: "active_skill_module_b"
+    },
+    {
+      id: "active_skill_module_a",
+      category: "金币",
+      title: "主动技能模组·A",
+      description: "用于主动技能 A 级强化与突破。",
+      price: "1500000 金币",
+      priceCurrency: "gold",
+      priceAmount: 1500000,
+      rewards: [{ type: "item", itemId: "active_skill_module_a", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: true,
+      batchable: true,
+      image: "active_skill_module_a"
+    },
+    {
+      id: "active_skill_module_s",
+      category: "钻石",
+      title: "主动技能模组·S",
+      description: "用于主动技能 S 级强化与突破。",
+      price: "2000 钻石",
+      priceCurrency: "diamonds",
+      priceAmount: 2000,
+      rewards: [{ type: "item", itemId: "active_skill_module_s", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: true,
+      batchable: true,
+      image: "active_skill_module_s"
+    },
+    {
+      id: "active_skill_module_ss",
+      category: "钻石",
+      title: "主动技能模组·SS",
+      description: "用于主动技能 SS 级强化与突破。",
+      price: "5000 钻石",
+      priceCurrency: "diamonds",
+      priceAmount: 5000,
+      rewards: [{ type: "item", itemId: "active_skill_module_ss", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: true,
+      batchable: true,
+      image: "active_skill_module_ss"
+    },
+    {
+      id: "active_skill_module_sss",
+      category: "钻石",
+      title: "主动技能模组·SSS",
+      description: "用于主动技能 SSS 级强化与突破。",
+      price: "10000 钻石",
+      priceCurrency: "diamonds",
+      priceAmount: 10000,
+      rewards: [{ type: "item", itemId: "active_skill_module_sss", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: true,
+      batchable: true,
+      image: "active_skill_module_sss"
+    },
+    {
+      id: "pilot_rank_s_token",
+      category: "金币",
+      title: "S级档案令",
+      description: "用于 A 级驾驶员晋升至 S 级。",
+      price: "780000 金币",
+      priceCurrency: "gold",
+      priceAmount: 780000,
+      rewards: [{ type: "item", itemId: "pilot_rank_s_token", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "pilot_rank_s_token"
+    },
+    {
+      id: "fighter_rank_s_token",
+      category: "金币",
+      title: "S级改装令",
+      description: "用于 A 级战机晋升至 S 级。SS 战机突破至 SSS 改用 5 个 SSS战机模组。",
+      price: "1150000 金币",
+      priceCurrency: "gold",
+      priceAmount: 1150000,
+      rewards: [{ type: "item", itemId: "fighter_rank_s_token", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "fighter_rank_s_token"
+    },
+    {
+      id: "starlink_ticket",
+      category: "钻石",
+      title: "星链研究券",
+      description: "用于进行一次星链研究。",
+      price: "120 钻石",
+      priceCurrency: "diamonds",
+      priceAmount: 120,
+      rewards: [{ type: "item", itemId: "starlink_ticket", amount: 1 }],
+      status: "展示",
+      sellable: true,
+      batchable: true,
+      image: "starlink_ticket"
+    },
+
+    // ── 等价兑换商品：对方物资即支付货币 ──
+    {
+      id: "exchange_sss_fighter_module",
+      category: "兑换",
+      title: "SSS战机模组",
+      description: "使用 SSS级战姬奖章进行 1:1 等价兑换。",
+      price: "1 SSS级战姬奖章",
+      priceCurrency: "item",
+      priceItemId: "sss_pilot_medal",
+      priceItemTitle: "SSS级战姬奖章",
+      priceItemImage: "sss_pilot_medal",
+      priceAmount: 1,
+      rewards: [{ type: "item", itemId: "sss_fighter_module", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: false,
+      batchable: true,
+      image: "sss_fighter_module"
+    },
+    {
+      id: "exchange_sss_pilot_medal",
+      category: "兑换",
+      title: "SSS级战姬奖章",
+      description: "使用 SSS战机模组进行 1:1 等价兑换。",
+      price: "1 SSS战机模组",
+      priceCurrency: "item",
+      priceItemId: "sss_fighter_module",
+      priceItemTitle: "SSS战机模组",
+      priceItemImage: "sss_fighter_module",
+      priceAmount: 1,
+      rewards: [{ type: "item", itemId: "sss_pilot_medal", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: false,
+      batchable: true,
+      image: "sss_pilot_medal"
+    },
+    {
+      id: "exchange_weapon_module_to_core",
+      category: "兑换",
+      title: "自动武器核心",
+      description: "使用武器模组进行 1:1 兑换。",
+      price: "1 武器模组",
+      priceCurrency: "item",
+      priceItemId: "active_weapon_module",
+      priceItemTitle: "武器模组",
+      priceItemImage: "active_weapon_module",
+      priceAmount: 1,
+      rewards: [{ type: "item", itemId: "auto_weapon_module_gold", amount: 1 }],
+      status: "展示",
+      confirm: true,
+      sellable: false,
+      batchable: true,
+      image: "auto_weapon_module_gold"
+    },
+    {
+      id: "exchange_core_to_blue_module",
+      category: "兑换",
+      title: "自动武器模块",
+      description: "使用自动武器核心进行 1:2 兑换。",
+      price: "1 自动武器核心",
+      priceCurrency: "item",
+      priceItemId: "auto_weapon_module_gold",
+      priceItemTitle: "自动武器核心",
+      priceItemImage: "auto_weapon_module_gold",
+      priceAmount: 1,
+      rewards: [{ type: "item", itemId: "auto_weapon_module_purple", amount: 2 }],
+      status: "展示",
+      confirm: true,
+      sellable: false,
+      batchable: true,
+      image: "auto_weapon_module_purple"
+    }
+  ];
+
+  const getShopItem = (id) => SHOP_CONTENT.find((item) => item.id === id) || null;
+
+  const api = { SHOP_CATEGORIES, SHOP_CONTENT, getShopItem };
+  scope.shopConfig = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);

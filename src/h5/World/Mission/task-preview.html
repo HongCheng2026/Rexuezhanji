@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>任务指令台视觉回归</title>
+    <link rel="stylesheet" href="taskRoom.css" />
+    <style>
+      html { background: #02070d; min-height: 100%; }
+      body { margin: 0; min-height: 100vh; padding: 18px; }
+      #preview { margin: 0 auto; max-width: 1180px; }
+    </style>
+  </head>
+  <body>
+    <main id="preview"></main>
+    <script src="../../Data/Config/taskCatalog.js"></script>
+    <script src="taskSystem.js"></script>
+    <script src="taskView.js"></script>
+    <script>
+      (function mountTaskPreview() {
+        var game = window.RXGame;
+        var profile = {
+          coins: 1890,
+          resources: { gold: 1890, diamonds: 5, energy: 98, maxEnergy: 265 },
+          progress: {
+            clearCount: 3,
+            perfectClearCount: 1,
+            noDamageBossClearCount: 0,
+            clearedStageIds: ["prologue_1", "prologue_2", "prologue_3"]
+          },
+          completed: ["prologue_1", "prologue_2", "prologue_3"],
+          fighterUpgrades: { attack: 2, hp: 1, armorPenetration: 1 },
+          owned: { pilots: ["pilot-01"], ships: ["ship-01"] },
+          scene: { shipId: "ship-01" },
+          localEarned: { gold: 4200 }
+        };
+        var preview = document.getElementById("preview");
+        var dom = {
+          featurePanelKicker: document.createElement("span"),
+          featurePanelTitle: document.createElement("strong"),
+          featurePanelBody: document.createElement("p"),
+          featurePanelSlots: preview
+        };
+        var options = { profile: profile };
+
+        function render() {
+          game.taskView.renderPanel(dom, options);
+        }
+
+        preview.addEventListener("click", function handlePreviewClick(event) {
+          if (game.taskView.handleEvent(event, dom, options)) return;
+          var taskClaim = event.target.closest("[data-task-claim]");
+          if (taskClaim) {
+            game.taskSystem.claimTask(profile, taskClaim.dataset.taskClaim);
+            render();
+            return;
+          }
+          var activityClaim = event.target.closest("[data-activity-claim]");
+          if (activityClaim) {
+            game.taskSystem.claimActivityReward(profile, activityClaim.dataset.activityClaim);
+            render();
+          }
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>

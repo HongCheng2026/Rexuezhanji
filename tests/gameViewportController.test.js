@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const viewportModule = require("../src/h5/app/gameViewportController.js");
+const viewportModule = require("../src/h5/Game/Camera/gameViewportController.js");
 
 function createEventTarget() {
   const listeners = new Map();
@@ -61,6 +61,7 @@ function createHarness(width, height, fullscreen) {
       }
     }
   };
+  const stage = { style: {} };
   if (fullscreen) {
     viewport.requestFullscreen = async function requestFullscreen() {
       documentRef.fullscreenElement = viewport;
@@ -71,7 +72,7 @@ function createHarness(width, height, fullscreen) {
       documentRef.dispatch("fullscreenchange");
     };
   }
-  return { root, document: documentRef, documentRef, viewport, styleValues, classes };
+  return { root, document: documentRef, documentRef, viewport, stage, styleValues, classes };
 }
 
 test("横屏按照宽高较小的一边整体缩放", () => {
@@ -85,6 +86,9 @@ test("横屏按照宽高较小的一边整体缩放", () => {
   assert.equal(harness.classes.has("is-ready"), true);
   assert.equal(harness.viewport.style.width, "1920px");
   assert.equal(harness.viewport.style.height, "1080px");
+  assert.equal(harness.stage.style.transform, "translate3d(-50%, -50%, 0) scale(1.2)");
+  assert.equal(harness.stage.style.left, "960px");
+  assert.equal(harness.stage.style.top, "540px");
 });
 
 test("竖屏保持横版比例并在上下留下空间", () => {

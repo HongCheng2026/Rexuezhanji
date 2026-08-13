@@ -4,30 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <link rel="icon" href="data:," />
-    <title>星空打飞机：第一章</title>
-    <link rel="stylesheet" href="viewport.css?v=20260714-game-viewport-v1" />
+    <title>热血战姬</title>
+    <script>
+      var shellUrl = new URL("Shell/index.html", window.location.href);
+      shellUrl.search = window.location.search;
+      shellUrl.hash = window.location.hash;
+      window.location.replace(shellUrl.href);
+    </script>
   </head>
-  <body class="game-viewport-host">
-    <main id="gameViewport" class="game-viewport" aria-label="热血战姬游戏窗口">
-      <iframe
-        id="gameFrame"
-        class="game-frame"
-        title="热血战姬"
-        data-src="game-frame.html"
-        allow="autoplay; fullscreen"
-        allowfullscreen
-      ></iframe>
-
-      <button id="fullscreenToggle" class="viewport-fullscreen" type="button" aria-pressed="false">
-        <span class="viewport-fullscreen-icon" aria-hidden="true">⛶</span>
-        <span id="fullscreenLabel">全屏</span>
-      </button>
-
-      <p id="orientationHint" class="viewport-orientation-hint">横屏体验更好</p>
-      <p id="viewportNotice" class="viewport-notice" role="status" aria-live="polite"></p>
-    </main>
-
-    <script src="app/gameViewportController.js?v=20260714-game-viewport-v1"></script>
-    <script src="viewportHost.js?v=20260714-game-viewport-v1"></script>
+  <body>
+    <a href="Shell/index.html">进入游戏</a>
   </body>
 </html>
