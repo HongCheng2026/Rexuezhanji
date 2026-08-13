@@ -44,6 +44,10 @@ test("存档迁移只允许真实匿名源账号，已绑定账号不能转移�
   assert.match(deployedApi, /sourceData\.user\.is_anonymous !== true/);
   assert.match(deployedApi, /SOURCE_ACCOUNT_NOT_ANONYMOUS/);
   assert.match(deployedApi, /if \(destination\) return bootstrap\(ctx\)/);
+  assert.match(deployedApi, /AUTH_MIGRATION_PROOF_REQUIRED/);
+  assert.match(deployedApi, /prepare-auth-migration/);
+  assert.match(deployedApi, /complete-auth-callback/);
+  assert.match(deployedApi, /Date\.now\(\) - proofIssuedAt <= 15 \* 60 \* 1000/);
 });
 
 test("图鉴激活使用专用原子事务且只允许已拥有单位和已集齐羁绊", () => {

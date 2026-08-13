@@ -606,7 +606,7 @@ function corsHeaders(request: Request) {
   const isDeployPreview = /^https:\/\/[a-z0-9-]+--rexuezhanji\.netlify\.app$/i.test(origin);
   return {
     "Access-Control-Allow-Origin": allowedOrigins.has(origin) || isLocal || isDeployPreview ? origin : "https://rexuezhanji.top",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rexuezhanji-source-token",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rexuezhanji-source-token, x-rexuezhanji-source-proof",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Vary": "Origin"
   };
@@ -640,6 +640,11 @@ async function sha256(value: string) {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map((part) => part.toString(16).padStart(2, "0")).join("");
+}
+
+async function createMigrationProof(userId: string, issuedAt: number) {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  return sha256(`${userId}:${issuedAt}:${secret}`);
 }
 
 function getLevel(levelId: unknown) {
@@ -1313,13 +1318,47 @@ async function migrateAnonymous(ctx: Context, request: Request) {
   if (sourceData.user.is_anonymous !== true) {
     return reply({ error: "只能迁移未绑定的游客存档。", code: "SOURCE_ACCOUNT_NOT_ANONYMOUS" }, 403);
   }
+  const proofHeader = request.headers.get("x-rexuezhanji-source-proof") || "";
+  const proofParts = proofHeader.split(".");
+  const proofIssuedAt = Math.floor(Number(proofParts[0]) || 0);
+  const proofSignature = String(proofParts[1] || "");
+  const proofValid = proofIssuedAt > 0
+    && Date.now() - proofIssuedAt <= 15 * 60 * 1000
+    && Date.now() >= proofIssuedAt - 60 * 1000
+    && proofSignature === await createMigrationProof(sourceData.user.id, proofIssuedAt);
   const { data: destination } = await ctx.admin.from("player_profiles").select("user_id").eq("user_id", ctx.userId).maybeSingle();
   if (destination) return bootstrap(ctx);
+  if (!proofValid) {
+    return reply({
+      error: "没有检测到原设备发起的存档读取凭据，已阻止创建空存档。请回到原设备重新发送安全链接。",
+      code: "AUTH_MIGRATION_PROOF_REQUIRED"
+    }, 409);
+  }
   const { data: source, error: readError } = await ctx.admin.from("player_profiles").select("user_id").eq("user_id", sourceData.user.id).maybeSingle();
   if (readError) throw readError;
   if (source) {
     const { error: migrateError } = await ctx.admin.from("player_profiles").update({ user_id: ctx.userId }).eq("user_id", sourceData.user.id);
     if (migrateError) throw migrateError;
+  }
+  return bootstrap(ctx);
+}
+
+async function prepareAuthMigration(ctx: Context) {
+  const issuedAt = Date.now();
+  return reply({ migrationProof: `${issuedAt}.${await createMigrationProof(ctx.userId, issuedAt)}` });
+}
+
+async function completeAuthCallback(ctx: Context) {
+  const { data, error: readError } = await ctx.admin.from("player_profiles")
+    .select("user_id")
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  if (readError) throw readError;
+  if (!data) {
+    return reply({
+      error: "该邮箱账号还没有可读取的云存档。请回到原设备，从 UID 100000011 的云存档页重新发起绑定或读取。",
+      code: "AUTH_CALLBACK_PROFILE_MISSING"
+    }, 409);
   }
   return bootstrap(ctx);
 }
@@ -1446,6 +1485,8 @@ async function dispatchGameAction(ctx: Context, action: string, body: Json, requ
   if (action === "inventory-sell") return economyService.sellInventoryItem(ctx, body);
   if (action === "exchange-diamonds") return economyService.exchangeDiamonds(ctx, body);
   if (action === "migrate-anonymous") return migrateAnonymous(ctx, request);
+  if (action === "prepare-auth-migration") return prepareAuthMigration(ctx);
+  if (action === "complete-auth-callback") return completeAuthCallback(ctx);
   if (action === "leaderboard-submit") return socialService.leaderboardSubmit(ctx, body);
   if (action === "leaderboard-fetch") return socialService.leaderboardFetch(ctx, body);
   if (action === "friend-search") return socialService.friendSearch(ctx, body);

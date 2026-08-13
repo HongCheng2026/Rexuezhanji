@@ -19,7 +19,7 @@ function response(payload, status = 200) {
 }
 
 function createHarness(options = {}) {
-  const sourceSession = options.session || {
+  const sourceSession = Object.prototype.hasOwnProperty.call(options, "session") ? options.session : {
     access_token: "guest-access",
     refresh_token: "guest-refresh",
     expires_at: future,
@@ -32,10 +32,12 @@ function createHarness(options = {}) {
     user: { id: "email-user", email: "pilot@example.com", is_anonymous: false }
   };
   const storage = new Map([["rexuezhanjiSupabaseSession", JSON.stringify(sourceSession)]]);
+  if (options.migrationProof) storage.set("rexuezhanjiAuthSourceProof", String(options.migrationProof));
   const requests = [];
   const context = vm.createContext({
     AbortController,
     URL,
+    URLSearchParams,
     console,
     crypto: { randomUUID: () => "operation-id" },
     setTimeout,
@@ -43,6 +45,9 @@ function createHarness(options = {}) {
     Date,
     Math,
     JSON,
+    atob(value) { return Buffer.from(value, "base64").toString("utf8"); },
+    location: options.location || { hash: "", pathname: "/", search: "", origin: "https://rexuezhanji.top" },
+    history: { replaceState() {} },
     RXSupabaseConfig: { url: "https://cloud.example", publishableKey: "public-key" },
     localStorage: {
       getItem(key) { return storage.has(key) ? storage.get(key) : null; },
@@ -54,9 +59,17 @@ function createHarness(options = {}) {
       const headers = request && request.headers ? request.headers : {};
       const entry = { url: String(url), body, headers };
       requests.push(entry);
-      if (entry.url.includes("/auth/v1/otp")) return response({ ok: true });
+      if (entry.url.includes("/auth/v1/user")) return response({ user: sourceSession.user });
+      if (entry.url.includes("/auth/v1/otp")) {
+        if (options.otpFailure) return response(options.otpFailure.payload, options.otpFailure.status);
+        return response({ ok: true });
+      }
       if (entry.url.includes("/auth/v1/verify")) return response(targetSession);
       const action = new URL(entry.url).searchParams.get("action");
+      if (action === "prepare-auth-migration") return response({ migrationProof: "1700000000000.signature" });
+      if (options.failCallbackWithoutProfile && action === "complete-auth-callback") {
+        return response({ error: "该邮箱账号还没有可读取的云存档。", code: "AUTH_CALLBACK_PROFILE_MISSING" }, 409);
+      }
       if (options.failAction === action) {
         return response({ error: "migration unavailable", code: "MIGRATION_FAILED" }, 503);
       }
@@ -125,6 +138,72 @@ test("邮箱和手机验证码支持禁止创建账号，并校验输入格式",
   await assert.rejects(harness.cloud.sendPhoneCode("123"), /有效的手机号/);
   await assert.rejects(harness.cloud.verifyEmailCode("pilot@example.com", "12ab"), /6 位数字/);
   await assert.rejects(harness.cloud.verifyPhoneCode("13800138000", "12ab"), /6 位数字/);
+  assert.ok(harness.requests.some((entry) => entry.url.includes("action=prepare-auth-migration")));
+  assert.equal(harness.storage.get("rexuezhanjiAuthSourceProof"), "1700000000000.signature");
+});
+
+test("游客绑定邮箱更新当前账号，不创建会丢失 UID 的新账号", async () => {
+  const harness = createHarness();
+  await harness.cloud.sendEmailCode(" Pilot@Example.com ", { createUser: true });
+  const update = harness.requests.find((entry) => entry.url.includes("/auth/v1/user"));
+  assert.ok(update);
+  assert.deepEqual(update.body, { email: "pilot@example.com" });
+  assert.equal(update.headers.Authorization, "Bearer guest-access");
+  assert.equal(harness.requests.some((entry) => entry.url.includes("/auth/v1/otp")), false);
+});
+
+test("邮件安全链接回跳时自动接管 Session 并清理地址栏令牌", () => {
+  const storage = new Map();
+  const payload = Buffer.from(JSON.stringify({ sub: "email-user", email: "pilot@example.com", is_anonymous: false })).toString("base64url");
+  const location = {
+    hash: `#access_token=x.${payload}.y&refresh_token=refresh&expires_in=3600&token_type=bearer&type=magiclink`,
+    pathname: "/",
+    search: "",
+    origin: "https://rexuezhanji.top"
+  };
+  const harness = createHarness({ location, migrationProof: "1700000000000.signature" });
+  const state = JSON.parse(JSON.stringify(harness.cloud.getAccountState()));
+  assert.equal(state.status, "email");
+  assert.equal(state.maskedIdentifier, "pi***@example.com");
+  assert.equal(savedSession(harness).user.id, "guest-user");
+  return harness.cloud.bootstrap().then(() => {
+    assert.equal(savedSession(harness).user.id, "email-user");
+    const migration = harness.requests.find((entry) => entry.url.includes("action=migrate-anonymous"));
+    assert.ok(migration);
+    assert.equal(migration.headers["x-rexuezhanji-source-proof"], "1700000000000.signature");
+  });
+});
+
+test("没有原设备游客凭据时先校验目标账号云档，禁止自动创建空存档", async () => {
+  const payload = Buffer.from(JSON.stringify({ sub: "email-user", email: "pilot@example.com", is_anonymous: false })).toString("base64url");
+  const harness = createHarness({
+    session: null,
+    failCallbackWithoutProfile: true,
+    location: {
+      hash: `#access_token=x.${payload}.y&refresh_token=refresh&expires_in=3600&type=magiclink`,
+      pathname: "/",
+      search: "",
+      origin: "https://rexuezhanji.top"
+    }
+  });
+  await assert.rejects(harness.cloud.bootstrap(), (error) => error.code === "AUTH_CALLBACK_PROFILE_MISSING");
+  const callbackCheck = harness.requests.find((entry) => entry.url.includes("action=complete-auth-callback"));
+  assert.ok(callbackCheck);
+  assert.equal(harness.requests.some((entry) => entry.url.includes("action=bootstrap")), false);
+  assert.equal(harness.storage.has("rexuezhanjiSupabaseSession"), false);
+});
+
+test("Supabase 的 msg 与 error_code 会完整透传给界面", async () => {
+  const harness = createHarness({
+    otpFailure: {
+      status: 400,
+      payload: { code: 400, error_code: "phone_provider_disabled", msg: "Unsupported phone provider" }
+    }
+  });
+  await assert.rejects(
+    harness.cloud.sendPhoneCode("13800138000"),
+    (error) => error.status === 400 && error.code === "phone_provider_disabled" && error.message === "Unsupported phone provider"
+  );
 });
 
 test("手机验证码按 sms 类型验证，并安全迁移游客存档", async () => {

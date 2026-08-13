@@ -111,8 +111,8 @@ test("资料页增加云存档分页，游客、已绑定和本地状态分别�
   clickTab(guest.controller, "cloud");
   assert.match(guest.dom.featurePanelSlots.innerHTML, /data-profile-cloud-form="send-code"/);
   assert.match(guest.dom.featurePanelSlots.innerHTML, /绑定当前云存档/);
-  assert.match(guest.dom.featurePanelSlots.innerHTML, /邮箱验证码/);
-  assert.match(guest.dom.featurePanelSlots.innerHTML, /手机验证码/);
+  assert.match(guest.dom.featurePanelSlots.innerHTML, /邮箱安全链接/);
+  assert.match(guest.dom.featurePanelSlots.innerHTML, /手机暂未开放/);
   assert.match(guest.dom.featurePanelSlots.innerHTML, /读取已有存档/);
 
   const bound = createController({ available: true, status: "email", provider: "email", maskedIdentifier: "pi***@example.com", reason: "" });
@@ -133,7 +133,7 @@ test("资料页增加云存档分页，游客、已绑定和本地状态分别�
   assert.doesNotMatch(local.dom.featurePanelSlots.innerHTML, /data-profile-cloud-form/);
 });
 
-test("发送验证码时阻止重复提交，成功后进入 60 秒倒计验证态", async () => {
+test("发送邮箱安全链接时阻止重复提交，并明确提示点击邮件链接", async () => {
   let calls = 0;
   let release;
   const sent = new Promise((resolve) => { release = resolve; });
@@ -149,22 +149,18 @@ test("发送验证码时阻止重复提交，成功后进入 60 秒倒计验证�
   assert.equal(calls, 1);
   release({ ok: true });
   assert.equal(await first, true);
-  assert.match(harness.dom.featurePanelSlots.innerHTML, /data-profile-cloud-form="verify-code"/);
-  assert.match(harness.dom.featurePanelSlots.innerHTML, /60 秒后可重发/);
+  assert.match(harness.dom.featurePanelSlots.innerHTML, /邮箱确认链接已发送/);
+  assert.doesNotMatch(harness.dom.featurePanelSlots.innerHTML, /6 位验证码/);
   assert.match(harness.dom.featurePanelSlots.innerHTML, /aria-live="polite"/);
   clickAction(harness.controller, "close");
 });
 
-test("游客可选择手机绑定或读取已有账号，createUser 参数与操作意图一致", async () => {
+test("游客可选择绑定或读取已有邮箱账号，createUser 参数与操作意图一致", async () => {
   const calls = [];
   const harness = createController(
     { available: true, status: "guest", provider: null, maskedIdentifier: "游客云档", reason: "" },
     {
       gateway: {
-        async sendPhoneCode(phone, options) {
-          calls.push({ method: "sendPhoneCode", phone, options });
-          return { ok: true };
-        },
         async sendEmailCode(email, options) {
           calls.push({ method: "sendEmailCode", email, options });
           return { ok: true };
@@ -173,17 +169,48 @@ test("游客可选择手机绑定或读取已有账号，createUser 参数与操
     }
   );
   clickTab(harness.controller, "cloud");
-  clickAction(harness.controller, "select-cloud-channel", { profileChannel: "phone" });
-  assert.match(harness.dom.featurePanelSlots.innerHTML, /id="profileCloudPhone"/);
-  assert.equal(await submitForm(harness.controller, "send-code", "138 0013 8000"), true);
-  assert.deepEqual(calls[0], { method: "sendPhoneCode", phone: "+8613800138000", options: { createUser: true } });
-  assert.match(harness.dom.featurePanelSlots.innerHTML, /输入手机验证码/);
-  clickAction(harness.controller, "change-cloud-identifier");
+  assert.match(harness.dom.featurePanelSlots.innerHTML, /手机暂未开放/);
+  assert.match(harness.dom.featurePanelSlots.innerHTML, /disabled>手机暂未开放/);
+  assert.equal(await submitForm(harness.controller, "send-code", "new@example.com"), true);
+  assert.deepEqual(calls[0], { method: "sendEmailCode", email: "new@example.com", options: { createUser: true } });
   clickAction(harness.controller, "select-cloud-intent", { profileIntent: "load" });
-  clickAction(harness.controller, "select-cloud-channel", { profileChannel: "email" });
   assert.match(harness.dom.featurePanelSlots.innerHTML, /读取已有云存档/);
   assert.equal(await submitForm(harness.controller, "send-code", "pilot@example.com"), true);
   assert.deepEqual(calls[1], { method: "sendEmailCode", email: "pilot@example.com", options: { createUser: false } });
+  clickAction(harness.controller, "close");
+});
+
+test("绑定已存在邮箱时引导读取旧账号并保留当前 UID 迁移路径", async () => {
+  const harness = createController(
+    { available: true, status: "guest", provider: null, maskedIdentifier: "游客云档", reason: "" },
+    {
+      gateway: {
+        async sendEmailCode() {
+          const error = new Error("A user with this email address has already been registered");
+          error.code = "email_exists";
+          error.status = 422;
+          throw error;
+        }
+      }
+    }
+  );
+  clickTab(harness.controller, "cloud");
+  assert.equal(await submitForm(harness.controller, "send-code", "makecsy@vip.qq.com"), false);
+  assert.match(harness.dom.featurePanelSlots.innerHTML, /请选择“读取已有存档”/);
+  assert.match(harness.dom.featurePanelSlots.innerHTML, /安全继承当前 UID/);
+  clickAction(harness.controller, "close");
+});
+
+test("手机短信服务未启用时入口直接禁用，不再允许发送请求", async () => {
+  let calls = 0;
+  const harness = createController(
+    { available: true, status: "guest", provider: null, maskedIdentifier: "游客云档", reason: "" },
+    { gateway: { async sendPhoneCode() { calls += 1; } } }
+  );
+  clickTab(harness.controller, "cloud");
+  assert.match(harness.dom.featurePanelSlots.innerHTML, /disabled>手机暂未开放/);
+  assert.doesNotMatch(harness.dom.featurePanelSlots.innerHTML, /云端请求失败/);
+  assert.equal(calls, 0);
   clickAction(harness.controller, "close");
 });
 

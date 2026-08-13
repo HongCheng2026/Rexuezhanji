@@ -229,7 +229,6 @@
   function renderCloudSave(accountState, uid) {
     accountState = accountState || { available: false, status: "unavailable", reason: "cloud" };
     if (!accountState.available || accountState.status === "unavailable") return renderCloudUnavailable(accountState.reason);
-    if (cloudSaveState.step === "code") return renderCloudCode(accountState);
     if ((accountState.status === "email" || accountState.status === "phone") && cloudSaveState.step !== "form") return renderBoundCloudSave(accountState, uid);
     return renderCloudAccountForm(accountState);
   }
@@ -239,7 +238,7 @@
     var isLoading = reason === "loading";
     var title = isLocal ? "当前为本地存档" : isLoading ? "正在连接云存档" : "云存档暂不可用";
     var body = isLocal
-      ? "本地开发模式不会发送验证码，正式服务器上可通过邮箱或手机号绑定和读取存档。"
+      ? "本地开发模式不会发送登录邮件，正式服务器上可通过邮箱安全链接绑定和读取存档。"
       : isLoading ? "正在读取玩家身份，请稍候再打开本分页。" : "无法连接账号服务，当前进度不会被覆盖，请刷新页面后重试。";
     return '<div class="player-profile-cloud-panel is-unavailable">' +
       '<div class="player-profile-cloud-heading"><span class="player-profile-cloud-icon" aria-hidden="true">☁</span><div><small>CLOUD ARCHIVE</small><h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(body) + '</p></div><span class="player-profile-cloud-badge">' + (isLocal ? '本地' : isLoading ? '连接中' : '离线') + '</span></div>' +
@@ -251,54 +250,27 @@
     var canBind = accountState.status === "guest";
     if (!canBind && cloudSaveState.intent === "bind") cloudSaveState.intent = "load";
     var isLoad = cloudSaveState.intent === "load";
-    var isPhone = cloudSaveState.channel === "phone";
-    var identifierLabel = isPhone ? "手机号" : "邮箱地址";
-    var identifierId = isPhone ? "profileCloudPhone" : "profileCloudEmail";
-    var inputType = isPhone ? "tel" : "email";
-    var inputMode = isPhone ? "tel" : "email";
-    var autocomplete = isPhone ? "tel" : "email";
-    var placeholder = isPhone ? "138 0013 8000" : "pilot@example.com";
+    cloudSaveState.channel = "email";
+    var identifierLabel = "邮箱地址";
+    var identifierId = "profileCloudEmail";
     var title = isLoad ? "读取已有云存档" : "绑定当前云存档";
     var body = isLoad
-      ? "输入已绑定的邮箱或手机号，验证成功后读取该账号的云存档，当前档案不会覆盖目标档案。"
-      : "当前进度已自动保存在云端。绑定邮箱或手机号后，更换设备也能通过验证码找回。";
+      ? "输入已绑定的邮箱，打开邮件中的安全登录链接后即可读取云存档。当前档案不会覆盖目标档案。"
+      : "当前进度已自动保存在云端。绑定邮箱后，更换设备也能通过邮件安全链接找回。";
     var statusLabel = accountState.status === "guest" ? "游客云档" : "已绑定存档";
     var rule = isLoad ? "只允许读取已经存在的云存档账号" : "新账号会继承当前游客进度";
     return '<div class="player-profile-cloud-panel">' +
       '<div class="player-profile-cloud-heading"><span class="player-profile-cloud-icon" aria-hidden="true">☁</span><div><small>CLOUD ARCHIVE</small><h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(body) + '</p></div><span class="player-profile-cloud-badge is-warning">' + (isLoad ? '读取存档' : '绑定存档') + '</span></div>' +
       '<div class="player-profile-cloud-choice-bar">' +
         (canBind ? '<div class="player-profile-cloud-choice" role="group" aria-label="存档操作"><span>我要</span><button type="button" data-profile-action="select-cloud-intent" data-profile-intent="bind" aria-pressed="' + String(!isLoad) + '" class="' + (!isLoad ? 'is-selected' : '') + '"' + (cloudSaveState.pending ? ' disabled' : '') + '>绑定当前存档</button><button type="button" data-profile-action="select-cloud-intent" data-profile-intent="load" aria-pressed="' + String(isLoad) + '" class="' + (isLoad ? 'is-selected' : '') + '"' + (cloudSaveState.pending ? ' disabled' : '') + '>读取已有存档</button></div>' : '<div class="player-profile-cloud-choice is-single"><span>我要</span><strong>读取已有存档</strong></div>') +
-        '<div class="player-profile-cloud-choice" role="group" aria-label="验证码接收方式"><span>验证方式</span><button type="button" data-profile-action="select-cloud-channel" data-profile-channel="email" aria-pressed="' + String(!isPhone) + '" class="' + (!isPhone ? 'is-selected' : '') + '"' + (cloudSaveState.pending ? ' disabled' : '') + '>邮箱验证码</button><button type="button" data-profile-action="select-cloud-channel" data-profile-channel="phone" aria-pressed="' + String(isPhone) + '" class="' + (isPhone ? 'is-selected' : '') + '"' + (cloudSaveState.pending ? ' disabled' : '') + '>手机验证码</button></div>' +
+        '<div class="player-profile-cloud-choice" role="group" aria-label="账号验证方式"><span>验证方式</span><button type="button" aria-pressed="true" class="is-selected"' + (cloudSaveState.pending ? ' disabled' : '') + '>邮箱安全链接</button><button type="button" aria-disabled="true" disabled>手机暂未开放</button></div>' +
       '</div>' +
       '<div class="player-profile-cloud-grid">' +
         '<article class="player-profile-cloud-summary"><span>当前状态</span><strong>' + escapeHtml(statusLabel) + '</strong><ul><li>战斗与养成操作自动写入云端</li><li>' + escapeHtml(rule) + '</li></ul></article>' +
         '<form class="player-profile-cloud-form" data-profile-cloud-form="send-code" novalidate>' +
           '<label for="' + identifierId + '">' + identifierLabel + '</label>' +
-          '<div class="player-profile-cloud-input-row"><input id="' + identifierId + '" data-profile-cloud-identifier type="' + inputType + '" maxlength="' + (isPhone ? '24' : '254') + '" autocomplete="' + autocomplete + '" inputmode="' + inputMode + '" placeholder="' + placeholder + '" value="' + escapeAttr(cloudSaveState.identifier) + '"' + (cloudSaveState.pending ? ' disabled' : '') + '><button type="submit"' + (cloudSaveState.pending ? ' disabled' : '') + '>' + (cloudSaveState.pending ? '发送中…' : '发送验证码') + '</button></div>' +
-          '<p class="player-profile-cloud-hint">' + (isPhone ? '中国大陆 11 位手机号会自动补全 +86；其他地区请填写国家区号。' : '邮件中会显示 6 位数字验证码，不需要点击登录链接。') + '</p>' +
-        '</form>' +
-      '</div>' + renderCloudFeedback() +
-    '</div>';
-  }
-
-  function renderCloudCode() {
-    var remaining = getCooldownSeconds();
-    var isPhone = cloudSaveState.channel === "phone";
-    var channelLabel = isPhone ? "手机" : "邮箱";
-    var isLoad = cloudSaveState.intent === "load";
-    var confirmLabel = isLoad ? "确认并读取存档" : "确认并绑定存档";
-    var summaryTitle = isLoad ? "目标云档优先" : "安全绑定当前进度";
-    var summaryRules = isLoad
-      ? '<li>仅登录已经存在的云存档账号</li><li>失败时保留当前账号与档案</li>'
-      : '<li>新账号：继承当前游客进度</li><li>账号已有云档：保护并读取已有进度</li>';
-    return '<div class="player-profile-cloud-panel is-verifying">' +
-      '<div class="player-profile-cloud-heading"><span class="player-profile-cloud-icon" aria-hidden="true">' + (isPhone ? '☎' : '✉') + '</span><div><small>IDENTITY CHECK</small><h3>输入' + channelLabel + '验证码</h3><p>6 位验证码已发送至 <strong>' + escapeHtml(maskCloudIdentifier(cloudSaveState.channel, cloudSaveState.identifier)) + '</strong>。验证成功后将' + (isLoad ? '读取已有云存档' : '完成当前存档绑定') + '。</p></div><span class="player-profile-cloud-badge is-active">待验证</span></div>' +
-      '<div class="player-profile-cloud-grid">' +
-        '<article class="player-profile-cloud-summary is-security"><span>存档安全规则</span><strong>' + summaryTitle + '</strong><ul>' + summaryRules + '</ul></article>' +
-        '<form class="player-profile-cloud-form" data-profile-cloud-form="verify-code" novalidate>' +
-          '<label for="profileCloudCode">6 位验证码</label>' +
-          '<div class="player-profile-cloud-input-row"><input id="profileCloudCode" class="player-profile-cloud-code" type="text" maxlength="6" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" placeholder="000000" value="' + escapeAttr(cloudSaveState.code) + '"' + (cloudSaveState.pending ? ' disabled' : '') + '><button type="submit"' + (cloudSaveState.pending ? ' disabled' : '') + '>' + (cloudSaveState.pending ? '验证中…' : confirmLabel) + '</button></div>' +
-          '<div class="player-profile-cloud-form-actions"><button type="button" class="is-secondary" data-profile-action="resend-cloud-code" data-profile-resend' + (remaining > 0 || cloudSaveState.pending ? ' disabled' : '') + '>' + (remaining > 0 ? remaining + ' 秒后可重发' : '重新发送') + '</button><button type="button" class="is-secondary" data-profile-action="change-cloud-identifier"' + (cloudSaveState.pending ? ' disabled' : '') + '>更换' + channelLabel + '</button></div>' +
+          '<div class="player-profile-cloud-input-row"><input id="' + identifierId + '" data-profile-cloud-identifier type="email" maxlength="254" autocomplete="email" inputmode="email" placeholder="pilot@example.com" value="' + escapeAttr(cloudSaveState.identifier) + '"' + (cloudSaveState.pending ? ' disabled' : '') + '><button type="submit"' + (cloudSaveState.pending ? ' disabled' : '') + '>' + (cloudSaveState.pending ? '发送中…' : '发送安全链接') + '</button></div>' +
+          '<p class="player-profile-cloud-hint">邮件会包含一次性 Sign in / 登录链接。请在本设备打开，游戏会自动完成登录；邮件不会显示数字验证码。</p>' +
         '</form>' +
       '</div>' + renderCloudFeedback() +
     '</div>';
@@ -448,42 +420,52 @@
 
   function friendlyCloudError(error) {
     var message = String(error && error.message || "");
-    if (error && error.status === 429) return "操作过于频繁，请稍后再发送验证码。";
+    var code = String(error && error.code || "");
+    if (error && error.status === 429) return "安全链接发送过于频繁，请稍后重试。";
     if (error && error.code === "REQUEST_TIMEOUT") return "云端响应超时，原存档保持不变，请重试。";
-    if (cloudSaveState.channel === "phone" && /phone|sms|provider/i.test(message) && /disabled|unsupported|not enabled|not configured/i.test(message)) {
-      return "手机验证码服务尚未开启，请改用邮箱，或联系运营人员配置短信渠道。";
+    if (cloudSaveState.channel === "phone" && (
+      /phone_provider_disabled|sms_provider_disabled/i.test(code) ||
+      (/phone|sms|provider/i.test(message) && /disabled|unsupported|not enabled|not configured/i.test(message))
+    )) {
+      return "手机验证码暂未开放，请先使用邮箱安全链接。";
     }
-    if (/expired|invalid|token|otp|verification/i.test(message)) return "验证码无效或已过期，请重新获取。";
-    if (/already|registered|not found|does not exist|signups? not allowed/i.test(message)) return "该" + cloudChannelLabel() + "没有可读取的已有存档。";
+    if (cloudSaveState.intent === "bind" && (
+      /email_exists|user_already_exists|email_address_already_linked/i.test(code) ||
+      /already|registered/i.test(message)
+    )) {
+      return "该邮箱已创建过账号。请选择“读取已有存档”后重新发送安全链接；该账号没有云档时会安全继承当前 UID。";
+    }
+    if (/expired|invalid|token|otp|verification/i.test(message)) return "安全链接无效或已过期，请重新获取。";
+    if (/not found|does not exist|signups? not allowed/i.test(message)) return "该" + cloudChannelLabel() + "没有可读取的已有存档。";
     return message || "云存档请求失败，当前进度保持不变。";
   }
 
   function requestCloudCode(value) {
     if (cloudSaveState.pending) return Promise.resolve(false);
-    var isPhone = cloudSaveState.channel === "phone";
-    var identifier = isPhone ? normalizeCloudPhone(value) : normalizeCloudEmail(value);
+    var identifier = normalizeCloudEmail(value);
     if (!identifier) {
-      cloudSaveState.message = isPhone ? "请输入有效的手机号，国际号码需包含国家区号。" : "请输入有效的邮箱地址。";
+      cloudSaveState.message = "请输入有效的邮箱地址。";
       cloudSaveState.isError = true;
       renderProfilePanel();
       return Promise.resolve(false);
     }
     cloudSaveState.identifier = identifier;
     cloudSaveState.pending = true;
-    cloudSaveState.message = "正在发送验证码…";
+    cloudSaveState.message = "正在发送安全登录链接…";
     cloudSaveState.isError = false;
     renderProfilePanel();
     return ensureGameGateway().then(function sendThroughGateway(gateway) {
       gateway = gateway || getGameGateway();
-      var methodName = isPhone ? "sendPhoneCode" : "sendEmailCode";
-      if (!gateway || typeof gateway[methodName] !== "function") throw new Error(cloudChannelLabel() + "登录接口尚未连接。");
-      return gateway[methodName](identifier, { createUser: cloudSaveState.intent === "bind" });
+      if (!gateway || typeof gateway.sendEmailCode !== "function") throw new Error("邮箱登录接口尚未连接。");
+      return gateway.sendEmailCode(identifier, { createUser: cloudSaveState.intent === "bind" });
     }).then(function onCodeSent() {
-      cloudSaveState.step = "code";
+      cloudSaveState.step = "form";
       cloudSaveState.pending = false;
       cloudSaveState.code = "";
       cloudSaveState.cooldownUntil = Date.now() + 60000;
-      cloudSaveState.message = isPhone ? "验证码已发送，请查收短信。" : "验证码已发送，请查收邮件中的 6 位数字码。";
+      cloudSaveState.message = cloudSaveState.intent === "bind"
+        ? "邮箱确认链接已发送。请在本设备打开邮件中的链接，确认后 UID 和当前进度保持不变。"
+        : "安全登录链接已发送，请在本设备打开邮件中的 Sign in / 登录链接。";
       cloudSaveState.isError = false;
       renderProfilePanel();
       return true;

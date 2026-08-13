@@ -25,6 +25,8 @@ test("public shell keeps the 1600x900 centered iframe and fullscreen control", (
   assert.match(viewportHost, /stage:\s*stage/);
   assert.match(viewportHost, /frame\.addEventListener\("load"/);
   assert.match(viewportHost, /controller\.fit\(\)/);
+  assert.match(viewportHost, /rxgame:auth-result/);
+  assert.match(viewportHost, /event\.source !== frame\.contentWindow/);
 });
 
 test("public shell preserves optional slots without forcing a test save", () => {

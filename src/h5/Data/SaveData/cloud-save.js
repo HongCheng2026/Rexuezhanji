@@ -7,6 +7,44 @@
   let profileSnapshot = null;
   let profileSnapshotAt = 0;
   let profileSyncPromise = null;
+  let authCallbackSourceSession = null;
+  let authCallbackPending = false;
+  let authCallbackType = "";
+  let authCallbackSourceProof = "";
+
+  function readAuthCallbackSession() {
+    const hash = String(root.location?.hash || "");
+    if (!hash || !/(?:^|[&#])access_token=/.test(hash)) return null;
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    let sourceProof = "";
+    try {
+      sourceProof = String(root.localStorage?.getItem?.("rexuezhanjiAuthSourceProof") || "");
+      root.localStorage?.removeItem?.("rexuezhanjiAuthSourceProof");
+    } catch {}
+    const accessToken = params.get("access_token") || "";
+    const refreshToken = params.get("refresh_token") || "";
+    if (!accessToken) return null;
+    let user = null;
+    try {
+      const segment = accessToken.split(".")[1] || "";
+      const normalized = segment.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(segment.length / 4) * 4, "=");
+      user = JSON.parse(root.atob(normalized));
+    } catch {}
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: Math.max(0, Number(params.get("expires_at")) || (Math.floor(Date.now() / 1000) + Math.max(60, Number(params.get("expires_in")) || 3600))),
+      token_type: params.get("token_type") || "bearer",
+      auth_type: params.get("type") || "",
+      source_proof: sourceProof,
+      user: user && user.sub ? {
+        id: user.sub,
+        email: user.email || "",
+        phone: user.phone || "",
+        is_anonymous: user.is_anonymous === true
+      } : null
+    };
+  }
 
   function readSession() {
     try {
@@ -22,6 +60,32 @@
     else localStorage.removeItem(SESSION_KEY);
     return session;
   }
+
+  function consumeAuthCallbackSession() {
+    const callbackSession = readAuthCallbackSession();
+    if (!callbackSession) return false;
+    const previousSession = session;
+    session = callbackSession;
+    authCallbackPending = true;
+    authCallbackType = String(callbackSession.auth_type || "");
+    authCallbackSourceProof = String(callbackSession.source_proof || "");
+    if (previousSession?.user?.id && previousSession.user.id !== callbackSession.user?.id && isGuestSession(previousSession)) {
+      authCallbackSourceSession = previousSession;
+    } else {
+      saveSession(callbackSession);
+    }
+    try {
+      const cleanUrl = `${root.location.pathname || "/"}${root.location.search || ""}`;
+      root.history?.replaceState?.(null, "", cleanUrl);
+      if (root.parent && root.parent !== root) {
+        const parentUrl = `${root.parent.location.pathname || "/"}${root.parent.location.search || ""}`;
+        root.parent.history?.replaceState?.(null, "", parentUrl);
+      }
+    } catch {}
+    return true;
+  }
+
+  consumeAuthCallbackSession();
 
   function configured() {
     return Boolean(config?.url && config?.publishableKey);
@@ -56,8 +120,8 @@
     }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const cloudError = new Error(payload.error || payload.message || "云端请求失败。");
-      cloudError.code = payload.code || "CLOUD_REQUEST_FAILED";
+      const cloudError = new Error(payload.error || payload.message || payload.msg || "云端请求失败。");
+      cloudError.code = payload.error_code || payload.code || "CLOUD_REQUEST_FAILED";
       cloudError.status = response.status;
       cloudError.payload = payload;
       throw cloudError;
@@ -125,7 +189,48 @@
 
   async function bootstrap() {
     if (profileSyncPromise) return profileSyncPromise;
-    profileSyncPromise = api("bootstrap");
+    profileSyncPromise = (async function bootstrapAccount() {
+      try {
+        let result;
+        if (authCallbackSourceSession?.access_token) {
+          result = await api("migrate-anonymous", {}, {
+            token: session?.access_token,
+            extraHeaders: {
+              "x-rexuezhanji-source-token": authCallbackSourceSession.access_token,
+              ...(authCallbackSourceProof ? { "x-rexuezhanji-source-proof": authCallbackSourceProof } : {})
+            }
+          });
+          saveSession(session);
+          authCallbackSourceSession = null;
+        } else if (authCallbackPending) {
+          result = await api("complete-auth-callback", { type: authCallbackType });
+          saveSession(session);
+        } else {
+          result = await api("bootstrap");
+        }
+        if (authCallbackPending) {
+          authCallbackPending = false;
+          authCallbackType = "";
+          authCallbackSourceProof = "";
+          root.parent?.postMessage?.({ type: "rxgame:auth-result", ok: true, message: "邮箱验证成功，云存档已恢复。" }, root.location?.origin || "*");
+        }
+        return result;
+      } catch (error) {
+        if (authCallbackSourceSession) {
+          saveSession(authCallbackSourceSession);
+          authCallbackSourceSession = null;
+        } else if (authCallbackPending) {
+          saveSession(null);
+        }
+        if (authCallbackPending) {
+          authCallbackPending = false;
+          authCallbackType = "";
+          authCallbackSourceProof = "";
+          root.parent?.postMessage?.({ type: "rxgame:auth-result", ok: false, message: "邮箱验证失败，原存档保持不变。" }, root.location?.origin || "*");
+        }
+        throw error;
+      }
+    })();
     try {
       return await profileSyncPromise;
     } finally {
@@ -195,6 +300,21 @@
 
   async function sendEmailCode(email, options = {}) {
     const normalized = normalizeEmail(email);
+    if (options.createUser !== false && isGuestSession(session)) {
+      await ensureSession();
+      return request("/auth/v1/user", {
+        method: "PUT",
+        body: { email: normalized },
+        token: session?.access_token
+      });
+    }
+    if (options.createUser === false && isGuestSession(session)) {
+      await ensureSession();
+      const proof = await api("prepare-auth-migration");
+      if (proof?.migrationProof) {
+        try { root.localStorage?.setItem?.("rexuezhanjiAuthSourceProof", String(proof.migrationProof)); } catch {}
+      }
+    }
     return request("/auth/v1/otp", {
       method: "POST",
       body: { email: normalized, create_user: options.createUser !== false },

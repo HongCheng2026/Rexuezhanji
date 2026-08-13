@@ -56,6 +56,12 @@
     });
   });
 
+  root.addEventListener("message", function onGameMessage(event) {
+    if (event.source !== frame.contentWindow || event.origin !== root.location.origin) return;
+    if (!event.data || event.data.type !== "rxgame:auth-result") return;
+    showNotice(String(event.data.message || (event.data.ok ? "邮箱验证成功。" : "邮箱验证失败。")));
+  });
+
   controller.start();
   frame.src = frameSource + (root.location.search || "") + (root.location.hash || "");
   root.rxGameViewport = controller;
